@@ -1,0 +1,22 @@
+{
+  "name": "slack-brain",
+  "version": "1.0.0",
+  "description": "AI-powered Slack bot with Claude CLI, proactive nudges, and daily digests",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "bot": "tsx bot.ts",
+    "cron": "tsx cron.ts",
+    "search": "tsx search.ts",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.1.0",
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2"
+  }
+}
