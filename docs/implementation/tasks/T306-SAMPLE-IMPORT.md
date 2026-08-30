@@ -1,16 +1,20 @@
 # T306 — Run sample archive import and quality gate
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** Unassigned
-- **Branch:** `task/T306-run-sample-archive-import-and-quality-gate`
+- **Branch:** `task/T306-sample-import-synthetic-rehearsal`
 - **Parallel group:** PG-03D
 - **Depends on:** T205, T305
 - **Blocks:** T307
 - **Can run parallel with:** None until dependencies merge
 - **Conflicts with:** None under declared write scope
 - **Task log:** [`../logs/T306.md`](../logs/T306.md)
-- **Write scope:**
+- **Coordinator-approved synthetic rehearsal scope:**
+  - `tests/migration/**`
+  - `docs/implementation/logs/T306.md`
+  - `docs/implementation/tasks/T306-SAMPLE-IMPORT.md`
+- **Real-sample write scope:**
   - `docs/reports/sample-import-summary.md`
   - `benchmarks/history/**`
 - **Read-only references:** `GIST_MASTRA_PRD.md`, `MASTRA_MIGRATION_PLAN.md`, this phase file, `STATUS.md`, and other task files.
@@ -24,6 +28,14 @@ Validate migration correctness and retrieval quality on a bounded representative
 - Sanitized sample selection method and count report.
 - Metadata/count reconciliation.
 - Historical retrieval benchmark report and approval decision.
+
+## Preparation status
+
+- Synthetic fixture-shaped archive rehearsal completed on 2026-08-30 through the import CLI and scratch Mastra store.
+- First run inserted nine normalized records from 14 approved source rows; rerun reported all nine unchanged with no destination growth.
+- Both reports reconciled, contained zero failures, and remained outside Git with the synthetic databases/checkpoints.
+- Rehearsal test commit: `a633d874ebf5c27c4a3a45e567e1c1a8b30c6e05`.
+- Real bounded sample, retrieval benchmark, and go/no-go decision remain pending B-03 archive DB access and authoritative inventory.
 
 ## Mandatory procedure — follow throughout
 
