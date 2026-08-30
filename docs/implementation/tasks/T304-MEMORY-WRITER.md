@@ -1,6 +1,6 @@
 # T304 — Implement idempotent Mastra memory writer
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-10
 - **Branch:** `task/T304-implement-idempotent-mastra-memory-writer`
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Second write does not duplicate messages/embeddings.
-- [ ] Partial failure resumes safely.
-- [ ] Counters reconcile accepted/rejected records.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Second write does not duplicate messages/embeddings.
+- [x] Partial failure resumes safely.
+- [x] Counters reconcile accepted/rejected records.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `8c3c32dc698510f78a8bf59035c19fbc6667728b`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
