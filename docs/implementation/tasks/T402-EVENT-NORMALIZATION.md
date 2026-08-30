@@ -1,8 +1,8 @@
 # T402 — Normalize and deduplicate live Slack events
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner-2
 - **Branch:** `task/T402-normalize-and-deduplicate-live-slack-events`
 - **Parallel group:** PG-04B
 - **Depends on:** T401
@@ -66,17 +66,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Retries normalize to same key.
-- [ ] Bot/system events are ignored.
-- [ ] No storage/model/Slack API side effects.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Retries normalize to same key.
+- [x] Bot/system events are ignored.
+- [x] No storage/model/Slack API side effects.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `af39f16`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
