@@ -20,3 +20,13 @@ Never include secrets, private Slack text, databases, or full traces.
 - Decisions/assumptions: Per-thread batches satisfy F-13 without adding storage dependencies or changing retention semantics. F-14 required confirmation only because the real store merges metadata; no tombstone storage redesign was added.
 - Blockers: None.
 - Next action: Integrator reviews commit, merges branch, and reruns typecheck/full tests.
+
+## 2026-08-30 15:41 UTC — handoff hash recorded
+- Actor: pi coding agent
+- Commit/worktree: `ab57efe0e1f3b2a3fe4ba698c988a739bf83058c`; `SECFIX-C`
+- Work performed: Recorded the Ready for Integration handoff commit hash in task metadata.
+- Files changed: SECFIX-C task/log metadata only.
+- Commands/checks: Final committed-HEAD typecheck, full test suite, scope diff, forbidden-file check, and clean status.
+- Result: Typecheck passed; full suite passed 35 files / 537 tests; no forbidden files changed.
+- Blockers: None.
+- Next action: Integrator merges and reruns verification.
