@@ -1,0 +1,231 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "archive-import.md#normalized-and-writer-schemas",
+  "cases": [
+    {
+      "name": "root_message",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735689600.000100",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689600.000100",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689600.000100",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER01",
+          "sender_name": "Synthetic One",
+          "sent_at": "2025-01-01T00:00:00.000Z",
+          "message_ts": "1735689600.000100",
+          "text": "Synthetic decision: use the blue rollout checklist.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "warnings": []
+      }
+    },
+    {
+      "name": "thread_reply",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735689660.000200",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689660.000200",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689600.000100",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER02",
+          "sender_name": "Synthetic Member Two",
+          "sent_at": "2025-01-01T00:01:00.000Z",
+          "message_ts": "1735689660.000200",
+          "text": "Synthetic reply: review happens Friday.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "warnings": []
+      }
+    },
+    {
+      "name": "self_referential_root",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735689720.000300",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689720.000300",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689720.000300",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER01",
+          "sender_name": "Synthetic One",
+          "sent_at": "2025-01-01T00:02:00.000Z",
+          "message_ts": "1735689720.000300",
+          "text": "Synthetic standalone root.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "warnings": []
+      }
+    },
+    {
+      "name": "edited_message",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735689780.000400",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689780.000400",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689780.000400",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER02",
+          "sender_name": "Synthetic Member Two",
+          "sent_at": "2025-01-01T00:03:00.000Z",
+          "message_ts": "1735689780.000400",
+          "text": "Synthetic edited plan uses three stages.",
+          "edited_at": "2025-01-01T00:04:00.000Z",
+          "source": "import"
+        }],
+        "warnings": [],
+        "writer": { "ingested_at": "2025-02-01T00:00:00.000Z", "embedding_action": "replace_current_text_only" }
+      }
+    },
+    {
+      "name": "missing_user_cache_with_row_name_fallback",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735689900.000600",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689900.000600",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689900.000600",
+          "conversation_type": "channel",
+          "sender_id": "U0MISSING01",
+          "sender_name": "Synthetic Archived Member",
+          "sent_at": "2025-01-01T00:05:00.000Z",
+          "message_ts": "1735689900.000600",
+          "text": "Synthetic archived author remains attributable.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "warnings": ["user_cache_miss_fallback"]
+      }
+    },
+    {
+      "name": "missing_unresolvable_sender",
+      "expect": { "outcome": "skip", "reason": "missing_sender", "records": [] }
+    },
+    {
+      "name": "bot_message",
+      "expect": { "outcome": "skip", "reason": "bot_message", "records": [] }
+    },
+    {
+      "name": "timestamp_precision_pair",
+      "expect": {
+        "outcome": "write",
+        "records": [
+          {
+            "contract_version": "1.0.0",
+            "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735690080.000200",
+            "message_key": "T0SYNTH01/C0APPROVED1/1735690080.000200",
+            "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+            "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735690080.000200",
+            "conversation_type": "channel",
+            "sender_id": "U0MEMBER01",
+            "sender_name": "Synthetic One",
+            "sent_at": "2025-01-01T00:08:00.000Z",
+            "message_ts": "1735690080.000200",
+            "text": "Synthetic precision long form.",
+            "edited_at": null,
+            "source": "import"
+          },
+          {
+            "contract_version": "1.0.0",
+            "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735690080.0002",
+            "message_key": "T0SYNTH01/C0APPROVED1/1735690080.0002",
+            "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+            "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735690080.0002",
+            "conversation_type": "channel",
+            "sender_id": "U0MEMBER01",
+            "sender_name": "Synthetic One",
+            "sent_at": "2025-01-01T00:08:00.000Z",
+            "message_ts": "1735690080.0002",
+            "text": "Synthetic precision short form.",
+            "edited_at": null,
+            "source": "import"
+          }
+        ],
+        "warnings": [],
+        "assert": { "message_keys_distinct": true, "sent_at_equal": true }
+      }
+    },
+    {
+      "name": "exact_duplicate_delivery",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735690140.000900",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735690140.000900",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735690140.000900",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER01",
+          "sender_name": "Synthetic One",
+          "sent_at": "2025-01-01T00:09:00.000Z",
+          "message_ts": "1735690140.000900",
+          "text": "Synthetic duplicate payload.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "skipped": { "reason": "duplicate_exact", "count": 1 },
+        "warnings": []
+      }
+    },
+    {
+      "name": "conflicting_duplicate_content",
+      "expect": { "outcome": "failure", "reason": "duplicate_conflict", "failed_rows": 2, "records": [], "writer_touched": false }
+    },
+    {
+      "name": "invalid_timestamp",
+      "expect": { "outcome": "failure", "reason": "invalid_timestamp", "failed_rows": 1, "records": [] }
+    },
+    {
+      "name": "system_subtype",
+      "expect": { "outcome": "skip", "reason": "system_subtype", "records": [] }
+    },
+    {
+      "name": "empty_text",
+      "expect": { "outcome": "skip", "reason": "empty_text", "records": [] }
+    },
+    {
+      "name": "unapproved_channel",
+      "expect": { "outcome": "skip", "reason": "unapproved_channel", "records": [], "writer_touched": false }
+    },
+    {
+      "name": "legacy_date_mismatch",
+      "expect": {
+        "outcome": "write",
+        "records": [{
+          "contract_version": "1.0.0",
+          "delivery_key": "import:synthetic-run-001:T0SYNTH01/C0APPROVED1/1735690440.001400",
+          "message_key": "T0SYNTH01/C0APPROVED1/1735690440.001400",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735690440.001400",
+          "conversation_type": "channel",
+          "sender_id": "U0MEMBER02",
+          "sender_name": "Synthetic Member Two",
+          "sent_at": "2025-01-01T00:14:00.001Z",
+          "message_ts": "1735690440.001400",
+          "text": "Synthetic UTC date remains authoritative.",
+          "edited_at": null,
+          "source": "import"
+        }],
+        "warnings": ["legacy_date_mismatch"]
+      }
+    }
+  ]
+}

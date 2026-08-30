@@ -1,0 +1,320 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "archive-import.md#legacy-source-schema",
+  "context": {
+    "contract_version": "1.0.0",
+    "import_run_id": "synthetic-run-001",
+    "source_snapshot_id": "synthetic-snapshot-001",
+    "workspace_id": "T0SYNTH01",
+    "approved_channel_ids": ["C0APPROVED1"],
+    "channel_aliases": { "C0APPROVED1": "synthetic-approved-one" },
+    "known_bot_sender_ids": ["B0SYNTH001"],
+    "started_at": "2025-02-01T00:00:00.000Z"
+  },
+  "cases": [
+    {
+      "name": "root_message",
+      "rows": [{
+        "source_ref": "synthetic:root",
+        "ts": "1735689600.000100",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "Synthetic decision: use the blue rollout checklist.",
+        "thread_ts": null,
+        "reply_count": 1,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "thread_reply",
+      "rows": [{
+        "source_ref": "synthetic:reply",
+        "ts": "1735689660.000200",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER02",
+        "user_name": "Synthetic Archived Two",
+        "text": "Synthetic reply: review happens Friday.",
+        "thread_ts": "1735689600.000100",
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 1,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER02", "name": "synthetic-two", "real_name": "Synthetic Member Two", "display_name": "" }
+      }]
+    },
+    {
+      "name": "self_referential_root",
+      "rows": [{
+        "source_ref": "synthetic:self-root",
+        "ts": "1735689720.000300",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "Synthetic standalone root.",
+        "thread_ts": "1735689720.000300",
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "edited_message",
+      "rows": [{
+        "source_ref": "synthetic:edited",
+        "ts": "1735689780.000400",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER02",
+        "user_name": "Synthetic Archived Two",
+        "text": "Synthetic edited plan uses three stages.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": "{\"edited\":{\"ts\":\"1735689840.000500\"}}",
+        "user": { "id": "U0MEMBER02", "name": "synthetic-two", "real_name": "Synthetic Member Two", "display_name": "" }
+      }]
+    },
+    {
+      "name": "missing_user_cache_with_row_name_fallback",
+      "rows": [{
+        "source_ref": "synthetic:user-fallback",
+        "ts": "1735689900.000600",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MISSING01",
+        "user_name": "Synthetic Archived Member",
+        "text": "Synthetic archived author remains attributable.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": null
+      }]
+    },
+    {
+      "name": "missing_unresolvable_sender",
+      "rows": [{
+        "source_ref": "synthetic:user-unresolved",
+        "ts": "1735689960.000700",
+        "channel_id": "C0APPROVED1",
+        "user_id": null,
+        "user_name": null,
+        "text": "Synthetic text that must not become uncitable evidence.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": null
+      }]
+    },
+    {
+      "name": "bot_message",
+      "rows": [{
+        "source_ref": "synthetic:bot",
+        "ts": "1735690020.000800",
+        "channel_id": "C0APPROVED1",
+        "user_id": "B0SYNTH001",
+        "user_name": "Synthetic Bot",
+        "text": "Synthetic automated status.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": "{\"subtype\":\"bot_message\",\"bot_id\":\"B0SYNTH001\"}",
+        "user": null
+      }]
+    },
+    {
+      "name": "timestamp_precision_pair",
+      "rows": [
+        {
+          "source_ref": "synthetic:precision-long",
+          "ts": "1735690080.000200",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER01",
+          "user_name": "Synthetic Archived One",
+          "text": "Synthetic precision long form.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+        },
+        {
+          "source_ref": "synthetic:precision-short",
+          "ts": "1735690080.0002",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER01",
+          "user_name": "Synthetic Archived One",
+          "text": "Synthetic precision short form.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+        }
+      ]
+    },
+    {
+      "name": "exact_duplicate_delivery",
+      "rows": [
+        {
+          "source_ref": "synthetic:duplicate-a",
+          "ts": "1735690140.000900",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER01",
+          "user_name": "Synthetic Archived One",
+          "text": "Synthetic duplicate payload.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+        },
+        {
+          "source_ref": "synthetic:duplicate-b",
+          "ts": "1735690140.000900",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER01",
+          "user_name": "Synthetic Archived One",
+          "text": "Synthetic duplicate payload.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+        }
+      ]
+    },
+    {
+      "name": "conflicting_duplicate_content",
+      "rows": [
+        {
+          "source_ref": "synthetic:conflict-a",
+          "ts": "1735690200.001000",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER02",
+          "user_name": "Synthetic Archived Two",
+          "text": "Synthetic conflict variant A.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER02", "name": "synthetic-two", "real_name": "Synthetic Member Two", "display_name": "" }
+        },
+        {
+          "source_ref": "synthetic:conflict-b",
+          "ts": "1735690200.001000",
+          "channel_id": "C0APPROVED1",
+          "user_id": "U0MEMBER02",
+          "user_name": "Synthetic Archived Two",
+          "text": "Synthetic conflict variant B.",
+          "thread_ts": null,
+          "reply_count": 0,
+          "date": "2025-01-01",
+          "is_thread_reply": 0,
+          "raw_json": null,
+          "user": { "id": "U0MEMBER02", "name": "synthetic-two", "real_name": "Synthetic Member Two", "display_name": "" }
+        }
+      ]
+    },
+    {
+      "name": "invalid_timestamp",
+      "rows": [{
+        "source_ref": "synthetic:invalid-ts",
+        "ts": "not-a-timestamp",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "Synthetic malformed timestamp case.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "system_subtype",
+      "rows": [{
+        "source_ref": "synthetic:system",
+        "ts": "1735690260.001100",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "Synthetic member joined.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": "{\"subtype\":\"channel_join\"}",
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "empty_text",
+      "rows": [{
+        "source_ref": "synthetic:empty",
+        "ts": "1735690320.001200",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "   ",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "unapproved_channel",
+      "rows": [{
+        "source_ref": "synthetic:unapproved",
+        "ts": "1735690380.001300",
+        "channel_id": "C0UNAPPROV9",
+        "user_id": "U0MEMBER01",
+        "user_name": "Synthetic Archived One",
+        "text": "Synthetic out-of-scope content.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2025-01-01",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER01", "name": "synthetic-one", "real_name": "Synthetic Member One", "display_name": "Synthetic One" }
+      }]
+    },
+    {
+      "name": "legacy_date_mismatch",
+      "rows": [{
+        "source_ref": "synthetic:date-mismatch",
+        "ts": "1735690440.001400",
+        "channel_id": "C0APPROVED1",
+        "user_id": "U0MEMBER02",
+        "user_name": "Synthetic Archived Two",
+        "text": "Synthetic UTC date remains authoritative.",
+        "thread_ts": null,
+        "reply_count": 0,
+        "date": "2024-12-31",
+        "is_thread_reply": 0,
+        "raw_json": null,
+        "user": { "id": "U0MEMBER02", "name": "synthetic-two", "real_name": "Synthetic Member Two", "display_name": "" }
+      }]
+    }
+  ]
+}
