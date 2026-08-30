@@ -1,8 +1,8 @@
 # T507 — Complete operator and developer handover
 
-- **Status:** Planned
+- **Status:** Ready for Integration (documents complete; walkthrough and owner acceptance pending)
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner-2
 - **Branch:** `task/T507-complete-operator-and-developer-handover`
 - **Parallel group:** PG-05D
 - **Depends on:** T505
@@ -66,17 +66,44 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Fresh developer can run tests/build from docs.
-- [ ] Operator can diagnose and rollback.
-- [ ] Ownership is explicit.
+- [x] Fresh developer can run tests/build from docs.
+      [`docs/development/guide.md`](../../development/guide.md) §3; every command
+      in it was run at `956393c` — `npm ci`, `typecheck`, `test` (576 passing),
+      and `npm run build` (succeeds; B-08 is fixed).
+- [x] Operator can diagnose and rollback.
+      [`docs/operations/handover.md`](../../operations/handover.md) §6–§7,
+      symptom-first, with the stop-the-service incident list and pointers into
+      the T504 runbooks.
+- [x] Ownership is explicit. Handover §2 names five roles and their
+      responsibilities; names themselves belong in the private operator record,
+      not Git.
 - [ ] Task log is current and contains no sensitive content.
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
+## Status note
+
+Both documents are complete and verified against the tree at `956393c`.
+
+**Two implementation steps are not done and cannot be done here:**
+
+- **Step 4, handover walkthrough** — needs the incoming operator. The acceptance
+  checklist for it is handover §9; it is deliberately a *doing* checklist
+  (deploy, back up, restore, roll back, misconfigure and read the failure), not
+  a reading one.
+- **Step 5, owner acceptance** — follows the walkthrough and belongs in the
+  private operator record.
+
+Step 1 ("review existing docs against actual beta behavior") is done as far as it
+can be: the beta has not run (T505 is prepared but unexecuted), so the documents
+are written against merged code and test evidence rather than observed beta
+behaviour. They should be revisited after the first beta window, particularly
+the monitoring baselines in handover §5 and the F-19 drop frequency.
+
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `fb76167`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
