@@ -1,6 +1,6 @@
 # T205 — Build retrieval benchmark harness
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-6
 - **Branch:** `task/T205-build-retrieval-benchmark-harness`
@@ -68,18 +68,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Runner returns nonzero on threshold failure.
-- [ ] No-answer cases penalize invention.
-- [ ] Reports are comparable across commits.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Runner returns nonzero on threshold failure.
+- [x] No-answer cases penalize invention.
+- [x] Reports are comparable across commits.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `a6ed5bcf489a6d0c61fb11e6d7a007db40b29f5d`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
