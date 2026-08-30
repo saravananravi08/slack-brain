@@ -12,3 +12,7 @@ export {
   type MessageReadOptions,
   type ThreadReadOptions,
 } from './archive-reader.js';
+export {
+  PostgresArchiveSourceReader,
+  isPostgresArchiveSource,
+} from './postgres-archive-reader.js';

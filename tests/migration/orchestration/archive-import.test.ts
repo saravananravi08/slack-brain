@@ -24,6 +24,7 @@ import {
   MastraMemoryWriter,
   readArchiveImportCheckpoint,
   runArchiveImport,
+  validateArchiveImportRequest,
   type ArchiveImportContext,
   type ArchiveImportWriter,
   type ArchiveWriterRecord,
@@ -386,6 +387,27 @@ describe('archive import orchestration', () => {
     })).rejects.toEqual(expect.objectContaining<Partial<ArchiveImportError>>({
       code: 'SOURCE_DESTINATION_COLLISION',
     }));
+  });
+
+  it('accepts a PostgreSQL archive URI but rejects one without a database', () => {
+    const destinationPath = join(temporaryDirectory(), 'destination.db');
+    expect(() => validateArchiveImportRequest({
+      sourcePath: 'postgresql://synthetic@localhost:5432/slack_archive',
+      destinationPath,
+      context: context(),
+    })).not.toThrow();
+    for (const sourcePath of [
+      'postgresql://synthetic@localhost:5432',
+      'postgresql://synthetic:secret@localhost:5432/slack_archive',
+    ]) {
+      expect(() => validateArchiveImportRequest({
+        sourcePath,
+        destinationPath,
+        context: context(),
+      })).toThrow(expect.objectContaining<Partial<ArchiveImportError>>({
+        code: 'UNSAFE_PATH',
+      }));
+    }
   });
 
   it('writes reports without source content or real identity fields', async () => {

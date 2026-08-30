@@ -20,6 +20,8 @@ import {
 } from './mapping/index.js';
 import {
   ArchiveSourceReader,
+  PostgresArchiveSourceReader,
+  isPostgresArchiveSource,
   type ArchiveSourceCounts,
 } from './source/index.js';
 import type {
@@ -205,6 +207,13 @@ function canonicalPath(path: string): string {
   return join(realpathSync(ancestor), ...missing);
 }
 
+function canonicalPostgresSource(source: string): string | undefined {
+  if (!isPostgresArchiveSource(source)) return undefined;
+  const url = new URL(source);
+  if (!url.hostname || url.pathname.length < 2 || url.password || url.hash) fail('UNSAFE_PATH');
+  return url.href;
+}
+
 function validatePaths(options: RunArchiveImportOptions): {
   source: string;
   destination: string;
@@ -212,18 +221,19 @@ function validatePaths(options: RunArchiveImportOptions): {
   checkpoint?: string;
 } {
   const repositoryRoot = realpathSync(options.repositoryRoot ?? process.cwd());
-  const source = canonicalPath(options.sourcePath);
+  const postgresSource = canonicalPostgresSource(options.sourcePath);
+  const source = postgresSource ?? canonicalPath(options.sourcePath);
   const destination = canonicalPath(options.destinationPath);
   const report = options.reportPath ? canonicalPath(options.reportPath) : undefined;
   const checkpoint = options.checkpointPath
     ? canonicalPath(options.checkpointPath)
     : undefined;
 
-  if (source === destination) fail('SOURCE_DESTINATION_COLLISION');
-  for (const path of [source, destination, report, checkpoint]) {
+  if (!postgresSource && source === destination) fail('SOURCE_DESTINATION_COLLISION');
+  for (const path of [postgresSource ? undefined : source, destination, report, checkpoint]) {
     if (path && pathInside(path, repositoryRoot)) fail('UNSAFE_PATH');
   }
-  const paths = [source, destination, report, checkpoint].filter(
+  const paths = [postgresSource ? undefined : source, destination, report, checkpoint].filter(
     (path): path is string => path !== undefined,
   );
   if (new Set(paths).size !== paths.length) fail('UNSAFE_PATH');
@@ -417,9 +427,11 @@ export async function runArchiveImport(
   }
   if (paths.checkpoint) secureWriteJson(paths.checkpoint, checkpoint);
 
-  const reader = ArchiveSourceReader.open(paths.source);
+  const reader = isPostgresArchiveSource(paths.source)
+    ? await PostgresArchiveSourceReader.open(paths.source)
+    : ArchiveSourceReader.open(paths.source);
   try {
-    const sourceCounts = reader.counts(options.context.approved_channel_ids);
+    const sourceCounts = await reader.counts(options.context.approved_channel_ids);
     const validRows = [];
     const readFailures: ArchiveImportFailure[] = [];
     let sourceRowsSeen = 0;
@@ -432,7 +444,7 @@ export async function runArchiveImport(
       ...(readPageSize === undefined ? {} : { pageSize: readPageSize }),
     });
     while (mode !== 'sample' || sourceRowsSeen < sampleLimit!) {
-      const next = sourceResults.next();
+      const next = await sourceResults.next();
       if (next.done) break;
       const result = next.value;
       sourceRowsSeen += 1;
@@ -546,6 +558,6 @@ export async function runArchiveImport(
     }
     return report;
   } finally {
-    reader.close();
+    await reader.close();
   }
 }

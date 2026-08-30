@@ -81,10 +81,10 @@ export class ArchiveSourceError extends Error {
   }
 }
 
-type SqlValue = null | number | bigint | string | Uint8Array;
+export type SqlValue = null | number | bigint | string | Uint8Array;
 type SqlRow = Record<string, SqlValue>;
 
-interface MessageSqlRow extends SqlRow {
+export interface MessageSqlRow extends SqlRow {
   source_rowid: SqlValue;
   ts: SqlValue;
   channel_id: SqlValue;
@@ -102,7 +102,7 @@ interface MessageSqlRow extends SqlRow {
   joined_display_name: SqlValue;
 }
 
-interface UserSqlRow extends SqlRow {
+export interface UserSqlRow extends SqlRow {
   source_rowid: SqlValue;
   id: SqlValue;
   name: SqlValue;
@@ -182,12 +182,12 @@ const VALID_SOURCE_TYPE_SQL = `
   )
 `;
 
-function sourceRef(table: 'messages' | 'users', rowId: SqlValue): string {
+export function sourceRef(table: 'messages' | 'users', rowId: SqlValue): string {
   const digest = createHash('sha256').update(`${table}:${String(rowId)}`).digest('hex');
   return `sha256:${digest}`;
 }
 
-function pageSize(value: number | undefined): number {
+export function pageSize(value: number | undefined): number {
   const size = value ?? DEFAULT_PAGE_SIZE;
   if (!Number.isInteger(size) || size < 1 || size > MAX_PAGE_SIZE) {
     throw new ArchiveSourceError('SOURCE_INPUT_INVALID');
@@ -195,7 +195,7 @@ function pageSize(value: number | undefined): number {
   return size;
 }
 
-function approvedChannels(values: readonly string[]): string[] {
+export function approvedChannels(values: readonly string[]): string[] {
   const channels = [...new Set(values)];
   if (channels.length === 0 || channels.some((value) => value.trim() !== value || value === '')) {
     throw new ArchiveSourceError('SOURCE_INPUT_INVALID');
@@ -211,7 +211,7 @@ function isSafeInteger(value: SqlValue): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value);
 }
 
-function count(value: SqlValue): number {
+export function count(value: SqlValue): number {
   if (!isSafeInteger(value) || value < 0) {
     throw new ArchiveSourceError('SOURCE_SCHEMA_INVALID');
   }
@@ -242,7 +242,7 @@ function sourceUser(row: MessageSqlRow): ArchiveSourceUser | null | undefined {
   };
 }
 
-function messageResult(row: MessageSqlRow): ArchiveSourceResult {
+export function messageResult(row: MessageSqlRow): ArchiveSourceResult {
   const source_ref = sourceRef('messages', row.source_rowid);
   const user = sourceUser(row);
   if (
@@ -279,7 +279,7 @@ function messageResult(row: MessageSqlRow): ArchiveSourceResult {
   };
 }
 
-function userResult(row: UserSqlRow): ArchiveSourceUserResult {
+export function userResult(row: UserSqlRow): ArchiveSourceUserResult {
   const source_ref = sourceRef('users', row.source_rowid);
   if (
     typeof row.id !== 'string'
