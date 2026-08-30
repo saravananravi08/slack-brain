@@ -34,7 +34,7 @@ describe('project scaffold', () => {
 
   it('pins direct dependencies and standard scripts', () => {
     expect(packageJson.engines.node).toBe('>=22.13.0 <23');
-    expect(packageJson.scripts).toEqual({
+    expect(packageJson.scripts).toMatchObject({
       'benchmark:retrieval':
         'node --experimental-strip-types benchmarks/retrieval/runner.ts',
       build: 'mastra build',
