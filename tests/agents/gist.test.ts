@@ -46,17 +46,17 @@ const retrievalFixture = JSON.parse(
 };
 
 function makeAgent() {
-  const model = createGistModel('claude-opus-5');
+  const model = createGistModel('gpt-4.1');
 
   return { agent: createGistAgent(model), model };
 }
 
 describe('Gist agent', () => {
-  it('uses the accepted Anthropic model integration', () => {
+  it('uses the accepted OpenAI model integration', () => {
     const { model } = makeAgent();
 
-    expect(GIST_MODEL_IDS).toEqual(['claude-opus-5', 'claude-sonnet-5']);
-    expect(model).toBe('anthropic/claude-opus-5');
+    expect(GIST_MODEL_IDS).toEqual(['gpt-4.1', 'gpt-4.1-mini']);
+    expect(model).toBe('openai/gpt-4.1');
   });
 
   it('identifies only as Gist and registers no tools', async () => {

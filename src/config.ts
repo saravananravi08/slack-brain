@@ -39,8 +39,7 @@ const environmentSchema = z.object({
   GIST_APPROVED_CHANNEL_IDS: commaSeparatedIds(channelId, false),
   GIST_USER_ALLOWLIST: commaSeparatedIds(userId, true).default([]),
   GIST_DM_SHARED_KNOWLEDGE: z.literal('false').default('false').transform(() => false as const),
-  GIST_MODEL: z.enum(['claude-opus-5', 'claude-sonnet-5']),
-  ANTHROPIC_API_KEY: requiredCredential,
+  GIST_MODEL: z.enum(['gpt-4.1', 'gpt-4.1-mini']).default('gpt-4.1'),
   EMBEDDING_MODEL: z.literal('openai/text-embedding-3-small'),
   OPENAI_API_KEY: requiredCredential,
   MASTRA_DATABASE_URL: databaseUrl,
@@ -53,8 +52,7 @@ export interface Config {
   readonly approvedChannelIds: readonly string[];
   readonly userAllowlist: readonly string[];
   readonly dmSharedKnowledge: false;
-  readonly gistModel: 'claude-opus-5' | 'claude-sonnet-5';
-  readonly anthropicApiKey: string;
+  readonly gistModel: 'gpt-4.1' | 'gpt-4.1-mini';
   readonly embeddingModel: 'openai/text-embedding-3-small';
   readonly embeddingDimensions: 1536;
   readonly openaiApiKey: string;
@@ -98,7 +96,6 @@ export function parseConfig(
     userAllowlist: Object.freeze([...env.GIST_USER_ALLOWLIST]),
     dmSharedKnowledge: env.GIST_DM_SHARED_KNOWLEDGE,
     gistModel: env.GIST_MODEL,
-    anthropicApiKey: env.ANTHROPIC_API_KEY,
     embeddingModel: env.EMBEDDING_MODEL,
     embeddingDimensions: 1536,
     openaiApiKey: env.OPENAI_API_KEY,

@@ -11,7 +11,7 @@ Product decisions originate in PRD Section 15. Coordinator owns this file. Do no
 - **Accepted:** the named owner approved it. Only then may downstream tasks implement it.
 - **Deferred (accepted):** a sub-item whose final value cannot be fixed yet. The stated **safe default is in force** and downstream tasks implement against it; the named owner supplies the final value by the stated deadline. A deferral does not block the tasks its parent decision unblocks.
 
-D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment — so the deny-by-default posture recorded in each entry is the posture downstream tasks must implement.
+D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment. D007 was later superseded by D012; all other recorded postures remain in force.
 
 Five sub-items are carried as **accepted deferrals** (D001 production channel IDs, D003 archive date floor, D004 legal/HR retention holds, D006 production authorization posture, D010 residency assumption). Each names an owner, a deadline, and a safe default that is in force now. They do not hold up the decisions that contain them.
 
@@ -23,10 +23,11 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 | D004 | Message/embedding/trace retention | Accepted | Coordinator (Augment) | T004, T103, T504 | Tiered: channel messages indefinite while approved; DMs 90d; traces 30d; logs 14d; backups 35d; embeddings follow their message |
 | D005 | Edit/delete propagation policy | Accepted | Coordinator (Augment) | T004, T404 | Propagate both: edits re-embed, deletes hard-delete message + embedding, idempotent, content-free tombstones |
 | D006 | Workspace membership vs user allowlist | Accepted | Coordinator (Augment) | T203 | Workspace membership sufficient for internal beta; guests and external/Connect denied; allowlist built but empty |
-| D007 | Generation model/provider | Accepted | Coordinator (Augment) | T101, T105 | Anthropic via Mastra model provider, pinned `claude-opus-5`, tuned by effort; `claude-sonnet-5` pre-approved step-down |
-| D008 | Embedding model/provider | Accepted | Coordinator (Augment) | T201 | OpenAI `text-embedding-3-small` (1536-d); second provider is unavoidable — Anthropic has no embeddings endpoint |
+| D007 | Generation model/provider | Superseded | Coordinator (Augment) | T101, T105 | Historical Anthropic selection; replaced by OpenAI under D012 |
+| D008 | Embedding model/provider | Accepted | Coordinator (Augment) | T201 | OpenAI `text-embedding-3-small` (1536-d), sharing the D012 OpenAI provider and credential |
 | D009 | Citation requirement | Accepted | Coordinator (Augment) | T004, T205 | Sender + date required for every historical claim; unattributable evidence must be omitted or explicitly marked |
 | D010 | Data residency/provider restrictions | Accepted | Coordinator (Augment) | T101, T103, T201 | No jurisdiction constraint for internal beta beyond US/EU providers under no-training terms; new provider = amendment |
+| D012 | OpenAI generation model/provider | Accepted | Augment coordinator | T205, T503 | OpenAI `gpt-4.1`; `gpt-4.1-mini` pre-approved step-down; supersedes D007 |
 
 ---
 
@@ -174,7 +175,8 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 
 ## D007 — Generation model and provider
 
-- Status: Accepted
+- Status: Superseded
+- Superseded by: D012
 - Date: 2026-08-30
 - Owner: Coordinator (Augment) — delegated by product owner saravanan 2026-08-30 (accountable role: technical owner; drafted by T001 planner)
 - Context: PRD Section 15.7, G5, NFR-MNT-001/004, NFR-PERF-002/003, success metric of ≥85% grounded-answer accuracy. The legacy implementation shelled out to the Claude CLI as a child process; the migration removes that entirely and calls one model through Mastra's model provider. Model choice is bounded by three PRD constraints at once: grounding quality, first-token latency under 5s for 90% of requests, and cost during a full-archive beta.
@@ -203,16 +205,16 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Context: PRD Section 15.7 (second half), FR-MEM-002/009, `EMBEDDING_MODEL` in the migration plan's target environment. Semantic recall over the full archive depends entirely on this choice, and unlike the generation model it is **expensive to change after import**.
 - Options considered:
   1. **OpenAI `text-embedding-3-small`** (1536 dimensions). Widely supported across frameworks, inexpensive at archive scale, strong paraphrase retrieval — which is precisely what FR-MEM-009 and the ≥80% paraphrased-retrieval target measure.
-  2. **A dedicated retrieval-embedding provider** (e.g. Voyage). Potentially better recall quality; adds a third vendor and a third residency review for a benefit that is unmeasured until T205 exists.
+  2. **A dedicated retrieval-embedding provider** (e.g. Voyage). Potentially better recall quality; adds a second vendor and a second residency review for a benefit that is unmeasured until T205 exists.
   3. **Local/self-hosted embeddings.** Removes the third-party exposure for message text, but adds inference infrastructure against G5 and is slow for a full-archive backfill.
 - Decision: Adopt option 1 as the default: `EMBEDDING_MODEL=openai/text-embedding-3-small`, 1536 dimensions, configured with no default value and validated at startup.
-  - **A second provider is unavoidable and should be recorded as such rather than treated as an oversight:** Anthropic exposes no embeddings endpoint, so D007 cannot supply embeddings. Choosing option 1 means message text is sent to two providers, and D010 must cover both.
+  - Under D012, generation and embeddings use the same OpenAI provider and `OPENAI_API_KEY`. Message text is sent to one model provider, simplifying D010's provider review.
   - T201 must confirm the exact provider/model identifier against the pinned Mastra version's supported embedder list before committing to it; if Mastra does not support this embedder cleanly, T201 stops and records a blocker rather than substituting one silently — an undocumented substitution would change the vector dimension underneath the whole corpus.
   - **The vector dimension is locked before T307.** The libSQL vector index is built for a fixed dimension, so changing the embedding model after the full import requires re-embedding and re-indexing the entire archive. If option 2 is ever to be evaluated, it must happen during T205 on the T306 sample, not after T307.
   - Option 2 remains the named fallback if T205 misses the ≥80% paraphrased-retrieval target and tuning (chunking, recall depth, nearby-context window) does not close the gap.
 - Consequences:
   - T201 owns the memory/embedder configuration and the dimension constant; T004's storage contract should state the dimension explicitly so a mismatch fails loudly rather than at query time.
-  - A second provider API key enters configuration and the runbook (T102, T504).
+  - The OpenAI API key is shared by generation and embeddings in configuration and the runbook (T102, T504).
   - The embedding provider is also a re-embedding dependency for D005 edits — every edit costs an embedding call, which is negligible per message but relevant to T503's cost tracking during a busy channel's backfill.
 - Affected tasks/files: T004, T102, T201, T205, T304, T307, T503, T504.
 
@@ -244,19 +246,19 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Status: Accepted
 - Date: 2026-08-30
 - Owner: Coordinator (Augment) — delegated by product owner saravanan 2026-08-30 (accountable role: security owner; drafted by T001 planner)
-- Context: PRD Section 15.9, NFR-SEC-001/002, R7. Under D007 and D008, message text and its embeddings leave the operator's infrastructure for two third-party providers. The question is whether any jurisdictional constraint applies to where that processing and storage happen.
+- Context: PRD Section 15.9, NFR-SEC-001/002, R7. Under D012 and D008, message text and its embeddings leave the operator's infrastructure for one third-party provider, OpenAI. The question is whether any jurisdictional constraint applies to where that processing and storage happen.
 - Options considered:
   1. **No residency constraint at all.** Rejected: it leaves nothing for T101/T103/T201 to check, and makes adding an arbitrary provider a silent decision.
   2. **No jurisdiction-specific requirement, but a bounded provider and storage rule** — US/EU-operated providers under contractual no-training and limited-retention terms, with primary storage on operator-controlled infrastructure.
   3. **Strict single-jurisdiction residency** (e.g. all processing in one region). Would constrain provider choice significantly for an internal tool holding the company's own Slack messages, with no identified obligation requiring it.
 - Decision: Adopt option 2. For internal alpha and beta there are **no special residency constraints beyond using US/EU-operated providers**, subject to:
-  - Model and embedding providers must operate in the US or EU and must be under commercial terms that do not train on submitted data and that bound retention (abuse-monitoring windows are acceptable; indefinite retention for training is not).
+  - The model and embedding provider must operate in the US or EU and must be under commercial terms that do not train on submitted data and that bound retention (abuse-monitoring windows are acceptable; indefinite retention for training is not).
   - Primary storage — the Mastra store and vector store — stays on infrastructure the operator controls: a libSQL file outside the Git repository for single-process deployment, or a managed database with restricted network access if the service becomes multi-instance. It must not be publicly accessible (NFR-SEC-002), and database files, embeddings, and imported Slack data are never committed (FR-PRV-007).
   - Traces are treated as a residency-relevant store, not as ordinary telemetry: they carry message content, so their location and access restriction fall under this decision and their retention under D004.
-  - **Introducing any new provider that receives message text or embeddings — including a change of embedding provider under D008's fallback — requires an amendment to this entry approved by the security owner.** Two providers is the approved count.
+  - **Introducing any new provider that receives message text or embeddings — including a change of embedding provider under D008's fallback — requires an amendment to this entry approved by the security owner.** OpenAI is the sole approved provider.
 - Consequences:
   - T101 (provider wiring), T103 (storage and tracing location/access), and T201 (embedder) each inherit a concrete constraint to check rather than an open question.
-  - T502's security review verifies the storage is not publicly reachable, the database is outside version control, and no third provider has been introduced.
+  - T502's security review verifies the storage is not publicly reachable, the database is outside version control, and no second provider has been introduced.
   - **Accepted deferral —** the safe default below is in force now, on this stated assumption: the planner assumes this corpus is the company's own internal Slack discussion, with no customer PII, regulated data, or contractual residency obligation attached. The operating entity is Australian, so if a customer contract, a compliance program, or a future external-facing use ever imposes AU or other residency requirements, this decision must be revisited before that use — it is scoped to an internal tool over internal conversation. Deferral owner = security owner, deadline = before T506, safe default = the constraints above.
 - Affected tasks/files: T101, T103, T201, T502, T504, T506.
 
@@ -271,6 +273,15 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: Option (b). Messages authored by external, guest, or deactivated users remain in the channel corpus. D006 covers future interaction with Gist, not retroactive removal of historical contributions.
 - Consequences: ARCHIVE_SENDER_ATTRIBUTES treats archive authors as full members for import. Future change to this policy has exactly one constant to modify. T502 should note this in its sign-off.
 - Affected tasks/files: src/migration/mapping/archive-message.ts, docs/security/design-review.md, T306, T307, T502
+
+## D012 — Switch generation from Anthropic Claude to OpenAI
+- Status: Accepted
+- Date: 2026-08-30
+- Owner: Augment coordinator
+- Context: B-02 blocked generation and live benchmark work because `ANTHROPIC_API_KEY` was missing, while `OPENAI_API_KEY` was already present.
+- Decision: Supersede D007. Use OpenAI `gpt-4.1` for generation, with `gpt-4.1-mini` as the pre-approved step-down. Generation and embeddings now share one OpenAI provider and credential, simplifying D010.
+- Consequences: T205 re-baselines generation quality against `gpt-4.1`. T503 adjusts generation cost and latency expectations for the OpenAI models. B-02 is resolved; no Anthropic credential is required.
+- Affected tasks/files: T102, T105, T205, T503, D007, D010, `src/config.ts`, `src/mastra/agents/gist.ts`, `.env.example`
 
 ## Decision entry template
 

@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createSlackAdapter } from '@chat-adapter/slack';
 import { Mastra } from '@mastra/core/mastra';
@@ -22,7 +21,6 @@ describe('project scaffold', () => {
   it('exposes the approved runtime package APIs', () => {
     expect(
       [
-        createAnthropic,
         createOpenAI,
         createSlackAdapter,
         Mastra,

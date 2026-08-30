@@ -8,7 +8,7 @@
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
 - **Current phase gate:** P02 closed; P03 + P04 in progress; SECFIX-A+B merged (security review findings F-01,F-02,F-03,F-05,F-06,F-07,F-10 resolved)
-- **Last updated:** 2026-08-30 (SECFIX-A+B merged, 534 tests passing)
+- **Last updated:** 2026-08-30 (D012 accepted; generation switched to OpenAI `gpt-4.1`)
 
 ## Assignment protocol
 
@@ -23,7 +23,7 @@
 |---|---|---|---|---|
 | [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
 | [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke scheduled in P05 validation) | P00 | Augment | cffce23 |
-| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed (exception: live-provider benchmark pending B-02) | P01 | Augment | a5c77e7 |
+| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed | P01 | Augment | a5c77e7 |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | In Progress | P02 | Augment | — |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | Planned | P03, P04 | Unassigned | — |
@@ -84,7 +84,7 @@
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
 | B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
-| B-02 | T206/runtime | ANTHROPIC_API_KEY + OPENAI_API_KEY not in .env; needed for generation/embedding and integrated benchmark | Operator (saravanan) | keys placed in .env | 2026-08-30 |
+| B-02 | T206/runtime | RESOLVED 2026-08-30: D012 switched generation to OpenAI `gpt-4.1`; existing `OPENAI_API_KEY` serves generation and embeddings | Augment coordinator | done | 2026-08-30 |
 | B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
 | B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |
 | B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |

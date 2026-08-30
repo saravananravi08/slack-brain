@@ -15,7 +15,7 @@ Rebuild the internal Slack knowledge bot **Gist** on the **Mastra** framework (T
 - **Integration branch:** `integration/mastra-rewrite` (all task work merges here, `--no-ff`)
 - **Task branches:** `task/T<NNN>-<slug>` in git worktrees at `~/Documents/worktrees/T<NNN>`
 - **New runtime code:** `src/mastra/**`, `src/config.ts`, `src/security/**`, `src/ingestion/**`, `src/migration/**`, `benchmarks/**`, `tests/**`
-- **Credentials:** `~/Documents/slack-brain/.env` (gitignored, chmod 600) — `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `GIST_DEV_CHANNEL_ID`, `OPENAI_API_KEY` present; **`ANTHROPIC_API_KEY` still missing**
+- **Credentials:** `~/Documents/slack-brain/.env` (gitignored, chmod 600) — `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `GIST_DEV_CHANNEL_ID`, `OPENAI_API_KEY` present; D012 uses OpenAI for generation and embeddings
 
 ## 3. Agent mesh operations (herdr MCP)
 
@@ -57,13 +57,13 @@ Per `docs/implementation/README.md`:
 
 ## 5. Decisions (all Accepted — DECISIONS.md)
 
-D001 deny-by-default channel allowlist from config · D002 DMs = private memory only (shared recall behind off-flag) · D003 full archive, approved channels, staged import · D004 retention: channels indefinite, DMs 90d, traces 30d, logs 14d, backups 35d · D005 edits re-embed, deletes hard-delete (content-free tombstones) · D006 workspace membership sufficient, external/guest/deactivated denied · D007 Anthropic claude-opus-5 (sonnet-5 step-down pre-approved) · D008 OpenAI text-embedding-3-small (1536d) · D009 sender+date citation required · D010 US/EU no-training providers. Decision authority was delegated by the operator to the coordinator on 2026-08-30 — continue deciding, escalate only true blockers (keys/approvals) via Slack DM `U08853HLC5U`.
+D001 deny-by-default channel allowlist from config · D002 DMs = private memory only (shared recall behind off-flag) · D003 full archive, approved channels, staged import · D004 retention: channels indefinite, DMs 90d, traces 30d, logs 14d, backups 35d · D005 edits re-embed, deletes hard-delete (content-free tombstones) · D006 workspace membership sufficient, external/guest/deactivated denied · D007 superseded by D012 · D008 OpenAI text-embedding-3-small (1536d) · D009 sender+date citation required · D010 US/EU no-training provider · D012 OpenAI gpt-4.1 generation (gpt-4.1-mini step-down). Decision authority was delegated by the operator to the coordinator on 2026-08-30 — continue deciding, escalate only true blockers (keys/approvals) via Slack DM `U08853HLC5U`.
 
 ## 6. Status: what's done
 
 **P00 Governance ✅** (T000 repo safety, T001 decisions, T002 baseline benchmark, T003 Slack dev runbook, T004 architecture contracts)
 **P01 Foundation ✅ code gate** (T101 scaffold, T102 config, T103 storage/tracing, T104 Slack adapter, T105 Gist agent, T106 runtime integration)
-**P02 Memory ✅** (T201 memory config, T202 identity policy, T203 authz/privacy guard, T204 memory integration, T205 benchmark harness, T206 validation — privacy 178/178, 0 leaks)
+**P02 Memory ✅** (T201 memory config, T202 identity policy, T203 authz/privacy guard, T204 memory integration, T205 benchmark harness, T206 validation — privacy 178/178, 0 leaks; D012 generation re-baseline pending)
 **P03 History — code complete except real import:** T301 contract, T302 reader, T303 mapping, T304 writer, T305 orchestration+CLI all merged. T306 synthetic rehearsal merged; **real sample import blocked on B-03**. T307 not started.
 **P04 Live ingestion — code complete:** T401 spike (+2 live probes merged), T402 normalization/dedup, T403 silent persistence, T404 mutation policy, T405 integration merged. **T406 live validation running.**
 **Security:** early design review merged (`docs/security/design-review.md`, 20 findings: 3 High, 4 Medium). **SECFIX-A (F-01 post-retrieval boundary filter, F-03 retrieval-failed vs empty, F-10 prompt-injection delimiter) and SECFIX-B (F-02 mutation delete ordering, F-05 storage import-time side effect, F-06 identity/authorize single implementation in migration mapping, F-07 retention fail-open) are IN FLIGHT** — merge them when workers hand off (branches `fix/security-review-pack-a` / `fix/security-review-pack-b`).
@@ -75,11 +75,10 @@ Test count on integration as of handover: 514 passing (before SECFIX merges).
 
 | ID | Need | Why |
 |---|---|---|
-| B-02 | `ANTHROPIC_API_KEY` in `.env` (OpenAI key already present) | generation model + live benchmark (T206 live obs, T501) |
 | B-03 | read-only path to legacy archive DB backup (`slack_messages.db` or equivalent) — NOT on this machine under `/home/saravananravi` | T306 real sample import → T307 full import |
 | — | operator posts one **human-authored** message in the probe channel (bot posts are filtered as bot traffic) | T406 ambient-message live validation |
 
-Resolved: B-01 (Slack creds placed), B-04 (workspace is a test workspace), B-05 (chat:write/users:read + reinstall + channel invite), B-06 (im:* scopes + reinstall).
+Resolved: B-01 (Slack creds placed), B-02 (D012 moved generation to existing OpenAI credential), B-04 (workspace is a test workspace), B-05 (chat:write/users:read + reinstall + channel invite), B-06 (im:* scopes + reinstall).
 
 ## 8. Slack app state (test workspace)
 
@@ -89,10 +88,10 @@ App reinstalled with: `chat:write`, `users:read`, `im:read`, `im:write`, `im:his
 
 1. Merge SECFIX-A and SECFIX-B when handed off (scope-check, merge --no-ff, full `npm test`, log). Watch for cross-pack conflicts in `src/ingestion/mutations/**` — merge B first, then A; both must be green before T502.
 2. Collect T406 results from pi-coder-14 (live validation matrix). If the ambient case is pending the human message, ask operator to post one in the probe channel.
-3. When ANTHROPIC_API_KEY lands: re-run T206's live-provider benchmark observation; record in `logs/T206.md`.
+3. Re-run T205's generation benchmark against D012's `gpt-4.1`; record the re-baseline before release acceptance.
 4. When B-03 (archive DB) lands: T306 real sample import (backup source first, mount read-only), then T307 full import (needs sample approval — you may approve per delegation, note in DECISIONS/EXECUTION_LOG).
 5. P04 gate close after T406; P03 gate after T307.
-6. P05 wave: T501 E2E acceptance, T502 security review (confirm all 20 findings resolved), T503 perf/observability, T504 runbook completion (branch exists). Then T505 beta → T506 cutover → T507 handover → T508 legacy cleanup (each needs explicit gate notes; T506/T508 need operator approval).
+6. P05 wave: T501 E2E acceptance, T502 security review (confirm all 20 findings resolved), T503 perf/observability with D012 cost/latency assumptions, T504 runbook completion (branch exists). Then T505 beta → T506 cutover → T507 handover → T508 legacy cleanup (each needs explicit gate notes; T506/T508 need operator approval).
 7. Keep STATUS.md / phase files / EXECUTION_LOG.md accurate after every merge — a doc-drift review already caught stale gates once.
 
 ## 10. Communicating with the operator

@@ -29,8 +29,7 @@ beforeAll(async () => {
     GIST_APPROVED_CHANNEL_IDS: SYNTHETIC.channelApproved,
     GIST_USER_ALLOWLIST: '',
     GIST_DM_SHARED_KNOWLEDGE: 'false',
-    GIST_MODEL: 'claude-opus-5',
-    ANTHROPIC_API_KEY: 'synthetic-anthropic-key',
+    GIST_MODEL: 'gpt-4.1',
     EMBEDDING_MODEL: 'openai/text-embedding-3-small',
     OPENAI_API_KEY: 'synthetic-openai-key',
     MASTRA_DATABASE_URL: pathToFileURL(join(directory, 'mastra.db')).href,
@@ -56,7 +55,7 @@ describe('foundation runtime', () => {
       ConfigError,
     );
 
-    vi.stubEnv('GIST_MODEL', 'claude-opus-5');
+    vi.stubEnv('GIST_MODEL', 'gpt-4.1');
   });
 
   it('registers Gist, routes synthetic addressed turns, and settles cleanly', async () => {

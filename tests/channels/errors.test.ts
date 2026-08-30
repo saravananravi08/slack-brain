@@ -21,11 +21,9 @@ import { makeMessage, makeOptions, makeThread } from './helpers.js';
 const MUST_NEVER_REACH_SLACK = [
   'Mastra',
   'libSQL',
-  'claude-opus-5',
+  'gpt-4.1',
   'openai/text-embedding-3-small',
-  'anthropic',
   'openai',
-  'ANTHROPIC_API_KEY',
   'OPENAI_API_KEY',
   '/src/',
   '.db',
@@ -125,7 +123,7 @@ describe('failure containment (NFR-REL-003, FR-SLK-007)', () => {
 
   it('does not leak a raw provider error to Slack', async () => {
     const { options } = makeOptions({
-      respondThrows: new Error('ANTHROPIC_API_KEY rejected: 401 from api.anthropic.com'),
+      respondThrows: new Error('OPENAI_API_KEY rejected: 401 from api.openai.com'),
     });
     const handlers = createGistHandlers(options);
     const fake = makeThread();
@@ -133,7 +131,7 @@ describe('failure containment (NFR-REL-003, FR-SLK-007)', () => {
     await handlers.onSubscribedMessage(fake.thread, makeMessage());
 
     expect(fake.posts).toEqual(['Something went wrong on my end.']);
-    expect(String(fake.posts[0])).not.toContain('ANTHROPIC_API_KEY');
+    expect(String(fake.posts[0])).not.toContain('OPENAI_API_KEY');
   });
 
   it('distinguishes retrieval failure from an empty result', async () => {

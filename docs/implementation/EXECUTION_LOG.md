@@ -76,3 +76,9 @@ _No implementation events recorded yet._
 - Recorded D011 (F-16 ruling: channel history is channel history; external/guest/deactivated historical messages remain in corpus).
 - Updated docs/security/design-review.md section 9 with resolution table.
 - Workers: pi-coder-13 (SECFIX-A) and claude-planner-2 (SECFIX-B) now idle. pi-coder-14 (T406) blocked on B-02 (ANTHROPIC_API_KEY), missing package.json scripts, and human ambient message. pi-coder-15 idle/fresh.
+
+### 2026-08-30 — D012 accepted; B-02 resolved
+
+- D012 superseded D007: generation moved to OpenAI `gpt-4.1`, with `gpt-4.1-mini` as the pre-approved step-down.
+- Existing `OPENAI_API_KEY` now serves generation and embeddings; no Anthropic credential is required. B-02 resolved.
+- Follow-up: T205 re-baselines generation quality; T503 adjusts cost and latency expectations.
