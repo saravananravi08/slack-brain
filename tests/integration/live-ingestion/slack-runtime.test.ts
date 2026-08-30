@@ -432,3 +432,140 @@ describe('live silent Slack ingestion', () => {
     expect(harness.posts).toEqual([]);
   });
 });
+
+/**
+ * F-19 instrumentation — the drop is counted, not just pinned.
+ *
+ * The design review accepted the concurrency drop and deferred the fix, because
+ * the choice turns on how often it happens and nobody knows that number. These
+ * assert that the number now exists and reaches the log.
+ *
+ * The counter hangs off the SDK's supported `onLockConflict` hook, which fires
+ * on contention and must keep returning `'drop'` — instrumentation observes the
+ * behaviour, it does not change it.
+ */
+describe('F-19: concurrency drops are counted and surfaced', () => {
+  let dropSequence = 0;
+
+  /**
+   * Force exactly one thread-lock contention.
+   *
+   * Each call uses a fresh timestamp pair. Reusing them would let the content
+   * dedupe (`dedupe:slack:<ts>`) discard the second delivery *before* it ever
+   * reaches the lock, so the test would pass while measuring nothing.
+   */
+  async function forceOneDrop(harness: ReturnType<typeof makeHarness>): Promise<void> {
+    dropSequence += 1;
+    const rootTs = `173568${9000 + dropSequence}.000100`;
+    const replyTs = `173568${9000 + dropSequence}.000200`;
+
+    const persistCallsBefore = harness.persist.mock.calls.length;
+    let release!: () => void;
+    const held = new Promise<{ outcome: 'inserted' }>((resolve) => {
+      release = () => resolve({ outcome: 'inserted' });
+    });
+    harness.persist.mockImplementationOnce(() => held);
+
+    harness.dispatch(envelope(channelMessage({ ts: rootTs, event_ts: rootTs })));
+    harness.dispatch(
+      envelope(
+        channelMessage({ ts: replyTs, event_ts: replyTs, thread_ts: rootTs }),
+      ),
+    );
+
+    await vi.waitFor(() =>
+      expect(harness.persist.mock.calls.length).toBe(persistCallsBefore + 1),
+    );
+    release();
+    await expect(harness.drain()).rejects.toMatchObject({ code: 'LOCK_FAILED' });
+  }
+
+  it('counts a same-thread drop and warns with the reason and totals', async () => {
+    const harness = makeHarness();
+    expect(harness.channel.concurrencyDrops()).toMatchObject({
+      total: 0,
+      lastDropAt: null,
+    });
+
+    await forceOneDrop(harness);
+
+    const counter = harness.channel.concurrencyDrops();
+    expect(counter.total).toBe(1);
+    expect(counter.lastDropAt).toEqual(expect.any(Number));
+
+    expect(harness.logger.warn).toHaveBeenCalledWith(
+      'ingestion.concurrency.dropped',
+      expect.objectContaining({
+        reason: 'thread_lock_contention',
+        total: 1,
+        sinceLastWarning: 1,
+      }),
+    );
+
+    // Behaviour unchanged: exactly one of the two messages persisted — the
+    // root — and nothing generated or posted.
+    expect(harness.persist).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('logs no drop warning when nothing contends', async () => {
+    const harness = makeHarness();
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.channel.concurrencyDrops().total).toBe(0);
+    expect(harness.logger.warn).not.toHaveBeenCalledWith(
+      'ingestion.concurrency.dropped',
+      expect.anything(),
+    );
+  });
+
+  it('keeps counting while rate-limiting the warning', async () => {
+    const harness = makeHarness();
+    const now = vi.spyOn(Date, 'now').mockReturnValue(2_000_000);
+
+    try {
+      await forceOneDrop(harness);
+      await forceOneDrop(harness);
+
+      // Two drops, one warning — the count is exact even when the log is not.
+      expect(harness.channel.concurrencyDrops().total).toBe(2);
+      const dropWarnings = harness.logger.warn.mock.calls.filter(
+        ([event]) => event === 'ingestion.concurrency.dropped',
+      );
+      expect(dropWarnings).toHaveLength(1);
+
+      now.mockReturnValue(2_060_000);
+      await forceOneDrop(harness);
+
+      const afterWindow = harness.logger.warn.mock.calls.filter(
+        ([event]) => event === 'ingestion.concurrency.dropped',
+      );
+      expect(afterWindow).toHaveLength(2);
+      expect(harness.channel.concurrencyDrops().total).toBe(3);
+      // The second warning reports the drops accumulated while it was silent.
+      expect(afterWindow[1]?.[1]).toMatchObject({ total: 3, sinceLastWarning: 2 });
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('carries no message text, channel, or user in the warning', async () => {
+    const harness = makeHarness();
+    await forceOneDrop(harness);
+
+    const [, fields] = harness.logger.warn.mock.calls.find(
+      ([event]) => event === 'ingestion.concurrency.dropped',
+    )!;
+    expect(Object.keys(fields as object).sort()).toEqual([
+      'likelyAddressed',
+      'reason',
+      'sinceLastWarning',
+      'total',
+    ]);
+    const serialized = JSON.stringify(fields);
+    for (const forbidden of [SYNTHETIC.channel, SYNTHETIC.user, 'rollout']) {
+      expect(serialized).not.toContain(forbidden);
+    }
+  });
+});
