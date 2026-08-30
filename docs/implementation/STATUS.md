@@ -43,8 +43,8 @@
 | [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | Completed | T101, T003, T004 | PG-01B | claude-planner | task/T104-implement-mastra-slack-channel-adapter | 2026-08-30 | 5b211d0 |
 | [T105](./tasks/T105-GIST-AGENT.md) — Implement Gist agent behavior | P01 | Completed | T101, T004 | PG-01B | pi-coder | task/T105-implement-gist-agent-behavior | 2026-08-30 | 5a3f443 |
 | [T106](./tasks/T106-FOUNDATION-INTEGRATION.md) — Integrate foundation runtime | P01 | Completed | T102, T103, T104, T105 | PG-01C | pi-coder-4 | task/T106-integrate-foundation-runtime | 2026-08-30 | cffce23 |
-| [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | In Progress | T103, T105 | PG-02A | pi-coder-7 | task/T201-configure-mastra-memory-and-semantic-recall | 2026-08-30 | — |
-| [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | In Progress | T004, T106 | PG-02A | pi-coder-5 | task/T202-implement-resource-and-thread-identity-policy | 2026-08-30 | — |
+| [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | Completed | T103, T105 | PG-02A | pi-coder-7 | task/T201-configure-mastra-memory-and-semantic-recall | 2026-08-30 | af8fb8d |
+| [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | Completed | T004, T106 | PG-02A | pi-coder-5 | task/T202-implement-resource-and-thread-identity-policy | 2026-08-30 | a55ed56 |
 | [T203](./tasks/T203-ACCESS-PRIVACY.md) — Implement Slack authorization and privacy guard | P02 | In Progress | T004, T102, T104 | PG-02A | claude-planner-2 | task/T203-implement-slack-authorization-and-privacy-guard | 2026-08-30 | — |
 | [T205](./tasks/T205-RETRIEVAL-BENCHMARK.md) — Build retrieval benchmark harness | P02 | In Progress | T002, T004 | PG-02A | pi-coder-6 | task/T205-build-retrieval-benchmark-harness | 2026-08-30 | — |
 | [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | Planned | T201, T202, T203, T106 | PG-02B | Unassigned | — | — | — |
@@ -76,9 +76,10 @@
 | Task | Owner | Paths | Acquired | Released |
 |---|---|---|---|---|
 | T103-dep | pi-coder-3 | package.json, package-lock.json (pinned @mastra/observability add only; transferred from T101) | 2026-08-30 | reverts to T508 after T103 merge |
+| T205-dep | pi-coder-6 | package.json (add benchmark:retrieval script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T205 merge |
 
 ## Blockers
 
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
-| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30
+| B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |

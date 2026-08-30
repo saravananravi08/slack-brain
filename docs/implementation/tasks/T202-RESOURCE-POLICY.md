@@ -1,9 +1,10 @@
 # T202 — Implement resource and thread identity policy
 
-- **Status:** Planned
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-5
 - **Branch:** `task/T202-implement-resource-and-thread-identity-policy`
+- **Worktree:** `../worktrees/T202`
 - **Parallel group:** PG-02A
 - **Depends on:** T004, T106
 - **Blocks:** T204, T403
@@ -66,18 +67,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Same Slack thread maps consistently after restart.
-- [ ] Different channels/DM users never collide.
-- [ ] Mappings match architecture fixtures.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Same Slack thread maps consistently after restart.
+- [x] Different channels/DM users never collide.
+- [x] Mappings match architecture fixtures.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
-- Merge commit: —
+- Implementation commit: `fb7231b0d8d9725053e4f4bc5ff75a850b5e2269`
+- Handoff commit: This task/log metadata commit (see branch history).
+- Merge commit: a55ed56
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

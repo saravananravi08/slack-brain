@@ -1,8 +1,8 @@
 # T201 — Configure Mastra Memory and semantic recall
 
-- **Status:** Planned
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-7
 - **Branch:** `task/T201-configure-mastra-memory-and-semantic-recall`
 - **Parallel group:** PG-02A
 - **Depends on:** T103, T105
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Semantic recall is enabled automatically.
-- [ ] Memory and vector dimensions/config align.
-- [ ] No search tool/shell command is introduced.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Semantic recall is enabled automatically.
+- [x] Memory and vector dimensions/config align.
+- [x] No search tool/shell command is introduced.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
-- Merge commit: —
+- Implementation commit: `84718e95ca41b6b19658fac4e2da249e36b09e32`
+- Handoff commit: This task/log metadata commit (see branch history).
+- Merge commit: af8fb8d
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
