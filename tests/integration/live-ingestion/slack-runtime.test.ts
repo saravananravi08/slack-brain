@@ -9,6 +9,7 @@ import type {
 } from '../../../src/ingestion/index.js';
 import { createLiveSlackChannel } from '../../../src/mastra/channels/slack.js';
 import type { PolicySnapshot, SenderAttributes } from '../../../src/security/index.js';
+import { makeMessage, makeThread } from '../../channels/helpers.js';
 import {
   SYNTHETIC,
   channelMessage,
@@ -44,6 +45,12 @@ interface AdapterInternals {
 
 function makeHarness(state = makeMemoryState()) {
   const posts: Array<{ threadId: string; body: unknown }> = [];
+  const logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
   const generation = vi.fn(async () => 'Synthetic reply.');
   const resolveSender = vi.fn(async () => FULL_MEMBER);
   const persist = vi.fn(async (_input: AmbientPersistenceInput) => ({
@@ -66,6 +73,7 @@ function makeHarness(state = makeMemoryState()) {
     },
     state,
     policy: POLICY,
+    logger,
     resolveSender,
     ambientPersistence: { persist },
     mutations: {
@@ -126,6 +134,7 @@ function makeHarness(state = makeMemoryState()) {
     channel,
     generation,
     handleMutation,
+    logger,
     persist,
     posts,
     resolveSender,
@@ -154,6 +163,36 @@ describe('live silent Slack ingestion', () => {
     });
     expect(harness.generation).not.toHaveBeenCalled();
     expect(harness.posts).toEqual([]);
+  });
+
+  it('rate-limits warnings when the adapter delivery context is missing', async () => {
+    const harness = makeHarness();
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const thread = makeThread().thread;
+    const message = makeMessage();
+
+    try {
+      await harness.channel.liveHandlers.onAmbientMessage(thread, message);
+      await harness.channel.liveHandlers.onAmbientMessage(thread, message);
+      now.mockReturnValue(1_059_999);
+      await harness.channel.liveHandlers.onAmbientMessage(thread, message);
+
+      expect(harness.logger.warn).toHaveBeenCalledOnce();
+      expect(harness.logger.warn).toHaveBeenLastCalledWith(
+        'ingestion.delivery_context.missing',
+        { reason: 'missing_delivery_context' },
+      );
+
+      now.mockReturnValue(1_060_000);
+      await harness.channel.liveHandlers.onAmbientMessage(thread, message);
+
+      expect(harness.logger.warn).toHaveBeenCalledTimes(2);
+      expect(harness.persist).not.toHaveBeenCalled();
+      expect(harness.generation).not.toHaveBeenCalled();
+      expect(harness.posts).toEqual([]);
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it('persists subscribed-thread input once while the addressed path replies once', async () => {
