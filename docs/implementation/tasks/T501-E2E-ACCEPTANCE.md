@@ -1,8 +1,8 @@
 # T501 — Run complete PRD acceptance suite
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T501-run-complete-prd-acceptance-suite`
 - **Parallel group:** PG-05A
 - **Depends on:** P03, P04
@@ -69,18 +69,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Every AC has evidence.
-- [ ] No unapproved failing required scenario.
-- [ ] Report references exact tested commit.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Every AC has automated evidence.
+- [ ] No unapproved failing required scenario. (`npm run build` fails; P03/P04 live gates remain open.)
+- [x] Report references exact tested commit.
+- [x] Task log is current and contains no sensitive content.
+- [ ] Implementation and handoff commits exist. (Implementation exists; blocked before handoff.)
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `c3e3edcf470c1fa70e272bb706aa0b85f842bf46`
+- Handoff commit: — (blocked)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
