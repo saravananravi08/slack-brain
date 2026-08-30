@@ -38,10 +38,10 @@
 | [T003](./tasks/T003-SLACK-DEV-ENVIRONMENT.md) — Prepare isolated Slack development environment | P00 | Completed | — | PG-00A | pi-coder-3 | task/T003-prepare-isolated-slack-development-environment | 2026-08-30 | 090e8ad |
 | [T004](./tasks/T004-ARCHITECTURE-CONTRACTS.md) — Define architecture and data contracts | P00 | Completed | T001 | PG-00B | claude-planner | task/T004-define-architecture-and-data-contracts | 2026-08-30 | 151dc00 |
 | [T101](./tasks/T101-PROJECT-SCAFFOLD.md) — Scaffold Mastra TypeScript project | P01 | Completed | P00 | PG-01A | pi-coder | task/T101-scaffold-mastra-typescript-project | 2026-08-30 | 872bd8b |
-| [T102](./tasks/T102-CONFIG-VALIDATION.md) — Implement startup configuration validation | P01 | Planned | T101 | PG-01B | Unassigned | — | — | — |
-| [T103](./tasks/T103-STORAGE-TRACING.md) — Configure Mastra storage and tracing | P01 | Planned | T101 | PG-01B | Unassigned | — | — | — |
-| [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | Planned | T101, T003, T004 | PG-01B | Unassigned | — | — | — |
-| [T105](./tasks/T105-GIST-AGENT.md) — Implement Gist agent behavior | P01 | Planned | T101, T004 | PG-01B | Unassigned | — | — | — |
+| [T102](./tasks/T102-CONFIG-VALIDATION.md) — Implement startup configuration validation | P01 | In Progress | T101 | PG-01B | pi-coder-2 | task/T102-implement-startup-configuration-validation | 2026-08-30 | — |
+| [T103](./tasks/T103-STORAGE-TRACING.md) — Configure Mastra storage and tracing | P01 | In Progress | T101 | PG-01B | pi-coder-3 | task/T103-configure-mastra-storage-and-tracing | 2026-08-30 | — |
+| [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | In Progress | T101, T003, T004 | PG-01B | claude-planner | task/T104-implement-mastra-slack-channel-adapter | 2026-08-30 | — |
+| [T105](./tasks/T105-GIST-AGENT.md) — Implement Gist agent behavior | P01 | In Progress | T101, T004 | PG-01B | pi-coder | task/T105-implement-gist-agent-behavior | 2026-08-30 | — |
 | [T106](./tasks/T106-FOUNDATION-INTEGRATION.md) — Integrate foundation runtime | P01 | Planned | T102, T103, T104, T105 | PG-01C | Unassigned | — | — | — |
 | [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | Planned | T103, T105 | PG-02A | Unassigned | — | — | — |
 | [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | Planned | T004, T106 | PG-02A | Unassigned | — | — | — |
