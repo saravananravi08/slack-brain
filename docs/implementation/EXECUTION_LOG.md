@@ -45,3 +45,4 @@ _No implementation events recorded yet._
 - T204 Completed: memory/identity/access integrated (pi-coder-5, merge b296c18). 305/305 tests in worker verification.
 - P02 phase verification amended (integrator): vitest-compatible commands; dataset path benchmarks/retrieval/synthetic; test:memory script not required (tests/memory via npm test).
 - T206 blocker-1 fix merged: retrieval citation metadata (pi-coder-7, fix branch). Suite 307/307.
+- T206 Completed: memory/retrieval/privacy validated (pi-coder-6, merge a5c77e7). Privacy 178/178 + boundary suites, 0 leaks; synthetic benchmark 8/8; full suite 313/313. Live-provider benchmark pending B-02.

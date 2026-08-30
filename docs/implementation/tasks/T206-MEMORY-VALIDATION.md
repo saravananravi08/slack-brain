@@ -1,6 +1,6 @@
 # T206 — Validate memory, retrieval, and privacy
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-6
 - **Branch:** `task/T206-validate-memory-retrieval-and-privacy`
@@ -79,6 +79,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `8aa8921bf4b9390b516d02ecc88c090f3f0b209c`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: a5c77e7
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
