@@ -1,8 +1,8 @@
 # T304 — Implement idempotent Mastra memory writer
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P03](../phases/P03-HISTORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-10
 - **Branch:** `task/T304-implement-idempotent-mastra-memory-writer`
 - **Parallel group:** PG-03B
 - **Depends on:** T201, T301
