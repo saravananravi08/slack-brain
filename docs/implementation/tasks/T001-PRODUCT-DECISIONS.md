@@ -77,7 +77,7 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Completion record
 
-- Proposal commit (D001–D010 drafted, status `Proposed`): __PROPOSAL_COMMIT__
+- Proposal commit (D001–D010 drafted, status `Proposed`): `0228518`
 - Implementation commit (acceptance recorded): —
 - Handoff commit: —
 - Merge commit: —
