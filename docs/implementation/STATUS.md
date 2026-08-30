@@ -85,3 +85,4 @@
 | B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
 | B-02 | T206/runtime | ANTHROPIC_API_KEY + OPENAI_API_KEY not in .env; needed for generation/embedding and integrated benchmark | Operator (saravanan) | keys placed in .env | 2026-08-30 |
 | B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
+| B-04 | T401/T104/T405 | Tokens placed in .env appear to be the PRODUCTION Gist bot (200-channel scope), not an isolated dev app; users:read scope missing (blocks sender resolver) | Operator (saravanan) | Create dev Slack app per docs/runbooks/slack-dev-environment.md with users:read; place new tokens in .env | 2026-08-30 |
