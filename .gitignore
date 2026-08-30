@@ -1,6 +1,30 @@
 node_modules/
+
+# Local configuration and credentials
 .env
+.env.*
+!.env.example
+test_secrets.js
+
+# Runtime databases and local Mastra state
+*.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+.mastra/
+
+# Generated output
+artifacts/
+coverage/
+dist/
+traces/
+*.log
+
+# Local task worktrees
+.worktrees/
+worktrees/
+
 files/
 .DS_Store

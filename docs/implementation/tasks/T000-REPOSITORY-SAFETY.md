@@ -1,8 +1,8 @@
 # T000 — Repository safety and secret hygiene
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder
 - **Branch:** `task/T000-repository-safety-and-secret-hygiene`
 - **Parallel group:** PG-00A
 - **Depends on:** —
