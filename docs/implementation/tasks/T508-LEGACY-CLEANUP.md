@@ -1,8 +1,8 @@
 # T508 — Remove legacy runtime after rollback window
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent (assessment only)
 - **Branch:** `task/T508-remove-legacy-runtime-after-rollback-window`
 - **Parallel group:** PG-05D
 - **Depends on:** T506, Rollback-window approval
