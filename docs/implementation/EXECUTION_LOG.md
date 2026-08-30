@@ -39,3 +39,4 @@ _No implementation events recorded yet._
 - T202 Completed: resource/thread identity policy (pi-coder-5, merge a55ed56).
 - T203 Completed: Slack authorization + privacy guard (claude-planner-2, merge 49751a4). Cross-boundary denial tests included.
 - T205 Completed: retrieval benchmark harness (pi-coder-6, merge bcfb465). Synthetic benchmark: 8 cases, all gates pass.
+- T204 scope amendment approved (coordinator): tests/integration/foundation/runtime.test.ts added to T204 write scope to mock the Slack users.info resolver required by T203 fail-closed sender attributes.
