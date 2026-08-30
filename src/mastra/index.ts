@@ -1,7 +1,7 @@
 import type { SlackAdapter } from '@chat-adapter/slack';
 import { MastraStateAdapter } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
-import { LibSQLVector } from '@mastra/libsql';
+import { LibSQLVector, type LibSQLStore } from '@mastra/libsql';
 
 import { parseConfig, type Config } from '../config.js';
 import {
@@ -36,18 +36,32 @@ import {
 } from './storage/index.js';
 import { createGistObservability } from './storage/observability.js';
 
-const databaseUrl = process.env.MASTRA_DATABASE_URL;
+/**
+ * Storage and the Mastra instance are built inside {@link createFoundationRuntime},
+ * from the **validated** configuration, and never at module scope.
+ *
+ * They used to be module-level singletons constructed from a raw
+ * `process.env.MASTRA_DATABASE_URL` read, falling back to a default path and
+ * creating that directory with `mkdirSync` as an import side effect. That ran
+ * before `parseConfig()`, so a process with missing or invalid configuration
+ * still got a working database somewhere reasonable — precisely the defaulted
+ * start D001 and FR-OPS-001 forbid (design review F-05). Importing this module
+ * now touches no filesystem and reads no environment variable.
+ */
+export function createRuntimeStorage(config: Readonly<Config>): LibSQLStore {
+  return createMastraStorage({ databaseUrl: config.databaseUrl });
+}
 
-export const storage = createMastraStorage(
-  databaseUrl ? { databaseUrl } : undefined,
-);
-export const observability = createGistObservability();
-
-export const mastra = new Mastra({
-  storage,
-  observability,
-  loggerOptions: { export: false },
-});
+export function createRuntimeMastra(storage: LibSQLStore): {
+  mastra: Mastra;
+  observability: ReturnType<typeof createGistObservability>;
+} {
+  const observability = createGistObservability();
+  return {
+    mastra: new Mastra({ storage, observability, loggerOptions: { export: false } }),
+    observability,
+  };
+}
 
 export interface FoundationRuntimeOptions {
   /** Test/deployment seam. Absence uses Slack users.info and fails closed. */
@@ -117,7 +131,12 @@ export interface FoundationRuntime {
 export async function createFoundationRuntime(
   options: FoundationRuntimeOptions = {},
 ): Promise<FoundationRuntime> {
+  // Configuration first: an invalid environment must stop the process before
+  // anything touches the filesystem (F-05).
   const config = parseConfig();
+
+  const storage = createRuntimeStorage(config);
+  const { mastra } = createRuntimeMastra(storage);
 
   await storage.init();
   const memoryStore = await storage.getStore('memory');
