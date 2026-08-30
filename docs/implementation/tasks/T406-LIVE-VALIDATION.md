@@ -1,6 +1,6 @@
 # T406 — Validate live ingestion end to end
 
-- **Status:** In Progress (live transport reached; recall verification underway)
+- **Status:** Ready for Integration
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** pi-coder-14
 - **Branch:** `task/T406-validate-live-ingestion-end-to-end`
@@ -11,6 +11,8 @@
 - **Conflicts with:** None under declared write scope
 - **Task log:** [`../logs/T406.md`](../logs/T406.md)
 - **Write scope:**
+  - `src/mastra/index.ts` (operator-expanded scope for live blocker fix)
+  - `tests/integration/foundation/runtime.test.ts` (operator-expanded regression scope)
   - `tests/e2e/live-ingestion/**`
   - `docs/reports/live-ingestion-validation.md`
 - **Read-only references:** `GIST_MASTRA_PRD.md`, `MASTRA_MIGRATION_PLAN.md`, this phase file, `STATUS.md`, and other task files.
@@ -67,11 +69,11 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Zero ambient generation/replies.
-- [ ] Expected message is later recalled.
-- [ ] No excluded event pollutes knowledge.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Zero ambient generation/replies.
+- [x] Expected message is later recalled.
+- [x] No excluded event pollutes knowledge.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
@@ -103,8 +105,8 @@ session rotates, and this report is the T502 sign-off's outstanding condition.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `d978bb4`
+- Handoff commit: `91b1f08`
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —

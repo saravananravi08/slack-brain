@@ -96,7 +96,8 @@ describe('foundation runtime', () => {
       },
       {
         run: runtime.channel.handlers.onNewMention,
-        thread: makeThread(),
+        // Pinned Chat builds Slack Thread.channelId as adapter-qualified.
+        thread: makeThread({ channelId: `slack:${SYNTHETIC.channelApproved}` }),
         surface: 'channel_mention',
       },
       {
