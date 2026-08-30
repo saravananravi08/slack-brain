@@ -28,3 +28,6 @@ _No implementation events recorded yet._
 - P00 phase gate closed (exception logged: B-01 Slack dev app pending operator). P01 opened.
 - T101 Completed: Mastra TS scaffold (pi-coder, merge 872bd8b). npm ci/typecheck/test/build all pass.
 - T105 Completed: Gist agent behavior (pi-coder, merge 5a3f443).
+- T102 Completed: startup config validation (pi-coder-2, merge 6d6c3c3). 26 config tests.
+- T104 Completed: Slack channel adapter (claude-planner, merge 5b211d0). Live smoke test pending B-01 credentials placement.
+- Integration regression after T102+T104: typecheck ok, 79/79 tests pass.

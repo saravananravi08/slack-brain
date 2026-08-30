@@ -1,6 +1,6 @@
 # T104 — Implement Mastra Slack channel adapter
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** claude-planner
 - **Branch:** `task/T104-implement-mastra-slack-channel-adapter`
@@ -80,6 +80,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `5c9884a`
 - Handoff commit: —
-- Merge commit: —
+- Merge commit: 5b211d0
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

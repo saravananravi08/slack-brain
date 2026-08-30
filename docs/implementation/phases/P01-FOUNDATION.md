@@ -26,9 +26,9 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
 | [T101](../tasks/T101-PROJECT-SCAFFOLD.md) | Completed | P00 | PG-01A | pi-coder | 872bd8b |
-| [T102](../tasks/T102-CONFIG-VALIDATION.md) | Planned | T101 | PG-01B | Unassigned | — |
+| [T102](../tasks/T102-CONFIG-VALIDATION.md) | Completed | T101 | PG-01B | pi-coder-2 | 6d6c3c3 |
 | [T103](../tasks/T103-STORAGE-TRACING.md) | Planned | T101 | PG-01B | Unassigned | — |
-| [T104](../tasks/T104-SLACK-CHANNEL.md) | Planned | T101, T003, T004 | PG-01B | Unassigned | — |
+| [T104](../tasks/T104-SLACK-CHANNEL.md) | Completed | T101, T003, T004 | PG-01B | claude-planner | 5b211d0 |
 | [T105](../tasks/T105-GIST-AGENT.md) | Completed | T101, T004 | PG-01B | pi-coder | 5a3f443 |
 | [T106](../tasks/T106-FOUNDATION-INTEGRATION.md) | Planned | T102–T105 | PG-01C | Unassigned | — |
 
