@@ -1,6 +1,6 @@
 # P01 — Mastra and Slack Foundation
 
-- **Status:** Planned
+- **Status:** Completed
 - **Depends on:** P00
 - **Phase integrator:** Unassigned
 - **PRD coverage:** FR-SLK-001–011, FR-OPS-001–002, NFR-MNT-001–004
@@ -11,9 +11,9 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 
 ## Entry criteria
 
-- [ ] P00 completed.
-- [ ] Model/provider and data-residency decisions accepted.
-- [ ] Development Slack credentials available outside Git.
+- [x] P00 completed.
+- [x] Model/provider and data-residency decisions accepted (D007/D008/D010).
+- [ ] Development Slack credentials available outside Git — received via DM; placement into local .env pending operator (B-01).
 
 ## Parallel execution plan
 
@@ -41,12 +41,12 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 
 ## Exit criteria
 
-- [ ] Gist responds to DM and mention in correct thread.
-- [ ] Streaming/typing appears.
-- [ ] Duplicate event smoke test produces one reply.
-- [ ] Restart reconnects Socket Mode.
-- [ ] Persistent store and tracing initialize.
-- [ ] No Slack Bolt or Claude CLI is used by new runtime.
+- [ ] Gist responds to DM and mention in correct thread — mocked routing passes; live check pending B-01.
+- [ ] Streaming/typing appears — pending live check (B-01).
+- [x] Duplicate event smoke test produces one reply (mocked; AC-06 double-dedup contract).
+- [ ] Restart reconnects Socket Mode — pending live check (B-01).
+- [x] Persistent store and tracing initialize.
+- [x] No Slack Bolt or Claude CLI is used by new runtime.
 
 ## Phase verification
 
@@ -62,6 +62,6 @@ Manual: DM, channel mention, thread follow-up, disconnect/reconnect.
 
 ## Completion record
 
-- Gate approved by: —
-- Gate date: —
-- Commit: —
+- Gate approved by: Coordinator (Augment) — code gate passed; live Slack smoke tracked under B-01 exception
+- Gate date: 2026-08-30
+- Commit: T106 merge cffce23

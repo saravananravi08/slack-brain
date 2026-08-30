@@ -22,8 +22,8 @@
 | Phase | Status | Depends on | Integrator | Exit commit |
 |---|---|---|---|---|
 | [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
-| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | In Progress | P00 | Augment | — |
-| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Planned | P01 | Unassigned | — |
+| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke pending B-01) | P00 | Augment | cffce23 |
+| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | In Progress | P01 | Augment | — |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | Planned | P02 | Unassigned | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Planned | P02 | Unassigned | — |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | Planned | P03, P04 | Unassigned | — |
