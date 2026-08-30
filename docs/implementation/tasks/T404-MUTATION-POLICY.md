@@ -1,8 +1,8 @@
 # T404 — Implement edit/delete and retention mutation policy
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-11
 - **Branch:** `task/T404-implement-edit-delete-and-retention-mutation-policy`
 - **Parallel group:** PG-04B
 - **Depends on:** T001, T203, T401
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Behavior matches accepted retention/deletion policy.
-- [ ] Unauthorized mutation changes nothing.
-- [ ] No stale embedding remains when policy requires deletion.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Behavior matches accepted retention/deletion policy.
+- [x] Unauthorized mutation changes nothing.
+- [x] No stale embedding remains when policy requires deletion.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `ed068b8adc08a9049f020499dcd16fe99028d455`
+- Handoff commit: This task/log metadata commit (exact hash in branch history and handoff report).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
