@@ -1,8 +1,8 @@
 # T106 — Integrate foundation runtime
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-4
 - **Branch:** `task/T106-integrate-foundation-runtime`
 - **Parallel group:** PG-01C
 - **Depends on:** T102, T103, T104, T105
