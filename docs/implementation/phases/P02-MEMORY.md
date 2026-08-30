@@ -51,9 +51,9 @@ Gist has durable Mastra memory, automatic semantic recall, deterministic channel
 
 ```bash
 npm run typecheck
-npm test -- --runInBand
-npm run test:memory
-npm run benchmark:retrieval -- --dataset benchmark/sample
+npm test
+npm test -- tests/memory tests/security
+npm run benchmark:retrieval -- --dataset benchmarks/retrieval/synthetic
 git diff --check
 ```
 
