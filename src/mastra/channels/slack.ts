@@ -127,11 +127,13 @@ function ledgerFor(state: StateAdapter): IdempotencyLedger {
 }
 
 function ambientProjection(event: NormalizedEvent): AmbientNormalizedEvent {
+  if (event.class === 'mutation') {
+    throw new TypeError('Mutation events cannot use message persistence.');
+  }
   return {
     ...event,
     contract_version: '1.0.0',
-    class: 'ambient',
-    addressed_to_gist: false,
+    class: event.class,
   };
 }
 

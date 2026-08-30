@@ -169,8 +169,9 @@ describe('live silent Slack ingestion', () => {
 
     expect(harness.persist).toHaveBeenCalledOnce();
     expect(harness.persist.mock.calls[0]?.[0].event).toMatchObject({
-      class: 'ambient',
+      class: 'addressed',
       message_ts: SYNTHETIC.replyTs,
+      addressed_to_gist: true,
     });
     expect(harness.generation).toHaveBeenCalledOnce();
     expect(harness.posts).toHaveLength(1);

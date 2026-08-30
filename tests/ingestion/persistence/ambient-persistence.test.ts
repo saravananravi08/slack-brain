@@ -174,6 +174,18 @@ describe('AmbientPersistenceService', () => {
       .toMatchObject({ dimension: GIST_EMBEDDING_DIMENSIONS, count: 1 });
   });
 
+  it('accepts an addressed subscribed-thread message without relabelling it', async () => {
+    const resources = await makeResources();
+    const { service, authorizeWrite } = makeService(resources);
+    const event = ambient({ class: 'addressed', addressed_to_gist: true });
+
+    expect(await service.persist({
+      event,
+      sender_name: 'Synthetic Member Two',
+    })).toEqual({ outcome: 'inserted' });
+    expect(authorizeWrite).toHaveBeenCalledWith(expect.objectContaining({ event }));
+  });
+
   it('converges duplicate content without another embedding', async () => {
     const resources = await makeResources();
     const { service } = makeService(resources);
