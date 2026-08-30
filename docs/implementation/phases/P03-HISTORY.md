@@ -20,7 +20,14 @@ Approved historical Slack messages are imported idempotently into Mastra-owned m
 1. **PG-03A:** T301 defines immutable import contract and fixtures.
 2. **PG-03B:** T302, T303, and T304 run concurrently after T301; source reader, mapper, and writer paths do not overlap.
 3. **PG-03C:** T305 integrates those components.
-4. **PG-03D:** T306 evaluates sample import.
+4. **PG-03D:** T306 evaluates sample import. **Partially met (2026-08-30).** The
+   archive infrastructure is unblocked — PostgreSQL archive support merged
+   (`0f1287a`) with a Docker Postgres carrying a synthetic corpus and a
+   read-only role — and the CLI rehearsal passes against it. **The gate does not
+   close on synthetic data:** the retrieval-quality evidence it exists to
+   produce requires the operator's real archive, because a synthetic corpus
+   measures the generator rather than the archive. Blocked on the production
+   archive path.
 5. **PG-03E:** T307 full import starts only after explicit sample approval.
 
 ## Tasks
@@ -32,7 +39,7 @@ Approved historical Slack messages are imported idempotently into Mastra-owned m
 | [T303](../tasks/T303-MESSAGE-MAPPING.md) | Completed | T301 | PG-03B | pi-coder-9 | 2640d21 |
 | [T304](../tasks/T304-MEMORY-WRITER.md) | Completed | T201, T301 | PG-03B | pi-coder-10 | da7558d |
 | [T305](../tasks/T305-IMPORT-ORCHESTRATION.md) | Completed | T302–T304 | PG-03C | pi-coder-9 | aa1b4ea |
-| [T306](../tasks/T306-SAMPLE-IMPORT.md) | Planned | T205, T305 | PG-03D | Unassigned | — |
+| [T306](../tasks/T306-SAMPLE-IMPORT.md) | In Progress (infrastructure unblocked) | T205, T305 | PG-03D | pi-coder-15 | — |
 | [T307](../tasks/T307-FULL-IMPORT.md) | Planned | T306 + approval | PG-03E | Unassigned | — |
 
 ## Integration procedure

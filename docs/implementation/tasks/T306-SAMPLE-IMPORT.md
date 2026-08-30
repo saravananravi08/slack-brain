@@ -1,6 +1,6 @@
 # T306 — Run sample archive import and quality gate
 
-- **Status:** In Progress
+- **Status:** In Progress (archive infrastructure unblocked; real sample import still pending the production archive)
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** Unassigned
 - **Branch:** `task/T306-sample-import-synthetic-rehearsal`
@@ -85,6 +85,26 @@ Every changed path must be in this task's write scope or its own task/log metada
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
+
+## Status note (2026-08-30)
+
+**B-03's infrastructure half is resolved.** PostgreSQL archive support merged
+(`0f1287a`) with a local Docker Postgres carrying a synthetic archive
+(`docker/archive-postgres/`), including a read-only `archive_reader` role. The
+CLI rehearsal against synthetic data is complete, and pi-coder-15 reports a
+synthetic import validated at 42 messages / 42 embeddings / zero failures.
+
+**That evidence is not yet recorded here.** It should land in
+[`../logs/T306.md`](../logs/T306.md) with the commands that produced it, and in
+a sample-import report, before this task advances.
+
+**What is still blocked:** the real sample import. It needs the operator's
+production archive made available read-only — as a Postgres dump loaded into the
+container, or as the original SQLite file. Until then the retrieval-quality gate
+cannot run, because a synthetic corpus cannot evidence historical recall
+quality: it would measure the generator, not the archive.
+
+T307 stays gated behind this task's sample approval.
 
 ## Completion record
 

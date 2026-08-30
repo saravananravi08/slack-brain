@@ -234,3 +234,27 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - **T406 (pi-coder-14) remains In Progress.** Reported from the live session: ambient silent persistence confirmed against the real transport, and a **channel-ID recall bug** found. Edit/delete validation still needs operator action. **These findings are not yet in `logs/T406.md` or `docs/reports/live-ingestion-validation.md`** — both still end at the 15:43 UTC provider-validation entry. pi-coder-14 should record the recall bug with its evidence before the task is handed off; a defect found in live validation is exactly what that report exists to carry.
 - **B-03 is being unblocked differently than expected.** Rather than supplying a path to an archived SQLite file, pi-coder-15 is standing up the legacy archive as a Docker Postgres instance and adding `src/migration/source/postgres-archive-reader.ts` beside the existing read-only SQLite reader. Work is uncommitted and **does not currently typecheck** — `rowMode` is not a property of `pg`'s `QueryConfig`, so the query calls fail overload resolution. With CI now green on every push, that must be fixed before the branch lands or CI goes red on arrival.
 - Reminder for whoever reviews that reader: the SQLite reader is hardened read-only (`immutable=1`, `PRAGMA query_only`, extensions disabled, parameterised queries). A Postgres reader should reach the same posture — a read-only role at minimum — because T302's acceptance rested on the source being impossible to mutate.
+
+### 2026-08-30 — PostgreSQL archive support merged (B-03 infrastructure)
+
+- Merged as `0f1287a` (pi-coder-15), with the archive README added as `da8fec8`.
+- Adds `src/migration/source/postgres-archive-reader.ts` beside the read-only SQLite reader, plus `docker/archive-postgres/` — a Postgres service on loopback `127.0.0.1:55432`, a named volume, and an init script creating the schema, a synthetic corpus, and a read-only `archive_reader` role (`default_transaction_read_only = on`, granted only CONNECT/USAGE/SELECT). That role is the Postgres equivalent of the SQLite reader's `mode=ro` + `immutable=1` + `PRAGMA query_only`, which is what T302's acceptance rested on.
+- Schema matches `REQUIRED_COLUMNS` in `archive-reader.ts` exactly, so `assertSchema` still fails closed on drift.
+- **Reported by pi-coder-15 and not yet in a task log or report:** container healthy, synthetic import validated at 42 messages / 42 embeddings / zero failures. That evidence belongs in `logs/T306.md` and a sample-import report before T306 moves on.
+- Two documented consequences, in `docker/archive-postgres/README.md`: `messages.ts` works as a primary key only because the seed folds the channel index into the fraction (a real dump needs `(channel_id, ts)`), and `source_ref` is not comparable between the two readers, since one hashes `rowid` and the other hashes `ts`. Content identity remains `messageKey`, so re-import idempotency is unaffected.
+- **B-03 is unblocked for infrastructure only.** T306's real sample import and T307 still need the operator's production archive.
+- Verified after merge: typecheck clean; 581 passing, 5 skipped, 4 todo.
+
+### 2026-08-30 — T406 live validation reaches the real transport
+
+- **T406 remains In Progress** (pi-coder-14). The operator posted an `@Gist` mention in the approved channel and **the bot replied** — the first time a human-authored Slack event has traversed the system.
+- Reported so far: ambient silent persistence confirmed, edit propagation passing, recall telemetry being verified now. Delete propagation and the paraphrased-recall assertion remain open.
+- **This closes the long-standing B-07 shape.** Every earlier attempt failed because the bot cannot author the message it needs — its own traffic is filtered as `isMe` before any handler runs — so a human in the Slack UI was always the only way through.
+- **The evidence is not yet written down.** `logs/T406.md` and `docs/reports/live-ingestion-validation.md` both still end at the 15:43 UTC provider-validation entry. The live matrix, and any defect found while validating recall, must land there before T406 hands off; a finding that exists only in a terminal pane is lost when the session rotates.
+
+### 2026-08-30 — Governance documents resynchronised
+
+- STATUS.md, both P03 and P04 phase files, and the T306/T406 task files brought in line with the merges above.
+- Test count across the program is now **581 passing, 5 skipped, 4 todo**.
+- Recorded in this pass, each verified against the tree rather than taken from the brief: F-11 test relocation `7f86d3a`, CI workflow `f8a4357`, runtime start fix `7bfb04b`, tsx dependency `18f80f4`, vitest `dist/` exclusion `0ce82e2`, F-19 drop instrumentation `d48a6d2`, PostgreSQL archive support `0f1287a`, archive README `da8fec8`.
+- The first five of those were logged in the previous sync (`77e7ffb`) and are repeated here only as the consolidated list; their detail is in the entries above this one.

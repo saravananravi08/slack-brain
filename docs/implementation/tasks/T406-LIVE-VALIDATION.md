@@ -1,6 +1,6 @@
 # T406 — Validate live ingestion end to end
 
-- **Status:** In Progress
+- **Status:** In Progress (live transport reached; recall verification underway)
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** pi-coder-14
 - **Branch:** `task/T406-validate-live-ingestion-end-to-end`
@@ -74,6 +74,32 @@ Every changed path must be in this task's write scope or its own task/log metada
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
+
+## Status note (2026-08-30)
+
+**A human-authored Slack event has now traversed the system** — the operator
+posted an `@Gist` mention in the approved channel and the bot replied. That is
+what B-07 was waiting for, and it could not be produced any other way: the bot's
+own messages are filtered as `isMe` before any handler runs, so no amount of
+bot-side automation could stand in for a person typing.
+
+Reported state of the live matrix:
+
+| Case | State |
+|---|---|
+| Ambient silent persistence | Confirmed |
+| Edit propagation | Passing |
+| Addressed reply on the live transport | Confirmed (bot replied to the mention) |
+| Paraphrased recall + citation | **Verification in progress** |
+| Delete propagation | Open |
+
+**Record the evidence before handing off.** Neither
+[`../logs/T406.md`](../logs/T406.md) nor
+[`../../reports/live-ingestion-validation.md`](../../reports/live-ingestion-validation.md)
+carries any of the above — both still end at the 15:43 UTC provider-validation
+entry. Any defect found while verifying recall must be written up with its
+evidence: a finding that lives only in a terminal pane disappears when the
+session rotates, and this report is the T502 sign-off's outstanding condition.
 
 ## Completion record
 
