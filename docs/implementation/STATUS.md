@@ -53,13 +53,13 @@
 | [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | Completed | T301 | PG-03B | pi-coder-8 | task/T302-implement-read-only-archive-source-reader | 2026-08-30 | 2b14097 |
 | [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | Completed | T301 | PG-03B | pi-coder-9 | task/T303-implement-archive-message-normalization | 2026-08-30 | 2640d21 |
 | [T304](./tasks/T304-MEMORY-WRITER.md) — Implement idempotent Mastra memory writer | P03 | Completed | T201, T301 | PG-03B | pi-coder-10 | task/T304-implement-idempotent-mastra-memory-writer | 2026-08-30 | da7558d |
-| [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | Planned | T302, T303, T304 | PG-03C | Unassigned | — | — | — |
+| [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | In Progress | T302, T303, T304 | PG-03C | pi-coder-9 | task/T305-integrate-archive-importer-and-reporting | 2026-08-30 | — |
 | [T306](./tasks/T306-SAMPLE-IMPORT.md) — Run sample archive import and quality gate | P03 | Planned | T205, T305 | PG-03D | Unassigned | — | — | — |
 | [T307](./tasks/T307-FULL-IMPORT.md) — Execute full historical import | P03 | Planned | T306, Product/security approval | PG-03E | Unassigned | — | — | — |
 | [T401](./tasks/T401-ADAPTER-EVENT-SPIKE.md) — Spike supported ordinary Slack event handling | P04 | Completed | T104, T206 | PG-04A | claude-planner-2 | task/T401-spike-supported-ordinary-slack-event-handling | 2026-08-30 | 8ba694e |
 | [T402](./tasks/T402-EVENT-NORMALIZATION.md) — Normalize and deduplicate live Slack events | P04 | In Progress | T401 | PG-04B | claude-planner-2 | task/T402-normalize-and-deduplicate-live-slack-events | 2026-08-30 | — |
-| [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | Planned | T201, T202, T401 | PG-04B | Unassigned | — | — | — |
-| [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | Planned | T001, T203, T401 | PG-04B | Unassigned | — | — | — |
+| [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | In Progress | T201, T202, T401 | PG-04B | pi-coder-10 | task/T403-persist-ambient-messages-silently | 2026-08-30 | — |
+| [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | In Progress | T001, T203, T401 | PG-04B | pi-coder-11 | task/T404-implement-edit-delete-and-retention-mutation-policy | 2026-08-30 | — |
 | [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Planned | T402, T403, T404, T204 | PG-04C | Unassigned | — | — | — |
 | [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | Planned | T405, T205 | PG-04D | Unassigned | — | — | — |
 | [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
