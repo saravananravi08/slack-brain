@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 closed; P03 + P04 in progress
-- **Last updated:** 2026-08-30 (P02 in progress)
+- **Current phase gate:** P02 closed; P03 + P04 in progress; SECFIX-A+B+C merged (F-01,F-02,F-03,F-05,F-06,F-07,F-10,F-11,F-13,F-14,F-15 resolved) and F-17 fixed; D012 accepted (generation on OpenAI `gpt-4.1`); T406 e2e scaffold merged with live cases pending an operator ambient message
+- **Last updated:** 2026-08-30 (SECFIX-C `185aa73`, D012 `ab6f023`, T406 scaffold `347ec14`, F-17 `3d7390b` merged; 546 tests passing)
 
 ## Assignment protocol
 
@@ -23,7 +23,7 @@
 |---|---|---|---|---|
 | [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
 | [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke scheduled in P05 validation) | P00 | Augment | cffce23 |
-| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed (exception: live-provider benchmark pending B-02) | P01 | Augment | a5c77e7 |
+| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed | P01 | Augment | a5c77e7 |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | In Progress | P02 | Augment | — |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | Planned | P03, P04 | Unassigned | — |
@@ -60,8 +60,8 @@
 | [T402](./tasks/T402-EVENT-NORMALIZATION.md) — Normalize and deduplicate live Slack events | P04 | Completed | T401 | PG-04B | claude-planner-2 | task/T402-normalize-and-deduplicate-live-slack-events | 2026-08-30 | 4c615da |
 | [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | task/T403-persist-ambient-messages-silently | 2026-08-30 | c3365cd |
 | [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | task/T404-implement-edit-delete-and-retention-mutation-policy | 2026-08-30 | 21f5d72 |
-| [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | In Progress | T402, T403, T404, T204 | PG-04C | pi-coder-12 | task/T405-integrate-live-silent-ingestion | 2026-08-30 | — |
-| [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | Planned | T405, T205 | PG-04D | Unassigned | — | — | — |
+| [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Completed | T402, T403, T404, T204 | PG-04C | pi-coder-12 | task/T405-integrate-live-silent-ingestion | 2026-08-30 | f64b2dc |
+| [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | In Progress (scaffold merged `347ec14`; live cases pending operator ambient message) | T405, T205 | PG-04D | pi-coder-14 | task/T406-validate-live-ingestion-end-to-end | 2026-08-30 | — |
 | [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
 | [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Planned | T203, P03, P04 | PG-05A | Unassigned | — | — | — |
 | [T503](./tasks/T503-PERFORMANCE-OBSERVABILITY.md) — Validate performance and observability | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
@@ -84,8 +84,9 @@
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
 | B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
-| B-02 | T206/runtime | ANTHROPIC_API_KEY + OPENAI_API_KEY not in .env; needed for generation/embedding and integrated benchmark | Operator (saravanan) | keys placed in .env | 2026-08-30 |
+| B-02 | T206/runtime | RESOLVED 2026-08-30: D012 switched generation to OpenAI `gpt-4.1`; existing `OPENAI_API_KEY` serves generation and embeddings | Augment coordinator | done | 2026-08-30 |
 | B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
 | B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |
 | B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |
 | B-06 | FR-SLK-002 DMs | RESOLVED 2026-08-30: im scopes added + app reinstalled by operator; probe re-run to confirm | Operator (saravanan) | done | 2026-08-30 |
+| B-07 | T406/PG-04D | T406 live validation cannot close offline: the ambient-ingestion cases need a real human message posted in the approved dev channel (the bot cannot generate one — its own messages are filtered as `isMe`) | Operator (saravanan) | A human posts a message in the approved dev channel while the runtime is connected, then T406 re-runs its live cases | 2026-08-30 |

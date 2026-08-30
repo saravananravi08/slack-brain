@@ -21,8 +21,7 @@ function validEnvironment(): Record<string, string> {
     GIST_APPROVED_CHANNEL_IDS: 'C0APPROVED1,G0APPROVED2',
     GIST_USER_ALLOWLIST: 'U0MEMBER01,W0MEMBER02',
     GIST_DM_SHARED_KNOWLEDGE: 'false',
-    GIST_MODEL: 'claude-opus-5',
-    ANTHROPIC_API_KEY: 'synthetic-anthropic-credential',
+    GIST_MODEL: 'gpt-4.1',
     EMBEDDING_MODEL: 'openai/text-embedding-3-small',
     OPENAI_API_KEY: 'synthetic-openai-credential',
     MASTRA_DATABASE_URL: 'file:/var/lib/gist-synthetic/mastra.db',
@@ -50,7 +49,7 @@ describe('parseConfig', () => {
       approvedChannelIds: ['C0APPROVED1', 'G0APPROVED2'],
       userAllowlist: ['U0MEMBER01', 'W0MEMBER02'],
       dmSharedKnowledge: false,
-      gistModel: 'claude-opus-5',
+      gistModel: 'gpt-4.1',
       embeddingModel: 'openai/text-embedding-3-small',
       embeddingDimensions: 1536,
       databaseUrl: 'file:/var/lib/gist-synthetic/mastra.db',
@@ -72,8 +71,6 @@ describe('parseConfig', () => {
     'SLACK_APP_TOKEN',
     'GIST_APPROVED_WORKSPACE_ID',
     'GIST_APPROVED_CHANNEL_IDS',
-    'GIST_MODEL',
-    'ANTHROPIC_API_KEY',
     'EMBEDDING_MODEL',
     'OPENAI_API_KEY',
     'MASTRA_DATABASE_URL',
@@ -108,6 +105,12 @@ describe('parseConfig', () => {
     expect(error.message).not.toContain(value);
   });
 
+  it('exposes the shared OpenAI credential for generation and embeddings', () => {
+    const config = parseConfig(validEnvironment());
+
+    expect(config.openaiApiKey).toBe('synthetic-openai-credential');
+  });
+
   it('fails closed on an empty approved channel list', () => {
     const environment = { ...validEnvironment(), GIST_APPROVED_CHANNEL_IDS: '  ' };
 
@@ -117,9 +120,16 @@ describe('parseConfig', () => {
   });
 
   it('accepts the pre-approved generation model step-down', () => {
-    const config = parseConfig({ ...validEnvironment(), GIST_MODEL: 'claude-sonnet-5' });
+    const config = parseConfig({ ...validEnvironment(), GIST_MODEL: 'gpt-4.1-mini' });
 
-    expect(config.gistModel).toBe('claude-sonnet-5');
+    expect(config.gistModel).toBe('gpt-4.1-mini');
+  });
+
+  it('defaults the generation model to gpt-4.1', () => {
+    const environment: Record<string, string | undefined> = validEnvironment();
+    delete environment.GIST_MODEL;
+
+    expect(parseConfig(environment).gistModel).toBe('gpt-4.1');
   });
 
   it('defaults only the accepted empty allowlist and disabled DM sharing policy', () => {
@@ -146,7 +156,6 @@ describe('parseConfig', () => {
       'GIST_APPROVED_CHANNEL_IDS',
       'GIST_USER_ALLOWLIST',
       'GIST_DM_SHARED_KNOWLEDGE',
-      'ANTHROPIC_API_KEY',
       'GIST_MODEL',
       'OPENAI_API_KEY',
       'EMBEDDING_MODEL',
@@ -160,12 +169,12 @@ describe('parseConfig', () => {
     const privateValue = 'private credential value that must not appear';
     const environment = {
       ...validEnvironment(),
-      ANTHROPIC_API_KEY: privateValue,
+      OPENAI_API_KEY: privateValue,
     };
 
     const error = configError(environment);
 
-    expect(error.variables).toEqual(['ANTHROPIC_API_KEY']);
+    expect(error.variables).toEqual(['OPENAI_API_KEY']);
     expect(error.message).not.toContain(privateValue);
     expect(JSON.stringify(error)).not.toContain(privateValue);
   });

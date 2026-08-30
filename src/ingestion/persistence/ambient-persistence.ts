@@ -23,13 +23,13 @@ const DEFAULT_MAX_ATTEMPTS = 3;
 
 export interface AmbientNormalizedEvent extends AuthorizationEvent {
   readonly contract_version: '1.0.0';
-  readonly class: 'ambient';
+  readonly class: 'ambient' | 'addressed';
   readonly message_ts: string;
   readonly event_id: string;
   readonly thread_ts: string | null;
   readonly sent_at: string;
   readonly text: string;
-  readonly addressed_to_gist: false;
+  readonly addressed_to_gist: boolean;
 }
 
 export interface AmbientPersistenceInput {
@@ -90,9 +90,9 @@ function isValidInput(input: AmbientPersistenceInput): boolean {
   const { event, sender_name: senderName } = input;
   return (
     event?.contract_version === '1.0.0' &&
-    event.class === 'ambient' &&
+    ((event.class === 'ambient' && event.addressed_to_gist === false) ||
+      (event.class === 'addressed' && event.addressed_to_gist === true)) &&
     event.conversation_type === 'channel' &&
-    event.addressed_to_gist === false &&
     event.sender_type === 'human' &&
     event.text.trim() !== '' &&
     senderName.trim() !== '' &&

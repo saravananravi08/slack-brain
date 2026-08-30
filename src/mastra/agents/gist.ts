@@ -3,12 +3,12 @@ import type { Memory } from '@mastra/memory';
 
 import { GIST_INSTRUCTIONS } from './instructions.js';
 
-export const GIST_MODEL_IDS = ['claude-opus-5', 'claude-sonnet-5'] as const;
+export const GIST_MODEL_IDS = ['gpt-4.1', 'gpt-4.1-mini'] as const;
 
 export type GistModelId = (typeof GIST_MODEL_IDS)[number];
 
 export function createGistModel(modelId: GistModelId) {
-  return `anthropic/${modelId}` as const;
+  return `openai/${modelId}` as const;
 }
 
 export function createGistAgent(

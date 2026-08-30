@@ -20,7 +20,7 @@ New human messages, replies, and accepted mutations from approved Slack channels
 1. **PG-04A:** T401 runs first and commits a tested adapter event contract.
 2. **PG-04B:** T402, T403, and T404 run concurrently against that contract.
 3. **PG-04C:** T405 owns Slack/runtime integration files.
-4. **PG-04D:** T406 validates end to end.
+4. **PG-04D:** T406 validates end to end. **Partially met.** The e2e scaffold and every offline case are merged (`347ec14`); the ambient-ingestion cases remain open because they need a real human message in the approved dev channel — the bot cannot generate one, since its own messages are filtered as `isMe` before any handler runs (T401 §3). Tracked as B-07. PG-04D does not close until those cases run against a live message.
 
 P04 component work may run in parallel with P03 component/import work because source paths differ. T501 waits for both phases.
 
@@ -32,8 +32,8 @@ P04 component work may run in parallel with P03 component/import work because so
 | [T402](../tasks/T402-EVENT-NORMALIZATION.md) | Completed | T401 | PG-04B | claude-planner-2 | 4c615da |
 | [T403](../tasks/T403-SILENT-PERSISTENCE.md) | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | c3365cd |
 | [T404](../tasks/T404-MUTATION-POLICY.md) | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | 21f5d72 |
-| [T405](../tasks/T405-LIVE-INTEGRATION.md) | Planned | T402–T404, T204 | PG-04C | Unassigned | — |
-| [T406](../tasks/T406-LIVE-VALIDATION.md) | Planned | T405, T205 | PG-04D | Unassigned | — |
+| [T405](../tasks/T405-LIVE-INTEGRATION.md) | Completed | T402–T404, T204 | PG-04C | pi-coder-12 | f64b2dc |
+| [T406](../tasks/T406-LIVE-VALIDATION.md) | In Progress (scaffold merged) | T405, T205 | PG-04D | pi-coder-14 | — (scaffold `347ec14`) |
 
 ## Integration procedure
 

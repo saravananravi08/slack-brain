@@ -100,7 +100,7 @@ describe('integrated recall quality with synthetic embeddings', () => {
 
   it('keeps automatic citation recall model-invisible', async () => {
     const resource = await makeMemory();
-    const agent = createGistAgent(createGistModel('claude-opus-5'), resource.memory);
+    const agent = createGistAgent(createGistModel('gpt-4.1'), resource.memory);
     const processors = await resource.memory.getInputProcessors();
 
     expect(processors).toEqual(

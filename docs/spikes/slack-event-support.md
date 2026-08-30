@@ -4,7 +4,7 @@
 - **Date:** 2026-08-30
 - **Pinned versions:** `chat@4.39.0`, `@chat-adapter/slack@4.39.0` (exact pins in `package.json`)
 - **Executable evidence:** [`tests/spikes/slack-events/event-routing.spike.test.ts`](../../tests/spikes/slack-events/event-routing.spike.test.ts) — 31 assertions against the real SDK classes
-- **Live probe:** re-run 2026-08-30 after the app reinstall; scopes and `users.info` confirmed, event delivery still **not** confirmed (§8)
+- **Live probe:** re-run 2026-08-30 after the DM-scope reinstall; every required scope and `users.info` confirmed, event delivery still **not** confirmed (§8)
 - **Consumers:** T402 (normalization), T403 (silent persistence), T404 (mutation policy), T405 (live integration)
 
 ## 1. Question
@@ -27,7 +27,7 @@ Two halves, one of which is blocked.
 
 The negative assertions were mutation-checked: feeding a normal user into the self-message case and an empty subtype into the ignored-subtype case both fail the suite, so "no handler fired" is a measurement rather than a race.
 
-**Live (partially done).** The probe has been run twice against the real workspace: once after B-04 cleared its tokens for development use, and again after the operator reinstalled the app with `chat:write` and `users:read`. Socket Mode connects end to end and `users.info` now works. No Slack event has been generated either time, because the app is still not a member of the probe channel — a membership problem, not a scope one. See §8. The envelope shapes in §6 therefore remain read from the adapter's parsing code and published docs, not confirmed against a live delivery.
+**Live (partially done).** The probe has been run three times against the real workspace, once after each operator fix: B-04 cleared its tokens for development use, then `chat:write` + `users:read` were added, then `im:read` / `im:write` / `im:history`. Socket Mode connects end to end, `users.info` works, and **no required scope is missing on either the channel or the DM path**. No Slack event has been generated on any run, for reasons that are no longer about scopes — see §8. The envelope shapes in §6 therefore remain read from the adapter's parsing code and published docs, not confirmed against a live delivery.
 
 ## 3. Routing — what reaches which handler
 
@@ -112,57 +112,65 @@ Both were asserted by reading the keys back out of the state adapter after a del
 
 ## 8. Live probe — what ran, and what is still open
 
-Run twice: first after **B-04** cleared the workspace's tokens for development use, then again on 2026-08-30 after the operator reinstalled the app with `chat:write` and `users:read` (**B-05**). The reinstall fixed both scope gaps. One thing still blocks event delivery, and it is not a scope.
+Run three times, once after each operator fix: **B-04** (tokens cleared for development use), **B-05** (`chat:write`, `users:read`), and **B-06** (`im:read`, `im:write`, `im:history`). Every scope the probe needs is now granted. What remains is not a permissions problem.
 
 ### Confirmed live
 
-- **The app-level token and Socket Mode work end to end.** `startSocketMode()` opens a connection to Slack, holds it, and disconnects cleanly. Socket Mode is the transport FR-SLK-011 requires, and it is proven against real Slack rather than inferred.
-- **`auth.test` succeeds and the adapter's identity bootstrap works** — the adapter resolves its bot user ID and bot ID over the network, which is the `initialize()` path T106 depends on.
-- **`chat:write` and `users:read` are granted.** The probe's preflight reports no missing required scope.
-- **`users.info` succeeds.** This is the T203 unblock: the sender resolver now has a data source, and `deleted`, `is_restricted`, and `is_ultra_restricted` are all readable. See §7.1 for the one field that is *not* returned and what to use instead — that correction matters more than the scope fix itself.
-- **`conversations.info` and `conversations.list` succeed.**
+- **Socket Mode works end to end.** `startSocketMode()` opens a connection, holds it, and disconnects cleanly — the transport FR-SLK-011 requires, proven rather than inferred.
+- **`auth.test` succeeds and the adapter's identity bootstrap works**, which is the `initialize()` path T106 depends on.
+- **Every required scope is granted, on both paths.** Preflight reports `missing required scopes: (none)` in channel mode and in DM mode. The installed set is:
 
-### Still blocked: the app is not in the probe channel
+  ```
+  app_mentions:read, channels:history, channels:read, chat:write,
+  files:read, groups:history, groups:read, im:history, im:read, im:write,
+  incoming-webhook, mpim:history, mpim:read, search:read.private,
+  search:read.public, users:read
+  ```
 
-```
-granted scopes: channels:history, channels:read, groups:history, groups:read,
-                files:read, im:history, mpim:read, search:read.private,
-                search:read.public, app_mentions:read, incoming-webhook,
-                users:read, chat:write
-missing required scopes: (none)
-users.info (T203 sender resolver): { ok: true }
-probe channel is_member: false
-```
+  Against the T003 manifest that is a superset: `groups:*`, `files:read`, `mpim:*`, `search:read.*`, and `incoming-webhook` are present although the manifest excludes them. Narrowing to the manifest is a separate operator decision; nothing in this spike needs them.
 
-`conversations.info` for `GIST_DEV_CHANNEL_ID` reports `is_member: false`, `is_private: false`, `is_archived: false`. The consequences are both halves of what the probe exists to do:
+- **`users.info` succeeds** — the T203 sender resolver has its data source. §7.1 records the one field it does *not* return, which matters more than the scope fix.
+- **`conversations.info`, `conversations.list`, and `conversations.open` all succeed.**
 
-- `chat.postMessage` returns **`not_in_channel`** — the probe cannot post the message it would then edit and delete.
-- Slack delivers `message.channels` events only for channels an app has joined, so **no event would arrive even if someone else posted**.
+### Still unverified, and what each needs
 
-The probe cannot fix this itself: `conversations.join` returns `missing_scope` with `needed: channels:join`, which is not granted.
+| Item | Status | What it needs |
+|---|---|---|
+| `message.channels` delivery + envelope shapes | **blocked** | the app added to the probe channel |
+| `message.im` delivery + envelope shapes | **blocked** | a nominated DM counterparty (see below) |
+| `message.channels` / `message.im` *subscription* | **unverifiable via API** | event subscriptions are not scopes; reading them back needs an app-configuration token, so the first successful delivery is what confirms them |
+| Retry / `retry_num` behaviour | blocked | follows from either delivery path |
 
-### The remaining fix (operator, one step)
+**The channel path** is blocked on membership, not permission: `conversations.info` still reports `is_member: false`, `chat.postMessage` returns `not_in_channel`, and `conversations.join` is refused with `needed: channels:join`, which is not granted. Fix: add the Gist Dev app to the probe channel in Slack (the channel → Integrations → Add apps), matching runbook §3; or grant `channels:join` and reinstall so the probe joins itself.
 
-Either of these unblocks it, and neither needs a code change:
+**The DM path** is blocked on not knowing who to message. The probe now supports DM mode, but it will not choose a counterparty for itself:
 
-1. **Add the app to the probe channel from Slack** — open the channel, then Integrations → Add apps → add the Gist Dev app. No scope change, no reinstall.
-2. **Grant `channels:join` and reinstall**, after which the probe can join the channel itself.
+- `users.lookupByEmail` is refused — `needed: users:read.email` — so the operator's account cannot be identified by email, and `users.list` returns no email on any of the 200 member records.
+- The bot already has 10 open DM conversations with 10 distinct users, none of them identifiable from the data available.
+- A bot cannot DM itself: `conversations.open` with the bot's own user returns `cannot_dm_bot`.
 
-Option 1 is narrower and matches the T003 runbook §3, which has the operator add the app to `gist-dev-test` only. Note the granted set still differs from that manifest in other ways — `groups:*`, `files:read`, `mpim:read`, `search:read.*`, and `incoming-webhook` are present although the manifest excludes them, and `im:read` / `im:write` are absent — so DM delivery (`message.im`) is also unverified.
+Discovering a counterparty from `users.list` would mean messaging a person nobody nominated, in a workspace holding 200 member records. The probe therefore requires the ID to be given to it, and there is deliberately no fallback.
 
-Then re-run:
+### Running it once either input arrives
 
 ```bash
+# Channel path — after the app is added to the probe channel.
 node --env-file=.env --experimental-strip-types tests/spikes/slack-events/live-probe.ts
+
+# DM path — needs no channel membership.
+GIST_DEV_DM_USER_ID=U… node --env-file=.env --experimental-strip-types \
+  tests/spikes/slack-events/live-probe.ts
 ```
 
-The probe preflights first, reporting granted scopes, missing scopes, `users.info` reachability, and channel membership, and exits without writing if the app cannot post. On a healthy install it posts one clearly-marked synthetic message, replies in thread, edits, deletes, and prints envelope *shapes* only — no token, no identifier, no message text.
+`GIST_DEV_DM_USER_ID` should be the operator's own Slack user ID or a dedicated test account's. DM mode wins when both targets are set, because it is the one that runs while the app is still outside the channel. The probe DMs only that user.
+
+Either mode preflights first — granted scopes, missing scopes, `users.info` reachability, and channel membership or DM openability — and exits without writing if it cannot post. On a healthy target it posts one clearly-marked synthetic message, replies in thread, edits, deletes, and prints envelope *shapes* only: no token, no identifier, no message text.
 
 ### B-01 (open) — impact
 
-**Unchanged for T402/T403/T404.** The handler contract in §9 rests on the offline evidence, which is complete. What stays unconfirmed is that Slack's live envelopes match the synthetic fixtures, and that `message.channels` is actually subscribed for this app — event subscriptions are not scopes and cannot be read back through the Web API without an app-configuration token. Both risks land on T405/T406, which need a live workspace regardless.
+**Unchanged for T402/T403/T404.** The handler contract in §9 rests on the offline evidence, which is complete. What stays unconfirmed is that Slack's live envelopes match the synthetic fixtures, and that the two message subscriptions are actually enabled for this app. Both risks land on T405/T406, which need a live workspace regardless.
 
-**The T203 half of this blocker is resolved.** `users:read` is granted and `users.info` works, so the sender resolver has its data source. The `is_stranger` finding in §7.1 replaces it with a sharper requirement rather than a blocker.
+**The T203 half is resolved.** `users:read` is granted and `users.info` works. The `is_stranger` finding in §7.1 replaces that blocker with a sharper requirement on T405.
 
 ## 9. Chosen handler contract
 

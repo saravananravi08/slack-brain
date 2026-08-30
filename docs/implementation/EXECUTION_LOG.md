@@ -60,3 +60,53 @@ _No implementation events recorded yet._
 - Smoke assertion changed to subset match so T305+ script additions do not regress T101 smoke.
 - T305 Completed: archive importer orchestration + CLI + runbook (pi-coder-9, merge aa1b4ea). 499/499 tests.
 - T401 live probe re-run merged (6b0655b): post/edit/delete + users.info confirmed. New finding: derive is_external from team_id mismatch (is_stranger absent = fail-open risk); recorded in spike 7.1 as T405 requirement. B-05 resolved; B-06 opened for DM scopes/events.
+- T405 Completed: live silent ingestion integrated (pi-coder-12, merge f64b2dc). 513/513 tests.
+- T502 early security design review merged (claude-planner-2, review at f9ad978 tip). Findings in docs/security/design-review.md.
+- T306 synthetic import rehearsal merged (pi-coder-13). Real sample import still pending B-03.
+- Security fix packs dispatched: A (F-01/F-03/F-10 memory+agent, pi-coder-13), B (F-02/F-05/F-06/F-07 ingestion/storage/migration, claude-planner-2).
+- Integrator added test:ingestion + test:e2e scripts; .env chmod 600. ANTHROPIC_API_KEY still missing from .env (B-02 open).
+- HANDOVER.md added: full orchestrator state for zero-knowledge continuation.
+
+### 2026-08-30 — SECFIX-A and SECFIX-B merged
+
+- Scope-checked both fix branches against integration/mastra-rewrite: zero file overlap (A touches src/mastra/agents/instructions.ts, src/mastra/memory/gist-memory.ts + tests; B touches src/ingestion/mutations/**, src/migration/mapping/**, src/mastra/index.ts + tests). git diff --check clean on both.
+- Merged SECFIX-B first (fix/security-review-pack-b, 3 commits) --no-ff as 538ead1. Covers F-02 (mutation crash windows / tombstone rollback), F-05 (storage built from validated config not import-time), F-06 (archive import routed through authorize()), F-07 (retention fail-open closed).
+- Merged SECFIX-A second (fix/security-review-pack-a, 1 commit) --no-ff as 79d4f82. Covers F-01 (post-recall boundary filter), F-03 (retrieval_failed vs empty), F-10 (prompt-injection delimiter + untrusted-data instruction).
+- Verified: npm test -- 35 files, 534 tests passed (up from 514 pre-merge). npm run typecheck -- clean.
+- Recorded D011 (F-16 ruling: channel history is channel history; external/guest/deactivated historical messages remain in corpus).
+- Updated docs/security/design-review.md section 9 with resolution table.
+- Workers: pi-coder-13 (SECFIX-A) and claude-planner-2 (SECFIX-B) now idle. pi-coder-14 (T406) blocked on B-02 (ANTHROPIC_API_KEY), missing package.json scripts, and human ambient message. pi-coder-15 idle/fresh.
+
+### 2026-08-30 — D012 accepted; B-02 resolved
+
+- D012 superseded D007: generation moved to OpenAI `gpt-4.1`, with `gpt-4.1-mini` as the pre-approved step-down.
+- Existing `OPENAI_API_KEY` now serves generation and embeddings; no Anthropic credential is required. B-02 resolved.
+- Follow-up: T205 re-baselines generation quality; T503 adjusts cost and latency expectations.
+
+### 2026-08-30 — SECFIX-C merged
+
+- Merged `fix/security-review-pack-c` --no-ff as `185aa73`. Covers F-11 (test files relocated out of `src/migration/**` so they no longer compile into `dist`), F-13 (retention sweep paged instead of loading every message), F-14 (tombstone map growth and `updateResource` merge semantics), F-15 (`semanticRecall.scope` pinned on the recall processor rather than accepted from the request context).
+- Touched `src/ingestion/mutations/{handler,mastra-store,types}.ts`, `src/mastra/memory/gist-memory.ts`, and the matching suites. No overlap with SECFIX-A or SECFIX-B.
+- Design review section 9 updated with the four resolutions.
+
+### 2026-08-30 — D012 merged (generation on OpenAI)
+
+- Merge `ab6f023` lands the D012 provider switch in code: `src/config.ts` now validates `GIST_MODEL` as `gpt-4.1` / `gpt-4.1-mini` and requires only `OPENAI_API_KEY`; the Anthropic credential and model IDs are gone from the runtime.
+- D007 marked Superseded in `DECISIONS.md`; D008 embeddings unchanged and now share the same provider and credential.
+- B-02 resolved as a consequence — there is no second credential to obtain.
+- Follow-ups stand: T205 re-baselines generation quality against the new model, T503 revisits cost and latency expectations.
+
+### 2026-08-30 — T406 live-ingestion e2e scaffold merged
+
+- Merged as `347ec14` (pi-coder-14). Offline validation matrix plus the OpenAI recall/mutation checks (`d2b5def`, `b05b8c9`) are green.
+- T406 stays **In Progress**. The ambient-ingestion cases cannot close offline: they need a real human message in the approved dev channel, because the bot's own messages are filtered as `isMe` before any handler runs (T401 §3). Recorded as B-07.
+- Everything not requiring a human message — normalization, authorization, dedup, mutation dispatch, recall — is covered by the merged scaffold.
+
+### 2026-08-30 — F-17 fixed and merged
+
+- Merged `fix/security-f17` --no-ff as `3d7390b` (claude-planner-2). Highest-severity finding from the T502 early design review.
+- Diagnostic first (`c144a44`): with the agent driven by a hand-rolled fake model — no provider, no key — the agent persisted the user turn under a random UUID while the ingestion writers used `messageKey`. One Slack message, two rows. `MutationHandler` resolves by `messageKey`, so a delete reached one and left the other: deleted text stayed in memory and recall saw the message twice.
+- Fix: `agentUserTurn()` builds the agent's user turn as the canonical record for that message — same `messageKey` id, `createdAt` from the Slack timestamp, and the same metadata block `ambient-persistence.ts` writes. Assigning the id alone was not sufficient: once both writers shared a key, ambient persistence refused to overwrite a row it did not recognise and every subscribed-thread message became a `content_conflict`. Making the row canonical makes the two writers converge whichever arrives first.
+- Diagnostic inverted to assert the fixed behaviour: zero survivors after a delete, the addressed-only case now reports `deleted` rather than a no-op `unchanged`, and no embedding outlives the row (INV-9).
+- Verified on the integration branch after all merges: `npm test` — 37 files passed (2 skipped), 546 tests passing (2 skipped, 4 todo). `npm run typecheck` clean.
+- Remaining T502 findings: F-12, F-18, F-19, F-20. Testability triaged in `docs/security/remaining-findings-triage.md` — none is blocked on live Slack.

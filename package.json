@@ -18,7 +18,9 @@
     "import:slack": "tsx scripts/import-slack.ts",
     "test": "vitest run",
     "test:migration": "vitest run tests/fixtures/migration tests/migration src/migration",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:ingestion": "vitest run tests/ingestion",
+    "test:e2e": "vitest run tests/e2e"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.46",

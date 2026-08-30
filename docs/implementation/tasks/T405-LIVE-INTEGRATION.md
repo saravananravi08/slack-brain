@@ -1,8 +1,8 @@
 # T405 — Integrate live silent ingestion
 
-- **Status:** Planned
+- **Status:** Completed
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-12
 - **Branch:** `task/T405-integrate-live-silent-ingestion`
 - **Parallel group:** PG-04C
 - **Depends on:** T402, T403, T404, T204
@@ -69,18 +69,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Ambient messages persist and receive no reply.
-- [ ] Mentions still produce exactly one reply.
-- [ ] Retries/mutations remain idempotent.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Ambient messages persist and receive no reply.
+- [x] Mentions still produce exactly one reply.
+- [x] Retries/mutations remain idempotent.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
-- Merge commit: —
+- Implementation commit: `b9c52516aacac0a6f94825cbeecf8bdddf9be91e`
+- Handoff commit: This task/log metadata commit (exact hash in branch history and handoff report).
+- Merge commit: f64b2dc
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

@@ -29,8 +29,7 @@ beforeAll(async () => {
     GIST_APPROVED_CHANNEL_IDS: SYNTHETIC.channelApproved,
     GIST_USER_ALLOWLIST: '',
     GIST_DM_SHARED_KNOWLEDGE: 'false',
-    GIST_MODEL: 'claude-opus-5',
-    ANTHROPIC_API_KEY: 'synthetic-anthropic-key',
+    GIST_MODEL: 'gpt-4.1',
     EMBEDDING_MODEL: 'openai/text-embedding-3-small',
     OPENAI_API_KEY: 'synthetic-openai-key',
     MASTRA_DATABASE_URL: pathToFileURL(join(directory, 'mastra.db')).href,
@@ -46,17 +45,17 @@ afterAll(async () => {
 });
 
 describe('foundation runtime', () => {
-  it('validates configuration before storage initialization', async () => {
+  it('validates configuration before any storage exists', async () => {
+    // There is no storage to spy on until configuration has been validated,
+    // which is the point: the factory builds it from `config.databaseUrl`
+    // rather than from a module-level `process.env` read (design review F-05).
     vi.stubEnv('GIST_MODEL', 'invalid-model');
-    const initialize = vi.spyOn(runtimeModule.storage, 'init');
 
     await expect(runtimeModule.createFoundationRuntime()).rejects.toBeInstanceOf(
       ConfigError,
     );
-    expect(initialize).not.toHaveBeenCalled();
 
-    initialize.mockRestore();
-    vi.stubEnv('GIST_MODEL', 'claude-opus-5');
+    vi.stubEnv('GIST_MODEL', 'gpt-4.1');
   });
 
   it('registers Gist, routes synthetic addressed turns, and settles cleanly', async () => {
@@ -78,8 +77,8 @@ describe('foundation runtime', () => {
     );
 
     expect(runtime.mastra.listAgents().gist).toBe(runtime.gistAgent);
-    expect(runtime.mastra.getStorage()?.id).toBe(runtimeModule.storage.id);
-    expect(runtime.mastra.observability).toBe(runtimeModule.observability);
+    expect(runtime.mastra.getStorage()?.id).toBe('gist-storage');
+    expect(runtime.mastra.observability).toBeDefined();
 
     await runtime.start();
     await runtime.start();
@@ -112,11 +111,17 @@ describe('foundation runtime', () => {
       expect(turn.thread.posts).toHaveLength(1);
       expect(turn.thread.posts[0]).toBeInstanceOf(ReadableStream);
     }
-    expect(agentStream.mock.calls.map(([request]) => request)).toEqual([
-      expect.any(String),
-      expect.any(String),
-      expect.any(String),
-    ]);
+    // The agent receives a user turn keyed on the message's content identity,
+    // not a bare string: both writers must land on one row, or a delete keyed
+    // on messageKey cannot reach the agent's copy (design review F-17).
+    const streamedTurns = agentStream.mock.calls.map(([request]) => request);
+    expect(streamedTurns).toHaveLength(3);
+    for (const turn of streamedTurns) {
+      expect(turn).toMatchObject({
+        id: expect.stringMatching(/^T[^/]+\/[^/]+\/\d+\.\d+$/),
+        role: 'user',
+      });
+    }
 
     const denied = makeThread({ channelId: SYNTHETIC.channelUnapproved });
     await runtime.channel.handlers.onNewMention(denied.thread, makeMessage());

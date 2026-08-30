@@ -47,19 +47,38 @@ export interface DeleteResult {
 export interface RetentionPolicy {
   readonly now: string;
   readonly approved_channel_ids: readonly string[];
-  /** Removal time is required; absence cannot prove the 30-day deadline elapsed. */
+  /**
+   * Recorded removal times. An absent entry no longer means "never purge":
+   * the sweep starts the clock at `now` and reports the channel until the
+   * caller persists the timestamp (design review F-07).
+   */
   readonly channel_removed_at: Readonly<Record<string, string>>;
 }
 
 export interface RetentionResult extends DeleteResult {
   readonly examined: number;
+  /**
+   * De-approved channels still holding content with no recorded removal time.
+   * Non-empty means D004's grace period has not started for them.
+   */
+  readonly unrecorded_channel_removals: readonly string[];
+  /** Removal times the caller must persist so the grace period can elapse. */
+  readonly channel_removal_starts: Readonly<Record<string, string>>;
+  /** Partial deletions repaired before the sweep ran (design review F-02). */
+  readonly reconciled: number;
 }
 
 export interface MutationStorage {
   editMessage(messageKey: MessageKey, newText: string, editedAt: string): Promise<'updated' | 'unchanged'>;
   deleteMessages(keys: readonly MessageKey[], deletedAt: string): Promise<DeleteResult>;
   isTombstoned(boundaryId: BoundaryId, messageKey: MessageKey): Promise<boolean>;
-  listMessages(): Promise<readonly MastraDBMessage[]>;
+  /** Stream one thread's messages at a time so retention never loads the corpus at once. */
+  listMessageBatches(): AsyncIterable<readonly MastraDBMessage[]>;
+  /**
+   * Finish deletions and edits interrupted between their vector and row
+   * writes. Idempotent; returns the number of repairs (design review F-02).
+   */
+  reconcileTombstones(): Promise<number>;
 }
 
 export interface MutationHandlerOptions {

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -273,18 +273,35 @@ describe('Mastra observability', () => {
     await mastra.shutdown();
   });
 
-  it('registers storage and observability on the initial Mastra instance', async () => {
+  it('registers storage and observability on a runtime Mastra instance', async () => {
     const directory = await makeTemporaryDirectory();
-    vi.stubEnv(
-      'MASTRA_DATABASE_URL',
-      pathToFileURL(join(directory, 'registered.db')).href,
-    );
+    const { createRuntimeMastra } = await import('../../src/mastra/index.js');
 
-    const { mastra, observability, storage } = await import('../../src/mastra/index.js');
+    const storage = createMastraStorage({
+      databaseUrl: pathToFileURL(join(directory, 'registered.db')).href,
+    });
+    const { mastra, observability } = createRuntimeMastra(storage);
 
     expect(mastra.getStorage()).toBeDefined();
     expect(await mastra.getStorage()?.getStore('observability')).toBeDefined();
     expect(mastra.observability).toBe(observability);
     await mastra.shutdown();
+  });
+
+  it('creates no database and reads no environment variable at import time', async () => {
+    // F-05: importing the runtime module used to construct a store from a raw
+    // `process.env.MASTRA_DATABASE_URL` read and `mkdirSync` its directory,
+    // before configuration was validated. A fresh import must now be inert.
+    const directory = await makeTemporaryDirectory();
+    vi.resetModules();
+    vi.stubEnv('MASTRA_DATABASE_URL', '');
+    vi.stubEnv('XDG_DATA_HOME', directory);
+    vi.stubEnv('HOME', directory);
+
+    await import('../../src/mastra/index.js');
+
+    await expect(stat(join(directory, 'slack-brain'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
   });
 });

@@ -13,8 +13,8 @@
     { "class": "config_invalid", "slack_message": null, "note": "FR-OPS-001 — the service does not start. No user message exists." }
   ],
   "must_never_reach_slack": [
-    "Mastra", "libSQL", "claude-opus-5", "openai/text-embedding-3-small",
-    "anthropic", "openai", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+    "Mastra", "libSQL", "gpt-4.1", "openai/text-embedding-3-small",
+    "openai", "OPENAI_API_KEY",
     "/src/", ".db", "stack trace", "boundary_id", "thread_id", "message_key",
     "unapproved_channel", "not_in_allowlist", "guest_user", "external_user"
   ],

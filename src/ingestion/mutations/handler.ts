@@ -1,6 +1,9 @@
-import { messageKey } from '../../mastra/memory/resource-policy.js';
+import {
+  messageKey,
+  type MessageKey,
+} from '../../mastra/memory/resource-policy.js';
 import { AUTHORIZATION_CONTRACT_VERSION, withAuthorization } from '../../security/index.js';
-import { classifyMutation, retentionMessageKeys } from './policy.js';
+import { classifyMutation, retentionPlan } from './policy.js';
 import type {
   CheckOriginalInput,
   HandleMutationInput,
@@ -102,19 +105,43 @@ export class MutationHandler {
 
   /** D004 system sweep; policy input is the authority, not a Slack user event. */
   async sweepRetention(policy: RetentionPolicy): Promise<RetentionResult> {
-    const messages = await this.#storage.listMessages();
-    const keys = retentionMessageKeys(messages, policy);
-    if (keys.length === 0) {
-      return {
-        examined: messages.length,
-        deleted: 0,
-        embeddings_deleted: 0,
-        tombstoned: [],
-        missing: [],
-      };
+    // Finish any deletion that was interrupted between its vector and row
+    // writes before deciding what else is eligible (design review F-02).
+    const reconciled = await this.#storage.reconcileTombstones();
+
+    let examined = 0;
+    let deleted = 0;
+    let embeddingsDeleted = 0;
+    const tombstoned: MessageKey[] = [];
+    const missing: MessageKey[] = [];
+    const unrecordedChannelRemovals = new Set<string>();
+    const channelRemovalStarts: Record<string, string> = {};
+
+    for await (const messages of this.#storage.listMessageBatches()) {
+      examined += messages.length;
+      const plan = retentionPlan(messages, policy);
+      for (const channel of plan.unrecorded_channel_removals) {
+        unrecordedChannelRemovals.add(channel);
+      }
+      Object.assign(channelRemovalStarts, plan.channel_removal_starts);
+      if (plan.keys.length === 0) continue;
+
+      const result = await this.#storage.deleteMessages(plan.keys, policy.now);
+      deleted += result.deleted;
+      embeddingsDeleted += result.embeddings_deleted;
+      tombstoned.push(...result.tombstoned);
+      missing.push(...result.missing);
     }
 
-    const result = await this.#storage.deleteMessages(keys, policy.now);
-    return { examined: messages.length, ...result };
+    return {
+      examined,
+      reconciled,
+      unrecorded_channel_removals: [...unrecordedChannelRemovals],
+      channel_removal_starts: channelRemovalStarts,
+      deleted,
+      embeddings_deleted: embeddingsDeleted,
+      tombstoned,
+      missing,
+    };
   }
 }

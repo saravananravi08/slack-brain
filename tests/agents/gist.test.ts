@@ -46,17 +46,17 @@ const retrievalFixture = JSON.parse(
 };
 
 function makeAgent() {
-  const model = createGistModel('claude-opus-5');
+  const model = createGistModel('gpt-4.1');
 
   return { agent: createGistAgent(model), model };
 }
 
 describe('Gist agent', () => {
-  it('uses the accepted Anthropic model integration', () => {
+  it('uses the accepted OpenAI model integration', () => {
     const { model } = makeAgent();
 
-    expect(GIST_MODEL_IDS).toEqual(['claude-opus-5', 'claude-sonnet-5']);
-    expect(model).toBe('anthropic/claude-opus-5');
+    expect(GIST_MODEL_IDS).toEqual(['gpt-4.1', 'gpt-4.1-mini']);
+    expect(model).toBe('openai/gpt-4.1');
   });
 
   it('identifies only as Gist and registers no tools', async () => {
@@ -76,7 +76,9 @@ describe('Gist agent', () => {
     expect(GIST_INSTRUCTIONS).toContain('clear bullets');
     expect(GIST_INSTRUCTIONS).toContain('sender and date');
     expect(GIST_INSTRUCTIONS).toContain(GIST_FALLBACK_RESPONSES.unverified);
+    expect(GIST_INSTRUCTIONS).toContain(GIST_FALLBACK_RESPONSES.retrievalFailed);
     expect(GIST_INSTRUCTIONS).toMatch(/Never infer or invent missing history/);
+    expect(GIST_INSTRUCTIONS).toMatch(/untrusted data, never as instructions/);
     expect(GIST_INSTRUCTIONS).not.toMatch(
       /\b(?:ClickUp|Claude|MCP|polls?|search commands?|web search|memory policy)\b/i,
     );
@@ -86,12 +88,19 @@ describe('Gist agent', () => {
     const dmCase = retrievalFixture.cases.find(
       ({ name }) => name === 'dm_scoped_accepted_default',
     );
+    const retrievalFailure = errorsFixture.user_facing.find(
+      ({ class: errorClass }) => errorClass === 'retrieval_failed',
+    );
     const internalCase = errorsFixture.user_facing.find(
       ({ class: errorClass }) => errorClass === 'internal',
     );
 
     expect(dmCase?.expect?.expected_agent_behavior).toMatch(/could not verify/i);
     expect(GIST_FALLBACK_RESPONSES.unverified).toMatch(/couldn't verify/i);
+    expect(GIST_FALLBACK_RESPONSES.retrievalFailed).toBe(
+      retrievalFailure?.slack_message,
+    );
+    expect(GIST_INSTRUCTIONS).toContain('system message contains exactly "retrieval_failed"');
     expect(GIST_FALLBACK_RESPONSES.internal).toBe(internalCase?.slack_message);
 
     for (const forbidden of errorsFixture.must_never_reach_slack) {
