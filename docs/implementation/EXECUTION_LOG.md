@@ -38,3 +38,4 @@ _No implementation events recorded yet._
 - T201 Completed: Mastra memory + semantic recall config (pi-coder-7, merge af8fb8d).
 - T202 Completed: resource/thread identity policy (pi-coder-5, merge a55ed56).
 - T203 Completed: Slack authorization + privacy guard (claude-planner-2, merge 49751a4). Cross-boundary denial tests included.
+- T205 Completed: retrieval benchmark harness (pi-coder-6, merge bcfb465). Synthetic benchmark: 8 cases, all gates pass.

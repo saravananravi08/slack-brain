@@ -1,6 +1,6 @@
 # T205 — Build retrieval benchmark harness
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-6
 - **Branch:** `task/T205-build-retrieval-benchmark-harness`
@@ -80,6 +80,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `a6ed5bcf489a6d0c61fb11e6d7a007db40b29f5d`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: bcfb465
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
