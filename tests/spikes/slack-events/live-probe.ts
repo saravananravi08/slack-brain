@@ -152,6 +152,72 @@ async function slackApi(
   return (await response.json()) as Record<string, unknown>;
 }
 
+async function slackGet(
+  token: string,
+  method: string,
+  query: Record<string, string>,
+): Promise<Record<string, unknown>> {
+  const url = `https://slack.com/api/${method}?${new URLSearchParams(query).toString()}`;
+  const response = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  return (await response.json()) as Record<string, unknown>;
+}
+
+/**
+ * Report what the installed token can actually do, before trying to use it.
+ *
+ * A probe that only says "post failed" costs the next operator three more runs
+ * to find out why. Scope *names* are printed; no token value ever is.
+ */
+async function preflight(
+  botToken: string,
+  channelId: string,
+): Promise<{ canPost: boolean; canReadUsers: boolean; isMember: boolean }> {
+  const response = await fetch('https://slack.com/api/auth.test', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${botToken}`,
+      'content-type': 'application/json; charset=utf-8',
+    },
+    body: '{}',
+  });
+  const granted = (response.headers.get('x-oauth-scopes') ?? '')
+    .split(',')
+    .map((scope) => scope.trim())
+    .filter((scope) => scope !== '');
+  const auth = (await response.json()) as { ok?: boolean; user_id?: string };
+
+  const required = ['chat:write', 'users:read', 'channels:history', 'app_mentions:read'];
+  const missing = required.filter((scope) => !granted.includes(scope));
+
+  // Both are read methods and must be sent as GET with query parameters; a
+  // JSON POST returns `invalid_arguments`, which would read as "not a member"
+  // rather than "malformed call".
+  const info = (await slackGet(botToken, 'conversations.info', {
+    channel: channelId,
+  })) as { ok?: boolean; error?: string; channel?: { is_member?: boolean } };
+
+  const users = (await slackGet(botToken, 'users.info', {
+    user: auth.user_id ?? '',
+  })) as { ok?: boolean; error?: string };
+
+  console.log('auth.test ok:', auth.ok === true);
+  console.log('granted scopes:', granted.join(', ') || '(none reported)');
+  console.log('missing required scopes:', missing.join(', ') || '(none)');
+  console.log('users.info (T203 sender resolver):', {
+    ok: users.ok === true,
+    error: users.error,
+  });
+  console.log('probe channel is_member:', info.channel?.is_member === true, {
+    error: info.error,
+  });
+
+  return {
+    canPost: granted.includes('chat:write'),
+    canReadUsers: users.ok === true,
+    isMember: info.channel?.is_member === true,
+  };
+}
+
 function required(name: string): string {
   const value = process.env[name];
   if (typeof value !== 'string' || value.trim() === '') {
@@ -164,6 +230,18 @@ async function main(): Promise<void> {
   const botToken = required('SLACK_BOT_TOKEN');
   const appToken = required('SLACK_APP_TOKEN');
   const channelId = required('GIST_DEV_CHANNEL_ID');
+
+  const checks = await preflight(botToken, channelId);
+  if (!(checks.canPost && checks.isMember)) {
+    console.log(
+      '\nPreflight failed: the installed app cannot post to the probe channel.',
+      'Install the Gist Dev app per docs/runbooks/slack-dev-environment.md §1-§3,',
+      'add it to the probe channel, and point GIST_DEV_CHANNEL_ID at that channel.',
+      '\nStopping before any write — a probe does not post into a workspace it',
+      'cannot first confirm it belongs in.',
+    );
+    process.exit(2);
+  }
 
   const adapter = createSlackAdapter({ mode: 'socket', botToken, appToken });
 
