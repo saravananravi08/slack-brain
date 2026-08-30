@@ -1,6 +1,6 @@
 # T001 — Resolve product and security decisions
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** claude-planner
 - **Branch:** `task/T001-resolve-product-and-security-decisions`
@@ -11,7 +11,6 @@
 - **Conflicts with:** None under declared write scope
 - **Task log:** [`../logs/T001.md`](../logs/T001.md)
 - **Worktree:** `../worktrees/T001`
-- **Awaiting:** human product/security/technical owner approval of the D001–D010 proposals. Proposals are recorded with status `Proposed`; the task cannot reach `Ready for Integration` until the named owners accept or amend them.
 - **Write scope:**
   - `docs/implementation/DECISIONS.md`
   - `GIST_MASTRA_PRD.md`
@@ -67,19 +66,19 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] No downstream task must invent unresolved product policy.
-- [ ] Every accepted decision names affected tasks.
-- [ ] Deferrals include owner, date, and safe default.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] No downstream task must invent unresolved product policy.
+- [x] Every accepted decision names affected tasks.
+- [x] Deferrals include owner, date, and safe default.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
 - Proposal commit (D001–D010 drafted, status `Proposed`): `0228518`
-- Implementation commit (acceptance recorded): —
-- Handoff commit: —
+- Implementation commit (acceptance recorded): `4924cdaa3a5229e3ad75c5c2720ca98829f529c0`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
