@@ -1,6 +1,6 @@
 # T103 — Configure Mastra storage and tracing
 
-- **Status:** Blocked
+- **Status:** In Progress
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder-3
 - **Branch:** `task/T103-configure-mastra-storage-and-tracing`
@@ -75,12 +75,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
-
-## Blocker
-
-- Required `@mastra/observability` runtime package is absent from the T101 scaffold. Pinned `@mastra/core` uses `NoOpObservability` without an `Observability` instance, so trace persistence/redaction cannot be configured.
-- Owner: Coordinator / package-file owner.
-- Unblock condition: merge a pinned, core-compatible `@mastra/observability` dependency into `package.json` and `package-lock.json`, or explicitly transfer those paths to T103; then update T103 from integration.
 
 ## Completion record
 
