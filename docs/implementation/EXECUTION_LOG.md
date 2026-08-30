@@ -110,3 +110,29 @@ _No implementation events recorded yet._
 - Diagnostic inverted to assert the fixed behaviour: zero survivors after a delete, the addressed-only case now reports `deleted` rather than a no-op `unchanged`, and no embedding outlives the row (INV-9).
 - Verified on the integration branch after all merges: `npm test` — 37 files passed (2 skipped), 546 tests passing (2 skipped, 4 todo). `npm run typecheck` clean.
 - Remaining T502 findings: F-12, F-18, F-19, F-20. Testability triaged in `docs/security/remaining-findings-triage.md` — none is blocked on live Slack.
+
+### 2026-08-30 — F-18, F-19, F-20 closed out
+
+Worked in the order the triage recommended (`docs/security/remaining-findings-triage.md`): F-20 first because it had to land with its coupled change, then F-18, then F-19's test.
+
+- **F-20 merged as `3f35c00`** (impl `3985b40`). `ambientProjection` no longer relabels an addressed subscribed-thread message as ambient. The coupled change the triage flagged landed with it: `AmbientNormalizedEvent.class` widened to `'ambient' | 'addressed'`, `addressed_to_gist` to `boolean`, and `isValidInput` now accepts either consistent pair. Without that relaxation, preserving the true classification would have turned every subscribed-thread message into a skipped `invalid_event` — converting a metadata inaccuracy into data loss. Mutations are now rejected from the persistence path with an explicit `TypeError` rather than silently mis-shaped.
+- **F-18 merged as `be979ec`** (impl `a537a8d`). Envelope capture is pinned by a spike-style test, and a missing delivery context now emits a rate-limited `ingestion.delivery_context.missing` warning (60 s interval) instead of failing silently. The failure mode this protects against is an SDK upgrade that renames or defers `processEventPayload`: ingestion would stop, every event skipping as `malformed_event`, with nothing in the logs. It is now visible in metrics.
+- **F-19 test merged as `c6fc4c2`, handoff `25edd12`.** The same-thread ambient drop under `concurrency: 'drop'` is now pinned by test, including that it is thread-scoped rather than channel-scoped, so the blast radius is bounded and measured. **The fix is deliberately deferred**: it is a design decision about whether ambient ingestion should keep sharing the reply path's concurrency control, and the recommendation is to instrument the drop count before choosing, because frequency is what the decision turns on. Carried as an accepted risk in the T502 sign-off §3.2, owner T502 follow-up / T505.
+
+### 2026-08-30 — T502 security and privacy review sign-off
+
+- Sign-off merged as `276cf52`: [`docs/reports/security-review-signoff.md`](../reports/security-review-signoff.md).
+- **Verdict: conditional go for internal beta.** 18 of 20 findings fixed in code, zero high-severity outstanding, 2 carried as named accepted risks (F-12, F-19).
+- Checks run for the sign-off rather than inherited: `npm audit --omit=dev` — 3 low, 0 moderate/high/critical (the esbuild advisory is dev-server-on-Windows only and unreachable in the deployed path); secret scan of the working tree and the full history of all branches — no `.env` ever added, zero Slack or OpenAI token-pattern matches; `tests/security` 175 passing.
+- **The condition:** no real Slack message has ever traversed the system. Design review §7 item 2 — live cross-boundary validation — is the one verification item not performed, blocked on B-07. Until it runs, "zero known cross-boundary leak" means zero known from offline evidence, and the acceptance criterion is checked with that qualification rather than silently.
+- The sign-off covers the security review only. T502's own dependencies are unsatisfied — PG-04D is open on T406 — so it does not close the P05 gate or unblock T505 by itself.
+
+### 2026-08-30 — T504 deployment runbook merged
+
+- Merged as `eebe8a9` (impl `820a393`, handoff `1b1e1cc`). The task branch was 49 commits behind and still listed `ANTHROPIC_API_KEY`; integration was merged in first so the runbook describes the tree it actually deploys.
+- **F-12's single-instance constraint is documented**, closing the T502 sign-off §3.1 condition. All three reasons Gist runs as one process, with the dangerous one named: mutation serialization is an in-process lock, so a second writer interleaves a row write with a vector write and leaves a message whose text and embedding disagree — no error, no duplicate reply, nothing in the logs. Cross-referenced from `backup-restore.md`, `rollback.md`, and the systemd unit, because a retention sweep or archive import run against a live service is the same unserialized second writer.
+- **The start command was tested, not assumed, and the obvious one is wrong.** `node --experimental-strip-types src/index.ts` fails with `ERR_MODULE_NOT_FOUND` — the sources use NodeNext `.js` specifiers — and must never go in a service unit. `npx tsc && node dist/src/index.js` works and, with no configuration, prints variable names only and exits 1. That gate moved PENDING → PARTIAL; Socket Mode hold, reconnect, and SIGTERM remain T406's.
+- Added: service inventory, secret inventory (names, locations, owners, rotation — no values), and six health checks that run today without T406, one of which is the only check that catches a second instance.
+- Recorded rather than fixed out of scope: `tsconfig.json` includes `tests/**`, so a plain `npx tsc` emits `dist/tests` beside `dist/src`.
+- **Not cutover approval.** Restore and rollback rehearsals need a non-production environment plus T307 (B-03) and T406 (B-07) evidence; acceptance criterion 2 stays unchecked.
+- Verified after merge: `npm test` — 550 passing (2 skipped, 4 todo) across 37 files; `npm run typecheck` clean.

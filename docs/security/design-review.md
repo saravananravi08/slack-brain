@@ -197,6 +197,8 @@ C, D012, T406, and F-17).
 | F-14 | C (fix/security-review-pack-c) | 185aa73 | Tombstone growth bounded and `updateResource` merge semantics pinned by test. |
 | F-15 | C (fix/security-review-pack-c) | 185aa73 | `semanticRecall.scope` pinned on the recall the processor performs instead of being accepted from a caller-supplied `memoryConfig`. |
 | F-17 | fix/security-f17 | 3d7390b | Agent and ingestion writes converge on one message row. `agentUserTurn()` gives the agent's user turn the same `messageKey` id, `createdAt`, and metadata block the ingestion writers use, so a delete keyed on `messageKey` reaches every copy. Confirmed first by diagnostic (`c144a44`), which measured two rows for one Slack message and one survivor after a delete. |
+| F-18 | fix/security-f18 | `be979ec` | Envelope capture pinned by a spike-style test, and a missing delivery context now emits a rate-limited `ingestion.delivery_context.missing` warning (60 s) instead of stopping ingestion silently. An SDK upgrade that renames or defers `processEventPayload` now shows up in metrics rather than as absent data. |
+| F-20 | fix/security-f20 | `3f35c00` | `ambientProjection` preserves the normalizer's classification instead of relabelling addressed subscribed-thread messages as ambient. `AmbientNormalizedEvent.class` widened to `'ambient' \| 'addressed'` and `isValidInput` relaxed in the same change, because preserving the true class without that would have turned every subscribed-thread message into a skipped `invalid_event`. Mutations are now rejected from the persistence path explicitly. |
 
 F-16 -- coordinator ruling (2026-08-30): Per decision authority delegated by
 the operator, the defensible default applies: channel history is channel
@@ -204,10 +206,16 @@ history. Messages authored by external/guest/deactivated users remain in the
 channel corpus. D006 covers future interaction, not retroactive removal.
 Logged in DECISIONS.md as D011.
 
-Remaining findings for T502: **F-12, F-18, F-19, F-20**.
+### Not fixed — dispositioned
 
-F-12 (in-process mutation lock) is accepted for the single-instance deployment
-the PRD assumes and should be revisited if that changes. F-18, F-19, and F-20
-were triaged for testability in
-[`remaining-findings-triage.md`](./remaining-findings-triage.md): all three are
-testable offline today, and none is blocked on live Slack or a provider key.
+| Finding | Disposition | Detail |
+|---|---|---|
+| F-12 | **Accepted as risk** | In-process mutation lock. Accepted on the single-instance deployment the PRD assumes, on the condition the constraint is written down — now done in [`deployment.md`](../runbooks/deployment.md#single-instance-constraint), which states the silent failure mode (an interleaved row/vector write leaving text and embedding disagreeing) and the four prerequisites for any scale-out. Revisit owner: T506 if production topology changes. |
+| F-19 | **Test pinned (`c6fc4c2`), fix deferred** | The same-thread ambient drop under `concurrency: 'drop'` is now asserted by test, including that it is thread-scoped, so the blast radius is bounded and measured rather than suspected. The fix is a design decision — whether ambient ingestion should keep sharing the reply path's concurrency control — and the recommendation is to instrument the drop count first, because frequency is what the decision turns on. This is data loss, not a leak. Owner: T502 follow-up / T505. |
+
+All 20 findings are dispositioned: 17 fixed in code, F-16 by coordinator ruling
+(D011), F-12 accepted, F-19 test-pinned with the fix deferred. **Zero
+high-severity findings outstanding.** The sign-off is
+[`security-review-signoff.md`](../reports/security-review-signoff.md); its one
+open condition is design review §7 item 2, live cross-boundary validation,
+blocked on B-07.

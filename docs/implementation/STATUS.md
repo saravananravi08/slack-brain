@@ -7,8 +7,27 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 closed; P03 + P04 in progress; SECFIX-A+B+C merged (F-01,F-02,F-03,F-05,F-06,F-07,F-10,F-11,F-13,F-14,F-15 resolved) and F-17 fixed; D012 accepted (generation on OpenAI `gpt-4.1`); T406 e2e scaffold merged with live cases pending an operator ambient message
-- **Last updated:** 2026-08-30 (SECFIX-C `185aa73`, D012 `ab6f023`, T406 scaffold `347ec14`, F-17 `3d7390b` merged; 546 tests passing)
+- **Current phase gate:** P02 closed; P03 + P04 in progress; P05 partially underway (T502 sign-off and T504 runbook merged). D012 accepted (generation on OpenAI `gpt-4.1`). T406 e2e scaffold merged with live cases pending an operator ambient message (B-07).
+- **Last updated:** 2026-08-30 (F-17 `3d7390b`, F-20 `3f35c00`, F-18 `be979ec`, F-19 test `c6fc4c2`, T502 sign-off `276cf52`, T504 runbook `eebe8a9` merged; 550 tests passing)
+
+### Security review status
+
+All 20 findings from [`design-review.md`](../security/design-review.md) are
+dispositioned. **Zero high-severity outstanding.**
+
+| Disposition | Count | Findings |
+|---|---|---|
+| Fixed in code and merged | 17 | F-01…F-11, F-13, F-14, F-15, F-17, F-18, F-20 |
+| Resolved by ruling | 1 | **F-16** — coordinator ruling D011: channel history is channel history; external/guest/deactivated authors' historical messages stay in the corpus |
+| Accepted as risk | 1 | **F-12** — in-process mutation lock; accepted on the single-instance deployment assumption, now documented in the T504 runbook (T502 sign-off §3.1) |
+| Test pinned, fix deferred | 1 | **F-19** — ambient messages dropped by the shared `concurrency: 'drop'` lock. Data loss, not a leak. The fix is a design decision (should ambient ingestion share the reply path's concurrency control?); instrument the drop count before deciding. Owner: T502 follow-up / T505 (sign-off §3.2) |
+
+T502 verdict: **conditional go for internal beta** — see
+[`security-review-signoff.md`](../reports/security-review-signoff.md). The
+condition is that design review §7 item 2, live cross-boundary validation, has
+never run: no real Slack message has traversed the system. It is blocked on
+B-07, and until it runs "zero known cross-boundary leak" means zero known from
+offline evidence.
 
 ## Assignment protocol
 
@@ -63,9 +82,9 @@
 | [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Completed | T402, T403, T404, T204 | PG-04C | pi-coder-12 | task/T405-integrate-live-silent-ingestion | 2026-08-30 | f64b2dc |
 | [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | In Progress (scaffold merged `347ec14`; live cases pending operator ambient message) | T405, T205 | PG-04D | pi-coder-14 | task/T406-validate-live-ingestion-end-to-end | 2026-08-30 | — |
 | [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
-| [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Planned | T203, P03, P04 | PG-05A | Unassigned | — | — | — |
+| [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Ready for Integration (sign-off merged `276cf52`; does not close PG-05A — deps P03/P04 open) | T203, P03, P04 | PG-05A | claude-planner-2 | — (worked on integration) | 2026-08-30 | — |
 | [T503](./tasks/T503-PERFORMANCE-OBSERVABILITY.md) — Validate performance and observability | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
-| [T504](./tasks/T504-DEPLOYMENT-RUNBOOK.md) — Write and rehearse deployment, backup, restore, rollback runbook | P05 | Planned | T106, T307, T406 | PG-05A | Unassigned | — | — | — |
+| [T504](./tasks/T504-DEPLOYMENT-RUNBOOK.md) — Write and rehearse deployment, backup, restore, rollback runbook | P05 | Ready for Integration (runbook merged `eebe8a9`; rehearsals blocked on T307/T406 — not cutover approval) | T106, T307, T406 | PG-05A | claude-planner-2 | task/T504-write-and-rehearse-deployment-backup-restore-rollback-runbook | 2026-08-30 | — |
 | [T505](./tasks/T505-BETA-RELEASE.md) — Execute internal beta release | P05 | Planned | T501, T502, T503, T504 | PG-05B | Unassigned | — | — | — |
 | [T506](./tasks/T506-PRODUCTION-CUTOVER.md) — Perform production cutover | P05 | Planned | T505, Product/technical/security approval | PG-05C | Unassigned | — | — | — |
 | [T507](./tasks/T507-HANDOVER.md) — Complete operator and developer handover | P05 | Planned | T505 | PG-05D | Unassigned | — | — | — |
