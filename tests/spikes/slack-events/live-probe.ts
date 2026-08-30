@@ -16,7 +16,18 @@
  *   node --env-file=.env --experimental-strip-types \
  *     tests/spikes/slack-events/live-probe.ts
  *
- * Requires SLACK_BOT_TOKEN, SLACK_APP_TOKEN, GIST_DEV_CHANNEL_ID.
+ * Requires SLACK_BOT_TOKEN and SLACK_APP_TOKEN, plus a target:
+ *
+ *   GIST_DEV_CHANNEL_ID    channel mode — needs the app to be a member of
+ *                          that channel, which is what exercises
+ *                          `message.channels`.
+ *   GIST_DEV_DM_USER_ID    DM mode — exercises `message.im` instead. Set it to
+ *                          the Slack user ID of the operator or a dedicated
+ *                          test account. The probe DMs **only** that user.
+ *
+ * Set both and DM mode wins, because it needs no channel membership. There is
+ * deliberately no discovery of a DM counterparty: picking one from
+ * `users.list` would mean messaging a person nobody nominated.
  */
 
 import { createSlackAdapter } from '@chat-adapter/slack';
@@ -170,8 +181,8 @@ async function slackGet(
  */
 async function preflight(
   botToken: string,
-  channelId: string,
-): Promise<{ canPost: boolean; canReadUsers: boolean; isMember: boolean }> {
+  target: ProbeTarget,
+): Promise<{ canPost: boolean; canReadUsers: boolean; reachable: boolean }> {
   const response = await fetch('https://slack.com/api/auth.test', {
     method: 'POST',
     headers: {
@@ -186,37 +197,56 @@ async function preflight(
     .filter((scope) => scope !== '');
   const auth = (await response.json()) as { ok?: boolean; user_id?: string };
 
-  const required = ['chat:write', 'users:read', 'channels:history', 'app_mentions:read'];
+  const required =
+    target.kind === 'dm'
+      ? ['chat:write', 'users:read', 'im:write', 'im:history']
+      : ['chat:write', 'users:read', 'channels:history', 'app_mentions:read'];
   const missing = required.filter((scope) => !granted.includes(scope));
 
-  // Both are read methods and must be sent as GET with query parameters; a
-  // JSON POST returns `invalid_arguments`, which would read as "not a member"
-  // rather than "malformed call".
-  const info = (await slackGet(botToken, 'conversations.info', {
-    channel: channelId,
-  })) as { ok?: boolean; error?: string; channel?: { is_member?: boolean } };
-
+  // A read method must be sent as GET with query parameters; a JSON POST
+  // returns `invalid_arguments`, which would read as "not a member" rather
+  // than "malformed call".
   const users = (await slackGet(botToken, 'users.info', {
     user: auth.user_id ?? '',
   })) as { ok?: boolean; error?: string };
 
   console.log('auth.test ok:', auth.ok === true);
+  console.log('probe mode:', target.kind);
   console.log('granted scopes:', granted.join(', ') || '(none reported)');
   console.log('missing required scopes:', missing.join(', ') || '(none)');
   console.log('users.info (T203 sender resolver):', {
     ok: users.ok === true,
     error: users.error,
   });
-  console.log('probe channel is_member:', info.channel?.is_member === true, {
-    error: info.error,
-  });
+
+  let reachable = false;
+  if (target.kind === 'channel') {
+    const info = (await slackGet(botToken, 'conversations.info', {
+      channel: target.channelId,
+    })) as { ok?: boolean; error?: string; channel?: { is_member?: boolean } };
+    reachable = info.channel?.is_member === true;
+    console.log('probe channel is_member:', reachable, { error: info.error });
+  } else {
+    // `conversations.open` returns the DM channel without sending anything.
+    const opened = (await slackApi(botToken, 'conversations.open', {
+      users: target.userId,
+    })) as { ok?: boolean; error?: string; channel?: { id?: string } };
+    reachable = opened.ok === true && typeof opened.channel?.id === 'string';
+    if (reachable) target.channelId = opened.channel?.id;
+    console.log('DM channel opened:', reachable, { error: opened.error });
+  }
 
   return {
     canPost: granted.includes('chat:write'),
     canReadUsers: users.ok === true,
-    isMember: info.channel?.is_member === true,
+    reachable,
   };
 }
+
+/** Where the probe will post. Exactly one target is used per run. */
+type ProbeTarget =
+  | { kind: 'channel'; channelId: string }
+  | { kind: 'dm'; userId: string; channelId?: string | undefined };
 
 function required(name: string): string {
   const value = process.env[name];
@@ -229,19 +259,36 @@ function required(name: string): string {
 async function main(): Promise<void> {
   const botToken = required('SLACK_BOT_TOKEN');
   const appToken = required('SLACK_APP_TOKEN');
-  const channelId = required('GIST_DEV_CHANNEL_ID');
 
-  const checks = await preflight(botToken, channelId);
-  if (!(checks.canPost && checks.isMember)) {
+  // DM mode wins when both are set: it needs no channel membership, so it is
+  // the one that can run while the app is still outside the probe channel.
+  const dmUserId = process.env.GIST_DEV_DM_USER_ID;
+  const target: ProbeTarget =
+    typeof dmUserId === 'string' && dmUserId.trim() !== ''
+      ? { kind: 'dm', userId: dmUserId.trim() }
+      : { kind: 'channel', channelId: required('GIST_DEV_CHANNEL_ID') };
+
+  const checks = await preflight(botToken, target);
+  if (!(checks.canPost && checks.reachable)) {
     console.log(
-      '\nPreflight failed: the installed app cannot post to the probe channel.',
-      'Install the Gist Dev app per docs/runbooks/slack-dev-environment.md §1-§3,',
-      'add it to the probe channel, and point GIST_DEV_CHANNEL_ID at that channel.',
+      target.kind === 'channel'
+        ? [
+            '\nPreflight failed: the app cannot post to the probe channel.',
+            'Add the Gist Dev app to that channel (Slack → the channel →',
+            'Integrations → Add apps), or set GIST_DEV_DM_USER_ID to run the',
+            'DM path instead, which needs no channel membership.',
+          ].join(' ')
+        : [
+            '\nPreflight failed: the app cannot open a DM with GIST_DEV_DM_USER_ID.',
+            'Check that the ID is a real, active, non-bot user in this workspace.',
+          ].join(' '),
       '\nStopping before any write — a probe does not post into a workspace it',
       'cannot first confirm it belongs in.',
     );
     process.exit(2);
   }
+
+  const channelId = target.kind === 'dm' ? (target.channelId ?? '') : target.channelId;
 
   const adapter = createSlackAdapter({ mode: 'socket', botToken, appToken });
 
