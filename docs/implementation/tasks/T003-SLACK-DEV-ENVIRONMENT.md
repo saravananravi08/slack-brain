@@ -1,6 +1,6 @@
 # T003 — Prepare isolated Slack development environment
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** pi-coder-3
 - **Branch:** `task/T003-prepare-isolated-slack-development-environment`
@@ -64,18 +64,19 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] No production channel receives development events.
-- [ ] No credential appears in Git.
-- [ ] A new worker can reproduce setup from the runbook.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] No production channel receives development events.
+- [x] No credential appears in Git.
+- [x] A new worker can reproduce setup from the runbook.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `841a9d9618b4314e19205a5d87ed716dc06242b8`
+- Handoff commit: `HEAD` (`docs(T003): hand off Slack development runbook`)
+- Operator follow-up: Live app creation, denied-channel API validation, credential connectivity, and end-to-end Socket Mode smoke check pending operator credentials; no real Slack app or credential was created or used in T003.
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
