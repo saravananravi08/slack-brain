@@ -77,6 +77,7 @@
 |---|---|---|---|---|
 | T103-dep | pi-coder-3 | package.json, package-lock.json | 2026-08-30 | RELEASED 2026-08-30 (T103 merged 9f701a5) |
 | T205-dep | pi-coder-6 | package.json | 2026-08-30 | RELEASED 2026-08-30 (T205 merged bcfb465) |
+| T305-dep | pi-coder-9 | package.json (add migration CLI script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T305 merge |
 
 ## Blockers
 
