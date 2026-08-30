@@ -1,6 +1,6 @@
 # T106 — Integrate foundation runtime
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder-4
 - **Branch:** `task/T106-integrate-foundation-runtime`
@@ -68,18 +68,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] One process starts and stops cleanly.
-- [ ] Live test produces one threaded reply.
-- [ ] No Claude CLI/Bolt request path executes.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] One process starts and stops cleanly.
+- [ ] Live test produces one threaded reply. **Pending B-01; mocked threaded routing passes.**
+- [x] No Claude CLI/Bolt request path executes.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `b8f4da3cd600824d227d1db22c3997a5086dd511`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
