@@ -37,3 +37,4 @@ _No implementation events recorded yet._
 - B-01 resolved: Slack dev credentials placed in .env by operator.
 - T201 Completed: Mastra memory + semantic recall config (pi-coder-7, merge af8fb8d).
 - T202 Completed: resource/thread identity policy (pi-coder-5, merge a55ed56).
+- T203 Completed: Slack authorization + privacy guard (claude-planner-2, merge 49751a4). Cross-boundary denial tests included.
