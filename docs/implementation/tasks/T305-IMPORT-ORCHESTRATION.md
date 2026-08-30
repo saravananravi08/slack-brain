@@ -1,6 +1,6 @@
 # T305 — Integrate archive importer and reporting
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-9
 - **Branch:** `task/T305-integrate-archive-importer-and-reporting`
@@ -81,6 +81,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `206d8443fc852e24e408af5f653358063f2c2bfd`
 - Handoff commit: `6c05ce3c6030419c515fc2283c62be96be4827f2`
-- Merge commit: —
+- Merge commit: aa1b4ea
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

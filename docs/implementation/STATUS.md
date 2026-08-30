@@ -53,7 +53,7 @@
 | [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | Completed | T301 | PG-03B | pi-coder-8 | task/T302-implement-read-only-archive-source-reader | 2026-08-30 | 2b14097 |
 | [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | Completed | T301 | PG-03B | pi-coder-9 | task/T303-implement-archive-message-normalization | 2026-08-30 | 2640d21 |
 | [T304](./tasks/T304-MEMORY-WRITER.md) — Implement idempotent Mastra memory writer | P03 | Completed | T201, T301 | PG-03B | pi-coder-10 | task/T304-implement-idempotent-mastra-memory-writer | 2026-08-30 | da7558d |
-| [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | In Progress | T302, T303, T304 | PG-03C | pi-coder-9 | task/T305-integrate-archive-importer-and-reporting | 2026-08-30 | — |
+| [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | Completed | T302, T303, T304 | PG-03C | pi-coder-9 | task/T305-integrate-archive-importer-and-reporting | 2026-08-30 | aa1b4ea |
 | [T306](./tasks/T306-SAMPLE-IMPORT.md) — Run sample archive import and quality gate | P03 | Planned | T205, T305 | PG-03D | Unassigned | — | — | — |
 | [T307](./tasks/T307-FULL-IMPORT.md) — Execute full historical import | P03 | Planned | T306, Product/security approval | PG-03E | Unassigned | — | — | — |
 | [T401](./tasks/T401-ADAPTER-EVENT-SPIKE.md) — Spike supported ordinary Slack event handling | P04 | Completed | T104, T206 | PG-04A | claude-planner-2 | task/T401-spike-supported-ordinary-slack-event-handling | 2026-08-30 | 8ba694e |

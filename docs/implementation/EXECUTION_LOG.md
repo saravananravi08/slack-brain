@@ -58,3 +58,4 @@ _No implementation events recorded yet._
 - T403 Completed: silent ambient persistence, no model calls (pi-coder-10, merge c3365cd).
 - T404 Completed: edit/delete + retention mutation policy (pi-coder-11, merge 21f5d72).
 - Smoke assertion changed to subset match so T305+ script additions do not regress T101 smoke.
+- T305 Completed: archive importer orchestration + CLI + runbook (pi-coder-9, merge aa1b4ea). 499/499 tests.
