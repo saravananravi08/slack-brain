@@ -66,3 +66,13 @@ _No implementation events recorded yet._
 - Security fix packs dispatched: A (F-01/F-03/F-10 memory+agent, pi-coder-13), B (F-02/F-05/F-06/F-07 ingestion/storage/migration, claude-planner-2).
 - Integrator added test:ingestion + test:e2e scripts; .env chmod 600. ANTHROPIC_API_KEY still missing from .env (B-02 open).
 - HANDOVER.md added: full orchestrator state for zero-knowledge continuation.
+
+### 2026-08-30 — SECFIX-A and SECFIX-B merged
+
+- Scope-checked both fix branches against integration/mastra-rewrite: zero file overlap (A touches src/mastra/agents/instructions.ts, src/mastra/memory/gist-memory.ts + tests; B touches src/ingestion/mutations/**, src/migration/mapping/**, src/mastra/index.ts + tests). git diff --check clean on both.
+- Merged SECFIX-B first (fix/security-review-pack-b, 3 commits) --no-ff as 538ead1. Covers F-02 (mutation crash windows / tombstone rollback), F-05 (storage built from validated config not import-time), F-06 (archive import routed through authorize()), F-07 (retention fail-open closed).
+- Merged SECFIX-A second (fix/security-review-pack-a, 1 commit) --no-ff as 79d4f82. Covers F-01 (post-recall boundary filter), F-03 (retrieval_failed vs empty), F-10 (prompt-injection delimiter + untrusted-data instruction).
+- Verified: npm test -- 35 files, 534 tests passed (up from 514 pre-merge). npm run typecheck -- clean.
+- Recorded D011 (F-16 ruling: channel history is channel history; external/guest/deactivated historical messages remain in corpus).
+- Updated docs/security/design-review.md section 9 with resolution table.
+- Workers: pi-coder-13 (SECFIX-A) and claude-planner-2 (SECFIX-B) now idle. pi-coder-14 (T406) blocked on B-02 (ANTHROPIC_API_KEY), missing package.json scripts, and human ambient message. pi-coder-15 idle/fresh.

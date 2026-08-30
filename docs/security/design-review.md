@@ -174,3 +174,27 @@ T405 merged while this review was in progress and closed three first-pass findin
 | F-09 | `deduplicate()` had only an in-memory reference ledger | `slack.ts:146` backs it with the Mastra-store-backed `StateAdapter`, with explicit 24 h delivery and 10 min content TTLs. |
 
 One note on process rather than code: this review was written against `b639ef0` and re-run against `f9ad978` after T405 landed. A design review of a moving branch is only accurate at a stated commit — T502 should re-check the findings above against whatever tip it signs off, particularly anything touching `src/mastra/channels/slack.ts`, which did not exist when the first pass began.
+
+## 9. Resolved by SECFIX packs (merged 2026-08-30)
+
+Security review packs A and B were implemented in worktrees, scope-checked,
+merged --no-ff into integration/mastra-rewrite, and verified with the
+full suite (534 tests) and npm run typecheck -- both green.
+
+| Finding | Pack | Merge commit | Resolution |
+|---|---|---|---|
+| F-01 | A (fix/security-review-pack-a) | 79d4f82 | Post-recall filtering drops messages outside the authorized conversation boundary before citation construction. |
+| F-02 | B (fix/security-review-pack-b) | 538ead1 | Mutation crash windows closed: delete tombstones no longer rolled back on failure; compensation ordering pinned. |
+| F-03 | A (fix/security-review-pack-a) | 79d4f82 | Empty recall remains empty; failures emit retrieval_failed and trigger fixed unverifiable-response guidance. |
+| F-05 | B (fix/security-review-pack-b) | 538ead1 | Storage built inside createFoundationRuntime from validated config.databaseUrl after parseConfig(). Module-level singleton and import-time side effect removed. |
+| F-06 | B (fix/security-review-pack-b) | 538ead1 | Archive import routed through shared authorize() at write_memory using resolveIdentity()/messageKey(). ARCHIVE_SENDER_ATTRIBUTES constant added; ImportFailureReason invalid_identity added. |
+| F-07 | B (fix/security-review-pack-b) | 538ead1 | Retention sweep no longer fails open -- exits non-zero on error. |
+| F-10 | A (fix/security-review-pack-a) | 79d4f82 | Retrieved Slack evidence marked as untrusted data in instructions; closing evidence tags stripped from retrieved text. |
+
+F-16 -- coordinator ruling (2026-08-30): Per decision authority delegated by
+the operator, the defensible default applies: channel history is channel
+history. Messages authored by external/guest/deactivated users remain in the
+channel corpus. D006 covers future interaction, not retroactive removal.
+Logged in DECISIONS.md as D011.
+
+Remaining findings for T502: F-11 through F-15, F-17 through F-20 (see section 7).

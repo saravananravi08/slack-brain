@@ -262,6 +262,16 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 
 ---
 
+## D011 — Archive import: historical messages from external/guest/deactivated users
+- Status: Accepted
+- Date: 2026-08-30
+- Owner: Augment Agent (coordinator, authority delegated by operator 2026-08-30)
+- Context: F-16 from the security design review. Archive import excludes bots and system subtypes but not messages authored by external, guest, or deactivated users. D006 excludes those people from interacting with Gist, but whether their historical messages belong in the channel corpus was unspecified. SECFIX-B routed archive import through authorize() and introduced the ARCHIVE_SENDER_ATTRIBUTES constant, making the implicit decision explicit and isolating it to one place.
+- Options considered: (a) exclude external/guest/deactivated historical messages -- retroactive removal of content written into approved channels by people who had access at the time; (b) include them -- channel history is channel history.
+- Decision: Option (b). Messages authored by external, guest, or deactivated users remain in the channel corpus. D006 covers future interaction with Gist, not retroactive removal of historical contributions.
+- Consequences: ARCHIVE_SENDER_ATTRIBUTES treats archive authors as full members for import. Future change to this policy has exactly one constant to modify. T502 should note this in its sign-off.
+- Affected tasks/files: src/migration/mapping/archive-message.ts, docs/security/design-review.md, T306, T307, T502
+
 ## Decision entry template
 
 ```text
