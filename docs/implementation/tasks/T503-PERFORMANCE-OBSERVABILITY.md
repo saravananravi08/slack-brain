@@ -1,8 +1,8 @@
 # T503 — Validate performance and observability
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T503-validate-performance-and-observability`
 - **Parallel group:** PG-05A
 - **Depends on:** P03, P04
@@ -68,17 +68,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 ## Acceptance criteria
 
 - [ ] PRD timing targets pass or approved remediation exists.
-- [ ] Ambient ingestion shows zero generation cost.
-- [ ] Trace can diagnose failures without standard-log content.
-- [ ] Task log is current and contains no sensitive content.
+- [x] Ambient ingestion shows zero generation cost.
+- [x] Trace can diagnose failures without standard-log content.
+- [x] Task log is current and contains no sensitive content.
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `aadf6f6`
+- Handoff commit: — (blocked)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
