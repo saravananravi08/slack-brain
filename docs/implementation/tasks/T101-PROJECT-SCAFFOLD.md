@@ -1,8 +1,8 @@
 # T101 — Scaffold Mastra TypeScript project
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder
 - **Branch:** `task/T101-scaffold-mastra-typescript-project`
 - **Parallel group:** PG-01A
 - **Depends on:** P00
