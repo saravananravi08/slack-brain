@@ -5,6 +5,11 @@ import { LibSQLVector } from '@mastra/libsql';
 
 import { parseConfig, type Config } from '../config.js';
 import {
+  AmbientPersistenceService,
+  MastraMutationStorage,
+  MutationHandler,
+} from '../ingestion/index.js';
+import {
   AUTHORIZATION_CONTRACT_VERSION,
   authorize,
   createChannelAuthorizer,
@@ -14,11 +19,11 @@ import {
   type SenderResolver,
 } from '../security/index.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
+import { ChannelError } from './channels/index.js';
 import {
-  ChannelError,
-  createSlackChannel,
-  type GistSlackChannel,
-} from './channels/index.js';
+  createLiveSlackChannel,
+  type LiveGistSlackChannel,
+} from './channels/slack.js';
 import type { ChannelRequest } from './channels/types.js';
 import { createGistMemory } from './memory/gist-memory.js';
 import {
@@ -55,7 +60,11 @@ export async function resolveSlackSender(
 ): Promise<SenderAttributes | null> {
   const response = await adapter.webClient.users.info({ user: input.senderId });
   const user = response.user;
-  if (response.ok !== true || user?.id !== input.senderId) return null;
+  if (
+    response.ok !== true ||
+    user?.id !== input.senderId ||
+    typeof user.team_id !== 'string'
+  ) return null;
 
   const senderType = user.is_app_user
     ? 'app'
@@ -65,9 +74,7 @@ export async function resolveSlackSender(
 
   return {
     senderType,
-    isExternal:
-      user.is_stranger === true ||
-      (typeof user.team_id === 'string' && user.team_id !== input.workspaceId),
+    isExternal: user.team_id !== input.workspaceId,
     isGuest: user.is_restricted === true || user.is_ultra_restricted === true,
     isDeactivated: user.deleted === true,
   };
@@ -100,7 +107,7 @@ function identityForChannelRequest(
 export interface FoundationRuntime {
   readonly config: Readonly<Config>;
   readonly mastra: Mastra;
-  readonly channel: GistSlackChannel;
+  readonly channel: LiveGistSlackChannel;
   readonly memory: ReturnType<typeof createGistMemory>;
   readonly gistAgent: ReturnType<typeof createGistAgent>;
   start(): Promise<void>;
@@ -125,7 +132,23 @@ export async function createFoundationRuntime(
   mastra.addAgent(gistAgent, 'gist');
 
   const policy = policySnapshotFromConfig(config);
-  let channel: GistSlackChannel;
+  const state = new MastraStateAdapter(memoryStore, () => gistAgent.id);
+  const mutationStorage = new MastraMutationStorage({ memory, storage });
+  const mutations = new MutationHandler({ storage: mutationStorage, policy });
+  const ambientPersistence = new AmbientPersistenceService({
+    memory,
+    storage,
+    resolveIdentity,
+    authorizeWrite: ({ event, identity }) => authorize({
+      contract_version: AUTHORIZATION_CONTRACT_VERSION,
+      gate: 'write_memory',
+      event,
+      identity,
+      policy,
+    }),
+  });
+
+  let channel: LiveGistSlackChannel;
   const resolveSender: SenderResolver =
     options.resolveSender ?? ((input) => resolveSlackSender(channel.adapter, input));
   const authorizedContexts = new WeakMap<
@@ -136,12 +159,16 @@ export async function createFoundationRuntime(
     }
   >();
 
-  channel = createSlackChannel({
+  channel = createLiveSlackChannel({
     credentials: {
       botToken: config.slackBotToken,
       appToken: config.slackAppToken,
     },
-    state: new MastraStateAdapter(memoryStore, () => gistAgent.id),
+    state,
+    policy,
+    resolveSender,
+    ambientPersistence,
+    mutations,
     authorize: async (request) => {
       let context:
         | {
@@ -151,7 +178,13 @@ export async function createFoundationRuntime(
         | undefined;
       const decision = await createChannelAuthorizer({
         policy,
-        resolveSender,
+        resolveSender: async (input) => {
+          const attributes = await resolveSender(input);
+          if (!attributes) return null;
+          return channel.adapter.getChannelVisibility(request.threadId) === 'external'
+            ? { ...attributes, isExternal: true }
+            : attributes;
+        },
         resolveIdentity: (event) => {
           const identity = identityForChannelRequest(request, channel.adapter);
           context = { event, identity };
