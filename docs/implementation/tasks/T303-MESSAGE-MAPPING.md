@@ -77,7 +77,7 @@ Every changed path must be in this task's write scope or its own task/log metada
 ## Completion record
 
 - Implementation commit: `6eb546d273392f9138b932141e201b6ef5247b78`
-- Handoff commit: pending metadata commit (hash recorded in follow-up)
+- Handoff commit: `75f10ba563d265f233462ae233d40f0d1ae2f648`
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
