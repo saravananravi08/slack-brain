@@ -1,8 +1,8 @@
 # T203 — Implement Slack authorization and privacy guard
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner-2
 - **Branch:** `task/T203-implement-slack-authorization-and-privacy-guard`
 - **Parallel group:** PG-02A
 - **Depends on:** T004, T102, T104
@@ -66,17 +66,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Unauthorized events cannot read/write memory or invoke model.
-- [ ] Slack Connect denied by default.
-- [ ] Every boundary has positive and negative tests.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Unauthorized events cannot read/write memory or invoke model.
+- [x] Slack Connect denied by default.
+- [x] Every boundary has positive and negative tests.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `4abb5fa`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
