@@ -28,7 +28,7 @@ Repository is safe, product decisions are explicit, baseline behavior is measura
 | [T001](../tasks/T001-PRODUCT-DECISIONS.md) | Completed | — | PG-00A | claude-planner + pi-coder | ef7838e |
 | [T002](../tasks/T002-BASELINE-BENCHMARK.md) | Completed | — | PG-00A | pi-coder-2 | 818734a |
 | [T003](../tasks/T003-SLACK-DEV-ENVIRONMENT.md) | Completed | — | PG-00A | pi-coder-3 | 090e8ad |
-| [T004](../tasks/T004-ARCHITECTURE-CONTRACTS.md) | Planned | T001 | PG-00B | Unassigned | — |
+| [T004](../tasks/T004-ARCHITECTURE-CONTRACTS.md) | Completed | T001 | PG-00B | claude-planner | 151dc00 |
 
 ## Integration procedure
 

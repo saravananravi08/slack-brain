@@ -1,6 +1,6 @@
 # T004 — Define architecture and data contracts
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** claude-planner
 - **Branch:** `task/T004-define-architecture-and-data-contracts`
@@ -80,6 +80,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `49eb6ed`
 - Handoff commit: —
-- Merge commit: —
+- Merge commit: 151dc00
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
