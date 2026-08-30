@@ -1,0 +1,98 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "retrieval.md",
+  "cases": [
+    {
+      "name": "channel_scoped_match",
+      "request": {
+        "contract_version": "1.0.0",
+        "query_text": "when is the rollout happening",
+        "scope": ["ch:T0SYNTH01:C0APPROVED1"],
+        "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100",
+        "limit": 10,
+        "include_nearby_context": true
+      },
+      "expect_items": [
+        {
+          "message_key": "T0SYNTH01/C0APPROVED1/1735689800.000100",
+          "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+          "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689800.000100",
+          "sender_name": "Synthetic Member Two",
+          "sent_at": "2025-01-01T00:03:20.000Z",
+          "channel_id": "C0APPROVED1",
+          "text": "rollout window is Tuesday 09:00-11:00 UTC",
+          "relation": "match"
+        }
+      ],
+      "expect": { "scope_used": ["ch:T0SYNTH01:C0APPROVED1"], "all_items_within_scope": true }
+    },
+    {
+      "name": "dm_scoped_accepted_default",
+      "note": "D002/INV-5 — DM sees only its own boundary. Historical channel knowledge is correctly absent; this is policy, not a retrieval miss.",
+      "request": {
+        "contract_version": "1.0.0",
+        "query_text": "when is the rollout happening",
+        "scope": ["dm:T0SYNTH01:U0MEMBER01"],
+        "thread_id": "dm:T0SYNTH01:U0MEMBER01#1735689600.000100",
+        "limit": 10,
+        "include_nearby_context": false
+      },
+      "expect": {
+        "scope_used": ["dm:T0SYNTH01:U0MEMBER01"],
+        "forbidden_message_keys": ["T0SYNTH01/C0APPROVED1/1735689800.000100"],
+        "expected_agent_behavior": "state it could not verify (FR-RSP-006)"
+      }
+    },
+    {
+      "name": "nearby_context_expansion",
+      "note": "FR-MEM-010 — expansion stays inside scope and inside the thread.",
+      "request": {
+        "contract_version": "1.0.0",
+        "query_text": "rollout window",
+        "scope": ["ch:T0SYNTH01:C0APPROVED1"],
+        "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100",
+        "limit": 5,
+        "include_nearby_context": true
+      },
+      "expect": {
+        "relations_present": ["match", "nearby_context"],
+        "all_nearby_share_thread_id": true,
+        "all_items_within_scope": true
+      }
+    },
+    {
+      "name": "out_of_scope_item_must_not_appear",
+      "note": "Negative vector. Maps to benchmark forbidden_evidence_ids — a hit here is a PRIVACY FAILURE that must fail the run, not lower a relevance score.",
+      "request": {
+        "contract_version": "1.0.0",
+        "query_text": "rollout window",
+        "scope": ["ch:T0SYNTH01:C0APPROVED1"],
+        "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100",
+        "limit": 20,
+        "include_nearby_context": true
+      },
+      "corpus_also_contains": [
+        { "message_key": "T0SYNTH01/C0APPROVED2/1735690500.000100", "boundary_id": "ch:T0SYNTH01:C0APPROVED2", "text": "second approved channel also discussed a rollout window" },
+        { "message_key": "T0SYNTH01/D0DMCONV02/1735690600.000100", "boundary_id": "dm:T0SYNTH01:U0MEMBER02", "text": "private note about the rollout window" }
+      ],
+      "expect": { "forbidden_message_keys": ["T0SYNTH01/C0APPROVED2/1735690500.000100", "T0SYNTH01/D0DMCONV02/1735690600.000100"] }
+    },
+    {
+      "name": "empty_scope_is_a_violation",
+      "request": { "contract_version": "1.0.0", "query_text": "anything", "scope": [], "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100", "limit": 10, "include_nearby_context": false },
+      "expect": { "outcome": "error", "must_not": "search all boundaries" }
+    }
+  ],
+  "citation_metadata": {
+    "note": "INV-8/D009 — all three required and non-null on every item.",
+    "required_fields": ["sender_name", "sent_at", "channel_id"],
+    "reject_item_missing_any": true,
+    "forbidden_fields": ["storage_path", "trace_id", "resource_internal_id", "prompt_fragment"]
+  },
+  "observability": {
+    "note": "NFR-OBS-002 — keys, never bodies (INV-12).",
+    "emit": ["duration_ms", "item_count", "scope_used", "message_keys"],
+    "never_emit": ["text", "query_text_in_app_log"]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "contract_version": "1.0.0",
+  "frozen_by": "T004",
+  "frozen_at": "2026-08-30",
+  "synthetic": true,
+  "note": "Every identifier in this directory is invented. No real workspace, channel, user, or message content appears here (FR-PRV-007, D001).",
+  "synthetic_ids": {
+    "workspace_approved": "T0SYNTH01",
+    "workspace_other": "T0SYNTH99",
+    "channel_approved": "C0APPROVED1",
+    "channel_approved_second": "C0APPROVED2",
+    "channel_unapproved": "C0UNAPPROV9",
+    "user_member": "U0MEMBER01",
+    "user_member_second": "U0MEMBER02",
+    "user_guest": "U0GUEST001",
+    "user_external": "U0EXTERN01",
+    "user_deactivated": "U0DEACTIV1",
+    "bot": "B0GISTBOT1"
+  },
+  "files": [
+    { "file": "slack-events.v1.json", "defines": "slack-event.md", "consumers": ["T104", "T401", "T402", "T403", "T404"] },
+    { "file": "identities.v1.json", "defines": "identity.md", "consumers": ["T201", "T202", "T204", "T403"] },
+    { "file": "authorization.v1.json", "defines": "authorization.md", "consumers": ["T203", "T402", "T404", "T502"] },
+    { "file": "storage.v1.json", "defines": "storage.md", "consumers": ["T103", "T201", "T304", "T403", "T404"] },
+    { "file": "retrieval.v1.json", "defines": "retrieval.md", "consumers": ["T201", "T105", "T205"] },
+    { "file": "errors.v1.json", "defines": "errors.md", "consumers": ["T501", "T502", "all"] }
+  ],
+  "usage": "Tests MUST pin contract_version and fail on a major bump rather than silently adopting new semantics."
+}

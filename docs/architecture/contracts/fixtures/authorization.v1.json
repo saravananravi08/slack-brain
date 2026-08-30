@@ -1,0 +1,145 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "authorization.md",
+  "policy_default": {
+    "approved_workspace_id": "T0SYNTH01",
+    "approved_channel_ids": ["C0APPROVED1", "C0APPROVED2"],
+    "user_allowlist": [],
+    "dm_shared_knowledge": false
+  },
+  "cases": [
+    {
+      "name": "member_in_approved_channel_all_gates",
+      "gates": ["accept_event", "write_memory", "read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": true, "reason": null, "scope": ["ch:T0SYNTH01:C0APPROVED1"] }
+    },
+    {
+      "name": "member_in_unapproved_channel",
+      "gates": ["accept_event"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0UNAPPROV9" },
+      "expect": { "allowed": false, "reason": "unapproved_channel", "scope": [], "storage_touched": false }
+    },
+    {
+      "name": "other_workspace",
+      "gates": ["accept_event"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH99", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "unapproved_workspace", "scope": [] }
+    },
+    {
+      "name": "external_slack_connect_user_denied_even_in_approved_channel",
+      "note": "D006/FR-PRV-006 — external denial precedes channel approval.",
+      "gates": ["accept_event", "read_memory"],
+      "sender": { "id": "U0EXTERN01", "type": "human", "external": true, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "external_user", "scope": [] }
+    },
+    {
+      "name": "external_user_in_dm_denied",
+      "gates": ["accept_event"],
+      "sender": { "id": "U0EXTERN01", "type": "human", "external": true, "guest": false, "deactivated": false },
+      "conversation": { "type": "dm", "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV09" },
+      "expect": { "allowed": false, "reason": "external_user", "scope": [] }
+    },
+    {
+      "name": "guest_denied",
+      "gates": ["accept_event"],
+      "sender": { "id": "U0GUEST001", "type": "human", "external": false, "guest": true, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "guest_user", "scope": [] }
+    },
+    {
+      "name": "deactivated_denied",
+      "gates": ["accept_event"],
+      "sender": { "id": "U0DEACTIV1", "type": "human", "external": false, "guest": false, "deactivated": true },
+      "conversation": { "type": "dm", "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV03" },
+      "expect": { "allowed": false, "reason": "deactivated_user", "scope": [] }
+    },
+    {
+      "name": "bot_sender_denied",
+      "gates": ["accept_event"],
+      "sender": { "id": "B0GISTBOT1", "type": "bot", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "bot_or_app_sender", "scope": [] }
+    },
+    {
+      "name": "allowlist_empty_allows_full_member",
+      "note": "D006 — empty GIST_USER_ALLOWLIST means all full workspace members.",
+      "policy_override": { "user_allowlist": [] },
+      "gates": ["accept_event"],
+      "sender": { "id": "U0MEMBER02", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": true, "reason": null }
+    },
+    {
+      "name": "allowlist_populated_denies_unlisted_member",
+      "policy_override": { "user_allowlist": ["U0MEMBER01"] },
+      "gates": ["accept_event"],
+      "sender": { "id": "U0MEMBER02", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "not_in_allowlist", "scope": [] }
+    },
+    {
+      "name": "dm_read_scope_accepted_default",
+      "note": "D002/INV-5 — the accepted posture. Pinned by test so a flip cannot pass unnoticed.",
+      "policy_override": { "dm_shared_knowledge": false },
+      "gates": ["read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "dm", "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV01" },
+      "expect": { "allowed": true, "reason": null, "scope": ["dm:T0SYNTH01:U0MEMBER01"], "scope_excludes_any_ch_boundary": true }
+    },
+    {
+      "name": "dm_read_scope_if_ever_enabled",
+      "note": "Specified shape only. D002 forbids enabling this until written re-approval + fail-closed membership + passing T502. A live implementation defaulting to true violates the accepted decision.",
+      "policy_override": { "dm_shared_knowledge": true },
+      "membership": ["C0APPROVED1"],
+      "gates": ["read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "dm", "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV01" },
+      "expect": { "allowed": true, "scope": ["dm:T0SYNTH01:U0MEMBER01", "ch:T0SYNTH01:C0APPROVED1"], "scope_excludes": ["ch:T0SYNTH01:C0APPROVED2"] }
+    },
+    {
+      "name": "membership_lookup_failure_fails_closed",
+      "note": "D002 — a failed lookup NARROWS scope. Widening on failure is a silent leak.",
+      "policy_override": { "dm_shared_knowledge": true },
+      "membership_lookup": "error",
+      "gates": ["read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "dm", "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV01" },
+      "expect": { "scope": ["dm:T0SYNTH01:U0MEMBER01"], "channels_excluded": true }
+    },
+    {
+      "name": "channel_read_never_returns_other_channel",
+      "note": "FR-PRV-002 / AC-11.",
+      "gates": ["read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "scope": ["ch:T0SYNTH01:C0APPROVED1"], "scope_excludes": ["ch:T0SYNTH01:C0APPROVED2"] }
+    },
+    {
+      "name": "channel_read_never_returns_dm_boundary",
+      "note": "FR-PRV-004 / AC-10.",
+      "gates": ["read_memory"],
+      "sender": { "id": "U0MEMBER01", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "scope_excludes_any_dm_boundary": true }
+    },
+    {
+      "name": "malformed_identity",
+      "gates": ["accept_event"],
+      "sender": { "id": "", "type": "human", "external": false, "guest": false, "deactivated": false },
+      "conversation": { "type": "channel", "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1" },
+      "expect": { "allowed": false, "reason": "malformed_request", "scope": [] }
+    }
+  ],
+  "invariants": [
+    { "id": "INV-1", "assert": "no case yields allowed:true without an explicit positive decision" },
+    { "id": "INV-2", "assert": "every denied case has storage_touched:false" },
+    { "id": "contract", "assert": "allowed:true at gate read_memory always yields a non-empty scope" },
+    { "id": "contract", "assert": "allowed:false always yields a non-null reason and an empty scope" }
+  ]
+}
