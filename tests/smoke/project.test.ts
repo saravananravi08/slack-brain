@@ -35,9 +35,9 @@ describe('project scaffold', () => {
     expect(packageJson.scripts).toMatchObject({
       'benchmark:retrieval':
         'node --experimental-strip-types benchmarks/retrieval/runner.ts',
-      build: 'mastra build',
+      build: 'tsc',
       dev: 'mastra dev',
-      start: 'mastra start',
+      start: 'node dist/src/index.js',
       test: 'vitest run',
       typecheck: 'tsc --noEmit',
     });

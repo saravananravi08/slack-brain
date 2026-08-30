@@ -11,9 +11,9 @@
   },
   "packageManager": "npm@10.9.7",
   "scripts": {
-    "build": "mastra build",
+    "build": "tsc",
     "dev": "mastra dev",
-    "start": "mastra start",
+    "start": "node dist/src/index.js",
     "benchmark:retrieval": "node --experimental-strip-types benchmarks/retrieval/runner.ts",
     "import:slack": "tsx scripts/import-slack.ts",
     "test": "vitest run",
