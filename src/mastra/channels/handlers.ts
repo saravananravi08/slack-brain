@@ -40,6 +40,13 @@ function readWorkspaceId(message: Message): string | undefined {
   return typeof team === 'string' ? team : undefined;
 }
 
+/** Raw Slack channel ID used by identity and memory boundaries. */
+function readChannelId(thread: Thread): string {
+  return thread.channelId.startsWith('slack:')
+    ? thread.channelId.slice('slack:'.length)
+    : thread.channelId;
+}
+
 export function toChannelRequest(
   surface: ChannelSurface,
   thread: Thread,
@@ -49,7 +56,7 @@ export function toChannelRequest(
   return {
     surface,
     workspaceId: readWorkspaceId(message),
-    channelId: thread.channelId,
+    channelId: readChannelId(thread),
     threadId: thread.id,
     messageTs: readMessageTs(message),
     senderId: message.author.userId,
