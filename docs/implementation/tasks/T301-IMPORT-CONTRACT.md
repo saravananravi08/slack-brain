@@ -1,8 +1,8 @@
 # T301 — Define archive import contract and fixtures
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P03](../phases/P03-HISTORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-8
 - **Branch:** `task/T301-define-archive-import-contract-and-fixtures`
 - **Parallel group:** PG-03A
 - **Depends on:** P02
