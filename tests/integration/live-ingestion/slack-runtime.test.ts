@@ -106,12 +106,13 @@ function makeHarness(state = makeMemoryState()) {
     };
   }
 
-  async function deliver(...payloads: Array<Record<string, unknown>>): Promise<void> {
-    for (const payload of payloads) {
-      adapter.processEventPayload(payload, {
-        waitUntil: (task) => pending.push(task),
-      });
-    }
+  function dispatch(payload: Record<string, unknown>): void {
+    adapter.processEventPayload(payload, {
+      waitUntil: (task) => pending.push(task),
+    });
+  }
+
+  async function drain(): Promise<void> {
     for (let round = 0; round < 8; round += 1) {
       const inFlight = pending.splice(0);
       if (inFlight.length > 0) await Promise.all(inFlight);
@@ -121,9 +122,16 @@ function makeHarness(state = makeMemoryState()) {
     throw new Error('Synthetic Slack delivery did not settle.');
   }
 
+  async function deliver(...payloads: Array<Record<string, unknown>>): Promise<void> {
+    payloads.forEach(dispatch);
+    await drain();
+  }
+
   return {
     adapter,
     channel,
+    dispatch,
+    drain,
     generation,
     handleMutation,
     persist,
@@ -324,6 +332,33 @@ describe('live silent Slack ingestion', () => {
       workspaceId: SYNTHETIC.workspace,
       senderId: SYNTHETIC.user,
     })).resolves.toMatchObject({ isExternal: false });
+  });
+
+  it('drops a same-thread ambient reply while its root is still being persisted', async () => {
+    const harness = makeHarness();
+    let releaseFirstPersist!: () => void;
+    const firstPersist = new Promise<{ outcome: 'inserted' }>((resolve) => {
+      releaseFirstPersist = () => resolve({ outcome: 'inserted' });
+    });
+    harness.persist.mockImplementationOnce(() => firstPersist);
+    const root = envelope(channelMessage({ ts: SYNTHETIC.rootTs }));
+    const reply = envelope(channelMessage({
+      ts: SYNTHETIC.replyTs,
+      event_ts: SYNTHETIC.replyTs,
+      thread_ts: SYNTHETIC.rootTs,
+    }));
+
+    harness.dispatch(root);
+    harness.dispatch(reply);
+
+    await vi.waitFor(() => expect(harness.persist).toHaveBeenCalledOnce());
+    releaseFirstPersist();
+    await expect(harness.drain()).rejects.toMatchObject({ code: 'LOCK_FAILED' });
+
+    expect(harness.persist.mock.calls.map(([input]) => input.event.message_ts))
+      .toEqual([SYNTHETIC.rootTs]);
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
   });
 
   it('keeps envelope IDs isolated when ambient deliveries resolve concurrently', async () => {
