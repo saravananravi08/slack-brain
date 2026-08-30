@@ -1,6 +1,6 @@
 # T103 — Configure Mastra storage and tracing
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder-3
 - **Branch:** `task/T103-configure-mastra-storage-and-tracing`
@@ -80,6 +80,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `396e6e4241f326da22a47787914a248f68c4a236`
 - Handoff commit: `HEAD` (`docs(T103): hand off storage and tracing`)
-- Merge commit: —
+- Merge commit: 9f701a5
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

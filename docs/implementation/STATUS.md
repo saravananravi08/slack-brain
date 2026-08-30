@@ -39,10 +39,10 @@
 | [T004](./tasks/T004-ARCHITECTURE-CONTRACTS.md) — Define architecture and data contracts | P00 | Completed | T001 | PG-00B | claude-planner | task/T004-define-architecture-and-data-contracts | 2026-08-30 | 151dc00 |
 | [T101](./tasks/T101-PROJECT-SCAFFOLD.md) — Scaffold Mastra TypeScript project | P01 | Completed | P00 | PG-01A | pi-coder | task/T101-scaffold-mastra-typescript-project | 2026-08-30 | 872bd8b |
 | [T102](./tasks/T102-CONFIG-VALIDATION.md) — Implement startup configuration validation | P01 | Completed | T101 | PG-01B | pi-coder-2 | task/T102-implement-startup-configuration-validation | 2026-08-30 | 6d6c3c3 |
-| [T103](./tasks/T103-STORAGE-TRACING.md) — Configure Mastra storage and tracing | P01 | In Progress | T101 | PG-01B | pi-coder-3 | task/T103-configure-mastra-storage-and-tracing | 2026-08-30 | — |
+| [T103](./tasks/T103-STORAGE-TRACING.md) — Configure Mastra storage and tracing | P01 | Completed | T101 | PG-01B | pi-coder-3 | task/T103-configure-mastra-storage-and-tracing | 2026-08-30 | 9f701a5 |
 | [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | Completed | T101, T003, T004 | PG-01B | claude-planner | task/T104-implement-mastra-slack-channel-adapter | 2026-08-30 | 5b211d0 |
 | [T105](./tasks/T105-GIST-AGENT.md) — Implement Gist agent behavior | P01 | Completed | T101, T004 | PG-01B | pi-coder | task/T105-implement-gist-agent-behavior | 2026-08-30 | 5a3f443 |
-| [T106](./tasks/T106-FOUNDATION-INTEGRATION.md) — Integrate foundation runtime | P01 | Planned | T102, T103, T104, T105 | PG-01C | Unassigned | — | — | — |
+| [T106](./tasks/T106-FOUNDATION-INTEGRATION.md) — Integrate foundation runtime | P01 | In Progress | T102, T103, T104, T105 | PG-01C | pi-coder-4 | task/T106-integrate-foundation-runtime | 2026-08-30 | — |
 | [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | Planned | T103, T105 | PG-02A | Unassigned | — | — | — |
 | [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | Planned | T004, T106 | PG-02A | Unassigned | — | — | — |
 | [T203](./tasks/T203-ACCESS-PRIVACY.md) — Implement Slack authorization and privacy guard | P02 | Planned | T004, T102, T104 | PG-02A | Unassigned | — | — | — |

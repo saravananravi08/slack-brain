@@ -31,3 +31,4 @@ _No implementation events recorded yet._
 - T102 Completed: startup config validation (pi-coder-2, merge 6d6c3c3). 26 config tests.
 - T104 Completed: Slack channel adapter (claude-planner, merge 5b211d0). Live smoke test pending B-01 credentials placement.
 - Integration regression after T102+T104: typecheck ok, 79/79 tests pass.
+- T103 Completed: storage + tracing with pinned @mastra/observability@1.17.4 (pi-coder-3, merge 9f701a5). Integration regression: 87/87 tests, typecheck, build all pass.
