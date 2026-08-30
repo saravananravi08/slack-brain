@@ -1,8 +1,8 @@
 # T206 — Validate memory, retrieval, and privacy
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-6
 - **Branch:** `task/T206-validate-memory-retrieval-and-privacy`
 - **Parallel group:** PG-02C
 - **Depends on:** T204, T205
