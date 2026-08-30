@@ -1,6 +1,6 @@
 import { messageKey } from '../../mastra/memory/resource-policy.js';
 import { AUTHORIZATION_CONTRACT_VERSION, withAuthorization } from '../../security/index.js';
-import { classifyMutation, retentionMessageKeys } from './policy.js';
+import { classifyMutation, retentionPlan } from './policy.js';
 import type {
   CheckOriginalInput,
   HandleMutationInput,
@@ -102,11 +102,22 @@ export class MutationHandler {
 
   /** D004 system sweep; policy input is the authority, not a Slack user event. */
   async sweepRetention(policy: RetentionPolicy): Promise<RetentionResult> {
+    // Finish any deletion that was interrupted between its vector and row
+    // writes before deciding what else is eligible (design review F-02).
+    const reconciled = await this.#storage.reconcileTombstones();
+
     const messages = await this.#storage.listMessages();
-    const keys = retentionMessageKeys(messages, policy);
-    if (keys.length === 0) {
+    const plan = retentionPlan(messages, policy);
+    const report = {
+      examined: messages.length,
+      reconciled,
+      unrecorded_channel_removals: plan.unrecorded_channel_removals,
+      channel_removal_starts: plan.channel_removal_starts,
+    };
+
+    if (plan.keys.length === 0) {
       return {
-        examined: messages.length,
+        ...report,
         deleted: 0,
         embeddings_deleted: 0,
         tombstoned: [],
@@ -114,7 +125,7 @@ export class MutationHandler {
       };
     }
 
-    const result = await this.#storage.deleteMessages(keys, policy.now);
-    return { examined: messages.length, ...result };
+    const result = await this.#storage.deleteMessages(plan.keys, policy.now);
+    return { ...report, ...result };
   }
 }

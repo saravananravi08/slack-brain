@@ -218,6 +218,7 @@ describe('mutation classification and authorization', () => {
       deleteMessages: vi.fn(),
       isTombstoned: vi.fn(),
       listMessages: vi.fn(),
+      reconcileTombstones: vi.fn(),
     };
     const handler = new MutationHandler({ storage, policy });
     const event = mutationEvent('delete', { channel_id: 'C0UNAPPROV9' });
@@ -307,7 +308,12 @@ describe('D005 edit/delete propagation', () => {
     })).resolves.toEqual({ status: 'allowed', suppressed: true });
   });
 
-  it('restores message state when synchronous vector deletion fails', async () => {
+  it('restores the message but keeps the tombstone when vector deletion fails', async () => {
+    // Behaviour changed by design review F-02. The tombstone is no longer
+    // rolled back: it is the durable record that a delete was requested, it
+    // keeps the message from being re-ingested meanwhile, and reconciliation
+    // uses it to finish the job. Rolling it back lost the only trace of the
+    // request and left the partial state unrepairable.
     const context = await setup();
     await seed(context);
     vi.spyOn(context.vector, 'deleteVectors').mockRejectedValueOnce(
@@ -322,8 +328,10 @@ describe('D005 edit/delete propagation', () => {
     const store = await context.storage.getStore('memory');
     expect((await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages).toHaveLength(1);
     expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
+
     const resource = await store!.getResourceById({ resourceId: BOUNDARY });
-    expect(JSON.stringify(resource?.metadata)).not.toContain(MESSAGE_KEY);
+    expect(JSON.stringify(resource?.metadata)).toContain(MESSAGE_KEY);
+    await expect(context.mutations.isTombstoned(BOUNDARY, MESSAGE_KEY)).resolves.toBe(true);
   });
 
   it('treats edits and deletes for missing originals as no-op success', async () => {
@@ -375,5 +383,199 @@ describe('D004 retention sweep', () => {
     expect((await store!.listMessagesById({ messageIds: [oldDm.id, removed.id] })).messages).toEqual([]);
     expect((await store!.listMessagesById({ messageIds: [approved.id] })).messages).toHaveLength(1);
     expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
+  });
+});
+
+/**
+ * Design review F-02 — the crash windows between a mutation's vector write and
+ * its row write. Each test injects a failure at the point the review named and
+ * asserts the surviving state is the safe one, then that reconciliation
+ * finishes the job.
+ */
+describe('F-02: interrupted mutations leave no recallable content', () => {
+  it('never leaves deleted text in the vector index when the row delete fails', async () => {
+    const context = await setup();
+    await seed(context);
+    const store = await context.storage.getStore('memory');
+    vi.spyOn(store!, 'deleteMessages').mockRejectedValueOnce(
+      new Error('synthetic row delete failure'),
+    );
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const event = mutationEvent('delete');
+
+    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow(
+      'synthetic row delete failure',
+    );
+
+    // The embedding is gone first, so the deleted text cannot be reached by
+    // semantic recall even though the row survived the interruption.
+    expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(0);
+    await expect(context.mutations.isTombstoned(BOUNDARY, MESSAGE_KEY)).resolves.toBe(true);
+  });
+
+  it('finishes an interrupted delete on the next reconciliation', async () => {
+    const context = await setup();
+    await seed(context);
+    const store = await context.storage.getStore('memory');
+    vi.spyOn(store!, 'deleteMessages').mockRejectedValueOnce(
+      new Error('synthetic row delete failure'),
+    );
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const event = mutationEvent('delete');
+    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow();
+
+    expect(await context.mutations.reconcileTombstones()).toBe(1);
+
+    expect((await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages).toEqual([]);
+    expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(0);
+    // Idempotent: a second pass finds nothing left to repair.
+    expect(await context.mutations.reconcileTombstones()).toBe(0);
+  });
+
+  it('leaves the row and the embedding agreeing after a failed edit', async () => {
+    const context = await setup();
+    await seed(context);
+    const store = await context.storage.getStore('memory');
+    const saveMessages = vi.spyOn(store!, 'saveMessages');
+    // Fail the final, pending-clearing write: the row has been marked, the
+    // vector has been replaced, and the mutation is interrupted at the end.
+    saveMessages.mockImplementationOnce(saveMessages.getMockImplementation()!);
+    saveMessages.mockRejectedValueOnce(new Error('synthetic settle failure'));
+
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const event = mutationEvent('edit');
+
+    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow();
+    saveMessages.mockRestore();
+
+    // Compensation ran, so this is a clean revert to the pre-edit state rather
+    // than a half-applied edit. What slack-event.md §4 forbids is the pre-edit
+    // embedding surviving *alongside* post-edit text; the invariant to hold
+    // here is that the row and the vector describe the same message. The crash
+    // case, where compensation never runs, is covered by the pending-marker
+    // test below.
+    const store2 = await context.storage.getStore('memory');
+    const row = (await store2!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    const rowText = row?.content.parts
+      .flatMap((part) => (part.type === 'text' ? [part.text] : []))
+      .join('\n');
+
+    const results = await context.vector.query({
+      indexName: 'memory_messages',
+      queryVector: vectorFor(rowText ?? ''),
+      topK: 5,
+    });
+    const stored = results.find((match) => match.metadata?.message_id === MESSAGE_KEY);
+    expect(stored?.metadata?.content).toBe(rowText);
+    expect(row?.content.metadata?.gist_mutation_pending).toBeUndefined();
+  });
+
+  it('repairs a row left marked mid-edit', async () => {
+    const context = await setup();
+    await seed(context);
+    const store = await context.storage.getStore('memory');
+
+    // The exact state a crash between the marker write and the settle write
+    // leaves behind: new text on the row, pending marker set, old embedding.
+    const pending = storedMessage({
+      content: {
+        format: 2,
+        parts: [{ type: 'text', text: NEW_TEXT }],
+        metadata: {
+          ...storedMessage().content.metadata,
+          edited_at: '2025-01-01T00:12:00.000Z',
+          gist_mutation_pending: true,
+        },
+      },
+    });
+    await store!.saveMessages({ messages: [pending] });
+
+    expect(await context.mutations.reconcileTombstones()).toBe(1);
+
+    const repaired = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    expect(repaired?.content.metadata?.gist_mutation_pending).toBeUndefined();
+    const results = await context.vector.query({
+      indexName: 'memory_messages',
+      queryVector: vectorFor(NEW_TEXT),
+      topK: 5,
+    });
+    expect(results[0]?.metadata?.content).toBe(NEW_TEXT);
+    expect(await context.mutations.reconcileTombstones()).toBe(0);
+  });
+});
+
+/** Design review F-07 — a de-approved channel with no recorded removal time. */
+describe('F-07: retention starts the clock instead of never purging', () => {
+  it('reports a de-approved channel that has no recorded removal time', async () => {
+    const context = await setup();
+    const removed = storedMessage({
+      id: `${WORKSPACE}/C0REMOVED01/1735689800.000100`,
+      resourceId: `ch:${WORKSPACE}:C0REMOVED01`,
+      threadId: `ch:${WORKSPACE}:C0REMOVED01#1735689800.000100`,
+    });
+    await seed(context, removed);
+
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const result = await handler.sweepRetention({
+      now: '2025-04-02T00:00:00.000Z',
+      approved_channel_ids: [APPROVED_CHANNEL],
+      channel_removed_at: {},
+    });
+
+    expect(result.unrecorded_channel_removals).toEqual(['C0REMOVED01']);
+    expect(result.channel_removal_starts).toEqual({
+      C0REMOVED01: '2025-04-02T00:00:00.000Z',
+    });
+    // Nothing is purged yet — no elapsed grace period can be proven
+    // retroactively — but the channel is now visible in the report.
+    expect(result.deleted).toBe(0);
+  });
+
+  it('purges once the reported removal time has been persisted and aged out', async () => {
+    const context = await setup();
+    const removed = storedMessage({
+      id: `${WORKSPACE}/C0REMOVED01/1735689800.000100`,
+      resourceId: `ch:${WORKSPACE}:C0REMOVED01`,
+      threadId: `ch:${WORKSPACE}:C0REMOVED01#1735689800.000100`,
+    });
+    await seed(context, removed);
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+
+    const first = await handler.sweepRetention({
+      now: '2025-03-01T00:00:00.000Z',
+      approved_channel_ids: [APPROVED_CHANNEL],
+      channel_removed_at: {},
+    });
+    expect(first.deleted).toBe(0);
+
+    // The caller persists what the sweep reported, and the clock now runs.
+    const second = await handler.sweepRetention({
+      now: '2025-04-02T00:00:00.000Z',
+      approved_channel_ids: [APPROVED_CHANNEL],
+      channel_removed_at: first.channel_removal_starts,
+    });
+
+    expect(second.unrecorded_channel_removals).toEqual([]);
+    expect(second.deleted).toBe(1);
+  });
+
+  it('keeps reporting the channel until the removal time is recorded', async () => {
+    const context = await setup();
+    const removed = storedMessage({
+      id: `${WORKSPACE}/C0REMOVED01/1735689800.000100`,
+      resourceId: `ch:${WORKSPACE}:C0REMOVED01`,
+      threadId: `ch:${WORKSPACE}:C0REMOVED01#1735689800.000100`,
+    });
+    await seed(context, removed);
+    const handler = new MutationHandler({ storage: context.mutations, policy });
+
+    for (const now of ['2025-04-02T00:00:00.000Z', '2026-04-02T00:00:00.000Z']) {
+      const result = await handler.sweepRetention({
+        now,
+        approved_channel_ids: [APPROVED_CHANNEL],
+        channel_removed_at: {},
+      });
+      expect(result.unrecorded_channel_removals).toEqual(['C0REMOVED01']);
+    }
   });
 });
