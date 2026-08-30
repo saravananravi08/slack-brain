@@ -49,14 +49,14 @@
 | [T205](./tasks/T205-RETRIEVAL-BENCHMARK.md) — Build retrieval benchmark harness | P02 | Completed | T002, T004 | PG-02A | pi-coder-6 | task/T205-build-retrieval-benchmark-harness | 2026-08-30 | bcfb465 |
 | [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | Completed | T201, T202, T203, T106 | PG-02B | pi-coder-5 | task/T204-integrate-memory-identity-and-access | 2026-08-30 | b296c18 |
 | [T206](./tasks/T206-MEMORY-VALIDATION.md) — Validate memory, retrieval, and privacy | P02 | Completed | T204, T205 | PG-02C | pi-coder-6 | task/T206-validate-memory-retrieval-and-privacy | 2026-08-30 | a5c77e7 |
-| [T301](./tasks/T301-IMPORT-CONTRACT.md) — Define archive import contract and fixtures | P03 | In Progress | P02 | PG-03A | pi-coder-8 | task/T301-define-archive-import-contract-and-fixtures | 2026-08-30 | — |
+| [T301](./tasks/T301-IMPORT-CONTRACT.md) — Define archive import contract and fixtures | P03 | Completed | P02 | PG-03A | pi-coder-8 | task/T301-define-archive-import-contract-and-fixtures | 2026-08-30 | f50438e |
 | [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
 | [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
 | [T304](./tasks/T304-MEMORY-WRITER.md) — Implement idempotent Mastra memory writer | P03 | Planned | T201, T301 | PG-03B | Unassigned | — | — | — |
 | [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | Planned | T302, T303, T304 | PG-03C | Unassigned | — | — | — |
 | [T306](./tasks/T306-SAMPLE-IMPORT.md) — Run sample archive import and quality gate | P03 | Planned | T205, T305 | PG-03D | Unassigned | — | — | — |
 | [T307](./tasks/T307-FULL-IMPORT.md) — Execute full historical import | P03 | Planned | T306, Product/security approval | PG-03E | Unassigned | — | — | — |
-| [T401](./tasks/T401-ADAPTER-EVENT-SPIKE.md) — Spike supported ordinary Slack event handling | P04 | In Progress | T104, T206 | PG-04A | claude-planner-2 | task/T401-spike-supported-ordinary-slack-event-handling | 2026-08-30 | — |
+| [T401](./tasks/T401-ADAPTER-EVENT-SPIKE.md) — Spike supported ordinary Slack event handling | P04 | Completed | T104, T206 | PG-04A | claude-planner-2 | task/T401-spike-supported-ordinary-slack-event-handling | 2026-08-30 | 8ba694e |
 | [T402](./tasks/T402-EVENT-NORMALIZATION.md) — Normalize and deduplicate live Slack events | P04 | Planned | T401 | PG-04B | Unassigned | — | — | — |
 | [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | Planned | T201, T202, T401 | PG-04B | Unassigned | — | — | — |
 | [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | Planned | T001, T203, T401 | PG-04B | Unassigned | — | — | — |
@@ -85,4 +85,4 @@
 | B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
 | B-02 | T206/runtime | ANTHROPIC_API_KEY + OPENAI_API_KEY not in .env; needed for generation/embedding and integrated benchmark | Operator (saravanan) | keys placed in .env | 2026-08-30 |
 | B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
-| B-04 | T401/T104/T405 | Tokens placed in .env appear to be the PRODUCTION Gist bot (200-channel scope), not an isolated dev app; users:read scope missing (blocks sender resolver) | Operator (saravanan) | Create dev Slack app per docs/runbooks/slack-dev-environment.md with users:read; place new tokens in .env | 2026-08-30 |
+| B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |

@@ -27,7 +27,7 @@ Approved historical Slack messages are imported idempotently into Mastra-owned m
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| [T301](../tasks/T301-IMPORT-CONTRACT.md) | Planned | P02 | PG-03A | Unassigned | — |
+| [T301](../tasks/T301-IMPORT-CONTRACT.md) | Completed | P02 | PG-03A | pi-coder-8 | f50438e |
 | [T302](../tasks/T302-SOURCE-READER.md) | Planned | T301 | PG-03B | Unassigned | — |
 | [T303](../tasks/T303-MESSAGE-MAPPING.md) | Planned | T301 | PG-03B | Unassigned | — |
 | [T304](../tasks/T304-MEMORY-WRITER.md) | Planned | T201, T301 | PG-03B | Unassigned | — |

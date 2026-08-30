@@ -1,6 +1,6 @@
 # T401 — Spike supported ordinary Slack event handling
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** claude-planner-2
 - **Branch:** `task/T401-spike-supported-ordinary-slack-event-handling`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `2d36a86`
 - Handoff commit: —
-- Merge commit: —
+- Merge commit: 8ba694e
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

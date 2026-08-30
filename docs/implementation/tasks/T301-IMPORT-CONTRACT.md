@@ -1,6 +1,6 @@
 # T301 — Define archive import contract and fixtures
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-8
 - **Branch:** `task/T301-define-archive-import-contract-and-fixtures`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `cefbe2bd723c21e16979719d18773460bf563b38`
 - Handoff commit: `26e240e694f2037e75f37c4b85297b48e8dd63db`
-- Merge commit: —
+- Merge commit: f50438e
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

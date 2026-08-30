@@ -48,3 +48,6 @@ _No implementation events recorded yet._
 - T206 Completed: memory/retrieval/privacy validated (pi-coder-6, merge a5c77e7). Privacy 178/178 + boundary suites, 0 leaks; synthetic benchmark 8/8; full suite 313/313. Live-provider benchmark pending B-02.
 - P02 phase gate closed (exception: live-provider benchmark/traces pending B-02 keys). P03 + P04 opened.
 - T401 spike: live probe built and committed; discovered .env tokens are production-scoped (200 public channels) and lack users:read. No live write attempted. B-04 opened.
+- T301 Completed: archive import contract + synthetic fixtures (pi-coder-8, merge f50438e). Inventory counts pending B-03.
+- T401 Completed: ordinary event spike + live probe committed (claude-planner-2, merge 8ba694e).
+- B-04 resolved: workspace confirmed as test workspace by operator.
