@@ -173,8 +173,8 @@ export class MastraMutationStorage implements MutationStorage {
     return Object.hasOwn(tombstones, messageKey);
   }
 
-  async listMessages(): Promise<readonly MastraDBMessage[]> {
-    return this.#allMessages(await this.#memoryStore());
+  async *listMessageBatches(): AsyncIterable<readonly MastraDBMessage[]> {
+    yield* this.#messageBatches(await this.#memoryStore());
   }
 
   /**
@@ -208,20 +208,22 @@ export class MastraMutationStorage implements MutationStorage {
         }
       }
 
-      for (const message of await this.#allMessages(store)) {
-        const metadata = metadataOf(message);
-        if (metadata[MUTATION_PENDING_METADATA_KEY] !== true) continue;
+      for await (const messages of this.#messageBatches(store)) {
+        for (const message of messages) {
+          const metadata = metadataOf(message);
+          if (metadata[MUTATION_PENDING_METADATA_KEY] !== true) continue;
 
-        const text = textOf(message);
-        const editedAt = typeof metadata.edited_at === 'string'
-          ? metadata.edited_at
-          : message.createdAt.toISOString();
-        const { [MUTATION_PENDING_METADATA_KEY]: _pending, ...settled } = metadata;
-        const repairedMessage = this.#withMetadata(message, text, settled);
+          const text = textOf(message);
+          const editedAt = typeof metadata.edited_at === 'string'
+            ? metadata.edited_at
+            : message.createdAt.toISOString();
+          const { [MUTATION_PENDING_METADATA_KEY]: _pending, ...settled } = metadata;
+          const repairedMessage = this.#withMetadata(message, text, settled);
 
-        await this.#replaceVector(repairedMessage, text, await this.#embed(text), editedAt);
-        await store.saveMessages({ messages: [repairedMessage] });
-        repaired += 1;
+          await this.#replaceVector(repairedMessage, text, await this.#embed(text), editedAt);
+          await store.saveMessages({ messages: [repairedMessage] });
+          repaired += 1;
+        }
       }
 
       return repaired;
@@ -266,14 +268,14 @@ export class MastraMutationStorage implements MutationStorage {
     return [...boundaries];
   }
 
-  async #allMessages(store: MemoryStorage): Promise<readonly MastraDBMessage[]> {
+  async *#messageBatches(
+    store: MemoryStorage,
+  ): AsyncIterable<readonly MastraDBMessage[]> {
     const threads = await store.listThreads({ perPage: false });
-    const messages = new Map<string, MastraDBMessage>();
     for (const thread of threads.threads) {
       const page = await store.listMessages({ threadId: thread.id, perPage: false });
-      for (const message of page.messages) messages.set(message.id, message);
+      yield page.messages;
     }
-    return [...messages.values()];
   }
 
   async #memoryStore(): Promise<MemoryStorage> {

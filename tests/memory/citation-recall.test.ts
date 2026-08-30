@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { MessageList, type MastraDBMessage } from '@mastra/core/agent';
+import type { MemoryConfigInternal } from '@mastra/core/memory';
 import { RequestContext } from '@mastra/core/request-context';
 import { LibSQLVector } from '@mastra/libsql';
 import { Memory } from '@mastra/memory';
@@ -128,7 +129,7 @@ async function processCitationRecall(
   });
 }
 
-function recallInput() {
+function recallInput(memoryConfig?: MemoryConfigInternal) {
   const messageList = new MessageList({
     threadId: channelCase.request.thread_id,
     resourceId: expectedItem.boundary_id,
@@ -137,6 +138,7 @@ function recallInput() {
   requestContext.set('MastraMemory', {
     thread: { id: channelCase.request.thread_id },
     resourceId: expectedItem.boundary_id,
+    ...(memoryConfig ? { memoryConfig } : {}),
   });
   return { messageList, requestContext };
 }
@@ -277,6 +279,26 @@ describe('citation-aware semantic recall', () => {
     expect(prompt).toContain(expectedItem.text);
     expect(prompt).not.toContain(foreign.text);
     expect(prompt).not.toContain(foreign.boundary_id);
+  });
+
+  it('pins caller-supplied semantic recall to resource scope', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'SYNTHETIC_OPENAI_KEY');
+    const memory = await makeMemory();
+    const recall = vi.spyOn(memory, 'recallWithCitationMetadata')
+      .mockResolvedValue([]);
+    const { messageList, requestContext } = recallInput({
+      lastMessages: 3,
+      semanticRecall: { topK: 99, messageRange: 7, scope: 'thread' },
+    });
+
+    await processCitationRecall(memory, messageList, requestContext);
+
+    expect(recall).toHaveBeenCalledWith(expect.objectContaining({
+      threadConfig: {
+        lastMessages: 3,
+        semanticRecall: { topK: 99, messageRange: 7, scope: 'resource' },
+      },
+    }), expect.any(Set));
   });
 
   it('distinguishes an empty retrieval from a failed retrieval', async () => {
