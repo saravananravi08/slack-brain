@@ -1,8 +1,8 @@
 # T406 — Validate live ingestion end to end
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-14
 - **Branch:** `task/T406-validate-live-ingestion-end-to-end`
 - **Parallel group:** PG-04D
 - **Depends on:** T405, T205
