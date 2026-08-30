@@ -7,7 +7,7 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 in progress
+- **Current phase gate:** P02 closed; P03 + P04 in progress
 - **Last updated:** 2026-08-30 (P02 in progress)
 
 ## Assignment protocol
@@ -23,9 +23,9 @@
 |---|---|---|---|---|
 | [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
 | [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke scheduled in P05 validation) | P00 | Augment | cffce23 |
-| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | In Progress | P01 | Augment | — |
-| [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | Planned | P02 | Unassigned | — |
-| [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Planned | P02 | Unassigned | — |
+| [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed (exception: live-provider benchmark pending B-02) | P01 | Augment | a5c77e7 |
+| [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
+| [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | In Progress | P02 | Augment | — |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | Planned | P03, P04 | Unassigned | — |
 
 ## Task dashboard

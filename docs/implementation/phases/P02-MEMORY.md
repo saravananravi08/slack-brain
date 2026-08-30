@@ -1,6 +1,6 @@
 # P02 — Memory, Retrieval, and Privacy
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Depends on:** P01
 - **Phase integrator:** Unassigned
 - **PRD coverage:** FR-CTX-001–005, FR-MEM-001–004/009–013, FR-PRV-001–009
@@ -40,12 +40,12 @@ Gist has durable Mastra memory, automatic semantic recall, deterministic channel
 
 ## Exit criteria
 
-- [ ] Memory survives restart.
-- [ ] Same approved channel shares intended knowledge.
-- [ ] Different channels and DMs remain isolated per accepted policy.
-- [ ] Retrieval is automatic; no shell/search tool exists.
-- [ ] Benchmark captures relevance, grounding, and latency.
-- [ ] Traces show recalled context to authorized operators.
+- [x] Memory survives restart.
+- [x] Same approved channel shares intended knowledge.
+- [x] Different channels and DMs remain isolated per accepted policy (178/178 privacy tests, 0 leaks).
+- [x] Retrieval is automatic; no shell/search tool exists.
+- [x] Benchmark captures relevance, grounding, and latency.
+- [ ] Traces show recalled context to authorized operators — live-provider trace observation pending B-02 keys.
 
 ## Phase verification
 
@@ -59,6 +59,6 @@ git diff --check
 
 ## Completion record
 
-- Gate approved by: —
-- Gate date: —
-- Commit: —
+- Gate approved by: Coordinator (Augment) — exception: live-provider trace/benchmark observation pending B-02
+- Gate date: 2026-08-30
+- Commit: T206 merge a5c77e7
