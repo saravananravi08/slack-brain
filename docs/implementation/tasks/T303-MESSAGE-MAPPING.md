@@ -1,8 +1,8 @@
 # T303 — Implement archive message normalization
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P03](../phases/P03-HISTORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-9
 - **Branch:** `task/T303-implement-archive-message-normalization`
 - **Parallel group:** PG-03B
 - **Depends on:** T301
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Same input always yields same IDs/output.
-- [ ] DM/channel identities cannot mix.
-- [ ] No live storage or DB access in mapper.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Same input always yields same IDs/output.
+- [x] DM/channel identities cannot mix.
+- [x] No live storage or DB access in mapper.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `6eb546d273392f9138b932141e201b6ef5247b78`
+- Handoff commit: `75f10ba563d265f233462ae233d40f0d1ae2f648`
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
