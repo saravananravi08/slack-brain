@@ -261,6 +261,12 @@ export async function createFoundationRuntime(
     ambientPersistence,
     mutations,
     authorize: async (request) => {
+      const { channel: rawChannelId } = channel.adapter.decodeThreadId(request.threadId);
+      const adapterChannelId = channel.adapter.channelIdFromThreadId(request.threadId);
+      if (request.channelId !== rawChannelId && request.channelId !== adapterChannelId) {
+        return { allowed: false, reason: 'identity_unresolved' };
+      }
+      const authorizationRequest = { ...request, channelId: rawChannelId };
       let context:
         | {
             event: AuthorizationEvent;
@@ -277,11 +283,11 @@ export async function createFoundationRuntime(
             : attributes;
         },
         resolveIdentity: (event) => {
-          const identity = identityForChannelRequest(request, channel.adapter);
+          const identity = identityForChannelRequest(authorizationRequest, channel.adapter);
           context = { event, identity };
           return identity;
         },
-      })(request);
+      })(authorizationRequest);
 
       if (decision.allowed && context) authorizedContexts.set(request, context);
       return decision;
