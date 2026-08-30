@@ -1,6 +1,6 @@
 # T305 — Integrate archive importer and reporting
 
-- **Status:** Blocked
+- **Status:** Ready for Integration
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-9
 - **Branch:** `task/T305-integrate-archive-importer-and-reporting`
@@ -69,18 +69,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Dry-run performs no writes.
-- [ ] Sample/full modes are explicit.
-- [ ] Synthetic rerun is idempotent.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Dry-run performs no writes.
+- [x] Sample/full modes are explicit.
+- [x] Synthetic rerun is idempotent.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `206d8443fc852e24e408af5f653358063f2c2bfd`
+- Handoff commit: pending metadata commit (hash recorded in follow-up)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
