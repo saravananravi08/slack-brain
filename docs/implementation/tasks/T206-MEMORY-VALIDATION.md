@@ -1,8 +1,8 @@
 # T206 — Validate memory, retrieval, and privacy
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-6
 - **Branch:** `task/T206-validate-memory-retrieval-and-privacy`
 - **Parallel group:** PG-02C
 - **Depends on:** T204, T205
@@ -67,18 +67,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Zero privacy leaks.
-- [ ] Persistence/restart cases pass.
-- [ ] Retrieval baseline is accepted or phase remains blocked.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Zero privacy leaks.
+- [x] Persistence/restart cases pass.
+- [x] Retrieval baseline is accepted or phase remains blocked.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `8aa8921bf4b9390b516d02ecc88c090f3f0b209c`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
