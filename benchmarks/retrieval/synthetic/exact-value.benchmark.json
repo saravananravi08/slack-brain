@@ -1,0 +1,73 @@
+{
+  "$schema": "../benchmark.schema.json",
+  "schema_version": 1,
+  "dataset_id": "synthetic-exact-value",
+  "dataset_version": "1.0.0",
+  "synthetic": true,
+  "model_id": "synthetic-reference",
+  "embedding_model": "synthetic-reference",
+  "thresholds": {
+    "relevant_retrieval_rate_min": 0.8,
+    "grounded_answer_accuracy_min": 0.85,
+    "unsupported_claim_rate_max_exclusive": 0.05,
+    "privacy_leaks_max": 0
+  },
+  "cases": [
+    {
+      "id": "case-exact-url",
+      "category": "exact_value",
+      "query": "What is the Orbit preview address?",
+      "expected": {
+        "evidence_ids": ["msg-orbit-url"],
+        "forbidden_evidence_ids": [],
+        "required_claims": ["The address is https://preview.example.invalid/orbit."],
+        "refuse_if_unverified": false,
+        "attribution": { "required": true, "sender": "Casey Example", "date": "2026-01-15" }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 },
+      "observed": {
+        "retrieved_evidence_ids": ["msg-orbit-url"],
+        "supported_required_claims": 1,
+        "unsupported_factual_claims": 0,
+        "factual_claims": 1,
+        "forbidden_disclosure": false,
+        "refusal_confirmed": false,
+        "asserted_answer": true,
+        "attribution_sender": "Casey Example",
+        "attribution_date": "2026-01-15",
+        "first_content_ms": 700,
+        "complete_ms": 1200,
+        "response_count": 1,
+        "reply_location_correct": true
+      }
+    },
+    {
+      "id": "case-speaker-owner",
+      "category": "speaker_attribution",
+      "query": "Who took responsibility for the Comet migration checklist?",
+      "expected": {
+        "evidence_ids": ["msg-comet-owner"],
+        "forbidden_evidence_ids": [],
+        "required_claims": ["Devon Example owns the Comet migration checklist."],
+        "refuse_if_unverified": false,
+        "attribution": { "required": true, "sender": "Devon Example", "date": "2026-01-19" }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 },
+      "observed": {
+        "retrieved_evidence_ids": ["msg-comet-owner"],
+        "supported_required_claims": 1,
+        "unsupported_factual_claims": 0,
+        "factual_claims": 1,
+        "forbidden_disclosure": false,
+        "refusal_confirmed": false,
+        "asserted_answer": true,
+        "attribution_sender": "Devon Example",
+        "attribution_date": "2026-01-19",
+        "first_content_ms": 800,
+        "complete_ms": 1300,
+        "response_count": 1,
+        "reply_location_correct": true
+      }
+    }
+  ]
+}

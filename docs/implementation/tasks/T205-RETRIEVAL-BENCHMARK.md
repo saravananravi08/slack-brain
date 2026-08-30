@@ -1,6 +1,6 @@
 # T205 — Build retrieval benchmark harness
 
-- **Status:** Blocked
+- **Status:** In Progress
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-6
 - **Branch:** `task/T205-build-retrieval-benchmark-harness`
