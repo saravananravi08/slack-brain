@@ -54,3 +54,5 @@ _No implementation events recorded yet._
 - T302 Completed: read-only archive source reader (pi-coder-8, merge 2b14097).
 - T303 Completed: archive message normalization (pi-coder-9, merge 2640d21).
 - T304 Completed: idempotent memory writer (pi-coder-10, merge da7558d). Integration: 392/392 tests.
+- T402 Completed: live event normalization + dual-key dedup (claude-planner-2, merge 4c615da).
+- T403 Completed: silent ambient persistence, no model calls (pi-coder-10, merge c3365cd).

@@ -57,8 +57,8 @@
 | [T306](./tasks/T306-SAMPLE-IMPORT.md) — Run sample archive import and quality gate | P03 | Planned | T205, T305 | PG-03D | Unassigned | — | — | — |
 | [T307](./tasks/T307-FULL-IMPORT.md) — Execute full historical import | P03 | Planned | T306, Product/security approval | PG-03E | Unassigned | — | — | — |
 | [T401](./tasks/T401-ADAPTER-EVENT-SPIKE.md) — Spike supported ordinary Slack event handling | P04 | Completed | T104, T206 | PG-04A | claude-planner-2 | task/T401-spike-supported-ordinary-slack-event-handling | 2026-08-30 | 8ba694e |
-| [T402](./tasks/T402-EVENT-NORMALIZATION.md) — Normalize and deduplicate live Slack events | P04 | In Progress | T401 | PG-04B | claude-planner-2 | task/T402-normalize-and-deduplicate-live-slack-events | 2026-08-30 | — |
-| [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | In Progress | T201, T202, T401 | PG-04B | pi-coder-10 | task/T403-persist-ambient-messages-silently | 2026-08-30 | — |
+| [T402](./tasks/T402-EVENT-NORMALIZATION.md) — Normalize and deduplicate live Slack events | P04 | Completed | T401 | PG-04B | claude-planner-2 | task/T402-normalize-and-deduplicate-live-slack-events | 2026-08-30 | 4c615da |
+| [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | task/T403-persist-ambient-messages-silently | 2026-08-30 | c3365cd |
 | [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | In Progress | T001, T203, T401 | PG-04B | pi-coder-11 | task/T404-implement-edit-delete-and-retention-mutation-policy | 2026-08-30 | — |
 | [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Planned | T402, T403, T404, T204 | PG-04C | Unassigned | — | — | — |
 | [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | Planned | T405, T205 | PG-04D | Unassigned | — | — | — |

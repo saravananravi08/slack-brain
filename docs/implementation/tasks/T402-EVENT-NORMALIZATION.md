@@ -1,6 +1,6 @@
 # T402 — Normalize and deduplicate live Slack events
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** claude-planner-2
 - **Branch:** `task/T402-normalize-and-deduplicate-live-slack-events`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `af39f16`
 - Handoff commit: —
-- Merge commit: —
+- Merge commit: 4c615da
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
