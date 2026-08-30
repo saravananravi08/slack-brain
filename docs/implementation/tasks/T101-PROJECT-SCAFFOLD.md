@@ -1,6 +1,6 @@
 # T101 — Scaffold Mastra TypeScript project
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder
 - **Branch:** `task/T101-scaffold-mastra-typescript-project`
@@ -71,18 +71,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Fresh clone installs reproducibly.
-- [ ] No deprecated old runtime is invoked by new scripts.
-- [ ] No later task implementation is preempted.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Fresh clone installs reproducibly.
+- [x] No deprecated old runtime is invoked by new scripts.
+- [x] No later task implementation is preempted.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `d41d7de3b82970d3a0c0388519d3f4fdb6e00ff4`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
