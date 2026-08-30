@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 closed; P03 + P04 remain in progress on operator inputs (B-03/B-07). P05 deliverables T501–T505, T507, and the T508 assessment are merged; T506 production cutover is pending operator approval. D012 remains accepted (generation on OpenAI `gpt-4.1`).
-- **Last updated:** 2026-08-30 (T501 `0839422`, T503 `f9b7723`, T504 `eebe8a9`, T505 `956393c`, T507 `67f8e5e`, T508 `f1e856b`, build fix `92aa6a3`; residual F-11 relocation verified; 576 tests passing)
+- **Current phase gate:** P02 closed; P03 + P04 remain in progress on operator inputs (B-03/B-07). P05 deliverables T501–T505, T507, and the T508 assessment are merged; T506 production cutover is pending operator approval. D012 remains accepted (generation on OpenAI `gpt-4.1`). **CI now runs typecheck + test + build on push and PR** (`.github/workflows/ci.yml`, Node 22), and the toolchain was squared away: `npm run build` is `tsc`, `npm start` launches the compiled Socket Mode runtime, `tsx` is a declared dependency, and `dist/` is excluded from test discovery. F-19 drop-count instrumentation is merged, so the beta can measure the deferred finding.
+- **Last updated:** 2026-08-30 (CI `f8a4357`, start fix `7bfb04b`, tsx dep `18f80f4`, F-19 instrumentation `d48a6d2`, vitest `dist/` exclusion `0ce82e2`; F-11 move `7f86d3a`; **580 passing, 5 skipped, 4 todo**; typecheck, test, and build all green at `0ce82e2`)
 
 ### Security review status
 
@@ -104,7 +104,7 @@ offline evidence.
 |---|---|---|---|---|---|
 | B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
 | B-02 | T206/runtime | RESOLVED 2026-08-30: D012 switched generation to OpenAI `gpt-4.1`; existing `OPENAI_API_KEY` serves generation and embeddings | Augment coordinator | done | 2026-08-30 |
-| B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
+| B-03 | T301/P03 | **IN PROGRESS 2026-08-30:** legacy archive is being stood up as a Docker Postgres instance by pi-coder-15, with a `postgres-archive-reader` alongside the existing SQLite reader. Not yet merged — the reader is uncommitted and currently does not typecheck (`rowMode` is not in `pg`'s `QueryConfig`). Original need — a read-only path to the archived data — is being met by the container rather than a file | pi-coder-15 / Operator | Postgres reader merged green, then T306 sample import | 2026-08-30 |
 | B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |
 | B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |
 | B-06 | FR-SLK-002 DMs | RESOLVED 2026-08-30: im scopes added + app reinstalled by operator; probe re-run to confirm | Operator (saravanan) | done | 2026-08-30 |

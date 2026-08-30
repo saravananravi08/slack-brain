@@ -208,3 +208,29 @@ Worked in the order the triage recommended (`docs/security/remaining-findings-tr
 - Result: Moved `src/migration/source/tests/migration/source/archive-reader.test.ts` to `tests/migration/source/archive-reader.test.ts`; no test files remain under `src/migration/**`.
 - Verification: source-reader suite 7 passing; `npm run typecheck`; full suite 576 passing; `git diff --check`.
 - Follow-up: None; F-11 source-tree test hygiene is complete.
+
+### 2026-08-30 — CI and toolchain corrections
+
+Five small commits that make the repository buildable, runnable, and continuously verified. Grouped because they are one thread of work.
+
+- **CI added (`f8a4357`).** `.github/workflows/ci.yml` runs `npm ci`, `npm run typecheck`, `npm test`, and `npm run build` on push and pull request against `integration/mastra-rewrite` and `main`, on Node 22 with npm caching. Verified locally at `0ce82e2` in a clean detached worktree: all four steps green. The GitHub-side run itself has not been observed from here.
+- **`npm start` fixed (`7bfb04b`).** It now runs `node dist/src/index.js` — the compiled Socket Mode runtime — instead of `mastra start`, which served an HTTP bundle that was never the production entry. Together with the `build` script now being `tsc`, `npm run build && npm start` is exactly the sequence the T504 runbook documents.
+- **`tsx` declared (`18f80f4`).** `import:slack` invoked `tsx` without depending on it, so the archive-import CLI worked only where `tsx` happened to be installed. Now pinned at 4.21.0.
+- **`dist/` excluded from test discovery (`0ce82e2`).** `vitest.config.ts` adds `**/dist/**` to the default excludes. Without it, running the suite after a build discovers and re-runs the compiled copies of every test.
+- **Verified after the batch:** 580 passing, 5 skipped, 4 todo across 46 files; typecheck clean; build produces `dist/src/index.js`.
+
+**Follow-up for the doc owners:** `build` is no longer `mastra build`, which makes two documents stale. `docs/runbooks/deployment.md` still says the build emits a Mastra HTTP bundle and describes `npx tsc` as a separate step, and `docs/releases/beta.md` still instructs the operator to *skip* `npm run build` because of B-08. Both should now say `npm run build` is the supported step.
+
+### 2026-08-30 — F-19 drop instrumentation merged
+
+- Merged as `d48a6d2` (implementation `c5083eb`, claude-planner-2).
+- Uses the Chat SDK's supported `onLockConflict` configuration hook rather than patching an internal: the callback fires on thread-lock contention, counts it, emits a rate-limited warning, and returns `'drop'`. Behaviour is unchanged — returning `'force'` would let two turns run concurrently on one thread, which FR-SLK-007 exists to prevent.
+- Exposes `channel.concurrencyDrops()` → `{ total, sinceLastWarning, lastDropAt }` for the T505 observation plan, and warns at most once per 60 s carrying the reason code, running total, drops accumulated while the log was silent, and a best-effort `likelyAddressed` hint. No message text, channel, or user reaches the log; a test asserts the exact field set.
+- **This is what the deferred F-19 decision was waiting on.** The T502 sign-off §3.2 deferred the fix because the choice turns on how often the drop happens and nobody had the number. The beta can now produce it.
+- Tests were mutation-checked: neutralising the counter fails two of them.
+
+### 2026-08-30 — T406 progress and B-03 unblocking
+
+- **T406 (pi-coder-14) remains In Progress.** Reported from the live session: ambient silent persistence confirmed against the real transport, and a **channel-ID recall bug** found. Edit/delete validation still needs operator action. **These findings are not yet in `logs/T406.md` or `docs/reports/live-ingestion-validation.md`** — both still end at the 15:43 UTC provider-validation entry. pi-coder-14 should record the recall bug with its evidence before the task is handed off; a defect found in live validation is exactly what that report exists to carry.
+- **B-03 is being unblocked differently than expected.** Rather than supplying a path to an archived SQLite file, pi-coder-15 is standing up the legacy archive as a Docker Postgres instance and adding `src/migration/source/postgres-archive-reader.ts` beside the existing read-only SQLite reader. Work is uncommitted and **does not currently typecheck** — `rowMode` is not a property of `pg`'s `QueryConfig`, so the query calls fail overload resolution. With CI now green on every push, that must be fixed before the branch lands or CI goes red on arrival.
+- Reminder for whoever reviews that reader: the SQLite reader is hardened read-only (`immutable=1`, `PRAGMA query_only`, extensions disabled, parameterised queries). A Postgres reader should reach the same posture — a read-only role at minimum — because T302's acceptance rested on the source being impossible to mutate.
