@@ -1,8 +1,8 @@
 import { describe, it } from 'vitest';
 
-describe('T406 credential-dependent live validation', () => {
+describe('T406 operator-dependent Slack validation', () => {
   it.todo('ingests an operator-authored ambient message through Socket Mode without a reply');
-  it.todo('recalls the ambient message from a later paraphrased addressed question [B-02]');
-  it.todo('propagates a live edit by replacing text and its embedding [B-02/operator action]');
-  it.todo('propagates a live delete by removing text and embedding [B-02/operator action]');
+  it.todo('answers an operator-authored paraphrased mention from the persisted channel boundary');
+  it.todo('propagates an operator edit delivered by Slack Socket Mode');
+  it.todo('propagates an operator delete delivered by Slack Socket Mode');
 });
