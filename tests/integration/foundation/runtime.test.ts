@@ -46,16 +46,16 @@ afterAll(async () => {
 });
 
 describe('foundation runtime', () => {
-  it('validates configuration before storage initialization', async () => {
+  it('validates configuration before any storage exists', async () => {
+    // There is no storage to spy on until configuration has been validated,
+    // which is the point: the factory builds it from `config.databaseUrl`
+    // rather than from a module-level `process.env` read (design review F-05).
     vi.stubEnv('GIST_MODEL', 'invalid-model');
-    const initialize = vi.spyOn(runtimeModule.storage, 'init');
 
     await expect(runtimeModule.createFoundationRuntime()).rejects.toBeInstanceOf(
       ConfigError,
     );
-    expect(initialize).not.toHaveBeenCalled();
 
-    initialize.mockRestore();
     vi.stubEnv('GIST_MODEL', 'claude-opus-5');
   });
 
@@ -78,8 +78,8 @@ describe('foundation runtime', () => {
     );
 
     expect(runtime.mastra.listAgents().gist).toBe(runtime.gistAgent);
-    expect(runtime.mastra.getStorage()?.id).toBe(runtimeModule.storage.id);
-    expect(runtime.mastra.observability).toBe(runtimeModule.observability);
+    expect(runtime.mastra.getStorage()?.id).toBe('gist-storage');
+    expect(runtime.mastra.observability).toBeDefined();
 
     await runtime.start();
     await runtime.start();
