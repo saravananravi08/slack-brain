@@ -81,4 +81,4 @@
 
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
-| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30
+| B-01 | T003/P01 | RESOLVED 2026-08-30: credentials placed in .env (gitignored, 0600); live Slack smoke test to run under P02/P05 validation | Operator (saravanan) | done | 2026-08-30 |
