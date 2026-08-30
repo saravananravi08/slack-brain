@@ -1,8 +1,8 @@
 # T403 — Persist ambient messages silently
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-10
 - **Branch:** `task/T403-persist-ambient-messages-silently`
 - **Parallel group:** PG-04B
 - **Depends on:** T201, T202, T401
