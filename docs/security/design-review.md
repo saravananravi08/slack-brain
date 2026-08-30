@@ -175,11 +175,13 @@ T405 merged while this review was in progress and closed three first-pass findin
 
 One note on process rather than code: this review was written against `b639ef0` and re-run against `f9ad978` after T405 landed. A design review of a moving branch is only accurate at a stated commit — T502 should re-check the findings above against whatever tip it signs off, particularly anything touching `src/mastra/channels/slack.ts`, which did not exist when the first pass began.
 
-## 9. Resolved by SECFIX packs (merged 2026-08-30)
+## 9. Resolved after the review (merged 2026-08-30)
 
-Security review packs A and B were implemented in worktrees, scope-checked,
-merged --no-ff into integration/mastra-rewrite, and verified with the
-full suite (534 tests) and npm run typecheck -- both green.
+Security review packs A, B, and C, plus the standalone F-17 fix, were
+implemented in worktrees, scope-checked, merged --no-ff into
+integration/mastra-rewrite, and verified with the full suite and
+npm run typecheck -- both green at every step (534 tests after A+B, 546 after
+C, D012, T406, and F-17).
 
 | Finding | Pack | Merge commit | Resolution |
 |---|---|---|---|
@@ -188,8 +190,13 @@ full suite (534 tests) and npm run typecheck -- both green.
 | F-03 | A (fix/security-review-pack-a) | 79d4f82 | Empty recall remains empty; failures emit retrieval_failed and trigger fixed unverifiable-response guidance. |
 | F-05 | B (fix/security-review-pack-b) | 538ead1 | Storage built inside createFoundationRuntime from validated config.databaseUrl after parseConfig(). Module-level singleton and import-time side effect removed. |
 | F-06 | B (fix/security-review-pack-b) | 538ead1 | Archive import routed through shared authorize() at write_memory using resolveIdentity()/messageKey(). ARCHIVE_SENDER_ATTRIBUTES constant added; ImportFailureReason invalid_identity added. |
-| F-07 | B (fix/security-review-pack-b) | 538ead1 | Retention sweep no longer fails open -- exits non-zero on error. |
+| F-07 | B (fix/security-review-pack-b) | 538ead1 | Retention sweep no longer fails open: a de-approved channel with no recorded removal time starts its clock at `policy.now` and is reported in `unrecorded_channel_removals` / `channel_removal_starts` until the timestamp is persisted. |
 | F-10 | A (fix/security-review-pack-a) | 79d4f82 | Retrieved Slack evidence marked as untrusted data in instructions; closing evidence tags stripped from retrieved text. |
+| F-11 | C (fix/security-review-pack-c) | 185aa73 | Test suites relocated out of `src/migration/**`, so test code no longer compiles into the production build. |
+| F-13 | C (fix/security-review-pack-c) | 185aa73 | Retention sweep paged rather than loading every message of every thread into memory. |
+| F-14 | C (fix/security-review-pack-c) | 185aa73 | Tombstone growth bounded and `updateResource` merge semantics pinned by test. |
+| F-15 | C (fix/security-review-pack-c) | 185aa73 | `semanticRecall.scope` pinned on the recall the processor performs instead of being accepted from a caller-supplied `memoryConfig`. |
+| F-17 | fix/security-f17 | 3d7390b | Agent and ingestion writes converge on one message row. `agentUserTurn()` gives the agent's user turn the same `messageKey` id, `createdAt`, and metadata block the ingestion writers use, so a delete keyed on `messageKey` reaches every copy. Confirmed first by diagnostic (`c144a44`), which measured two rows for one Slack message and one survivor after a delete. |
 
 F-16 -- coordinator ruling (2026-08-30): Per decision authority delegated by
 the operator, the defensible default applies: channel history is channel
@@ -197,4 +204,10 @@ history. Messages authored by external/guest/deactivated users remain in the
 channel corpus. D006 covers future interaction, not retroactive removal.
 Logged in DECISIONS.md as D011.
 
-Remaining findings for T502: F-11 through F-15, F-17 through F-20 (see section 7).
+Remaining findings for T502: **F-12, F-18, F-19, F-20**.
+
+F-12 (in-process mutation lock) is accepted for the single-instance deployment
+the PRD assumes and should be revisited if that changes. F-18, F-19, and F-20
+were triaged for testability in
+[`remaining-findings-triage.md`](./remaining-findings-triage.md): all three are
+testable offline today, and none is blocked on live Slack or a provider key.
