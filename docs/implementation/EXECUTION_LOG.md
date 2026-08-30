@@ -27,3 +27,4 @@ _No implementation events recorded yet._
 - T004 Completed: architecture and data contracts frozen with v1 fixtures (claude-planner, merge 151dc00). Coordinator note: docs/architecture/contracts/archive-import.md reserved to T301; T004 glob treated as excluding it.
 - P00 phase gate closed (exception logged: B-01 Slack dev app pending operator). P01 opened.
 - T101 Completed: Mastra TS scaffold (pi-coder, merge 872bd8b). npm ci/typecheck/test/build all pass.
+- T105 Completed: Gist agent behavior (pi-coder, merge 5a3f443).

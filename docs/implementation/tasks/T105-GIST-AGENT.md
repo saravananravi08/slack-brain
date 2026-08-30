@@ -1,6 +1,6 @@
 # T105 — Implement Gist agent behavior
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder
 - **Branch:** `task/T105-implement-gist-agent-behavior`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `2f1764442833c89dad133b28dbbaccd4bbad8156`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: 5a3f443
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
