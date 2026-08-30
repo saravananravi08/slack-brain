@@ -1,6 +1,6 @@
 # T101 — Scaffold Mastra TypeScript project
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder
 - **Branch:** `task/T101-scaffold-mastra-typescript-project`
@@ -83,6 +83,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `d41d7de3b82970d3a0c0388519d3f4fdb6e00ff4`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: 872bd8b
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

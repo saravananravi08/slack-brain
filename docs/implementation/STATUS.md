@@ -37,7 +37,7 @@
 | [T002](./tasks/T002-BASELINE-BENCHMARK.md) — Capture baseline and retrieval benchmark | P00 | Completed | — | PG-00A | pi-coder-2 | task/T002-capture-baseline-and-retrieval-benchmark | 2026-08-30 | 818734a |
 | [T003](./tasks/T003-SLACK-DEV-ENVIRONMENT.md) — Prepare isolated Slack development environment | P00 | Completed | — | PG-00A | pi-coder-3 | task/T003-prepare-isolated-slack-development-environment | 2026-08-30 | 090e8ad |
 | [T004](./tasks/T004-ARCHITECTURE-CONTRACTS.md) — Define architecture and data contracts | P00 | Completed | T001 | PG-00B | claude-planner | task/T004-define-architecture-and-data-contracts | 2026-08-30 | 151dc00 |
-| [T101](./tasks/T101-PROJECT-SCAFFOLD.md) — Scaffold Mastra TypeScript project | P01 | In Progress | P00 | PG-01A | pi-coder | task/T101-scaffold-mastra-typescript-project | 2026-08-30 | — |
+| [T101](./tasks/T101-PROJECT-SCAFFOLD.md) — Scaffold Mastra TypeScript project | P01 | Completed | P00 | PG-01A | pi-coder | task/T101-scaffold-mastra-typescript-project | 2026-08-30 | 872bd8b |
 | [T102](./tasks/T102-CONFIG-VALIDATION.md) — Implement startup configuration validation | P01 | Planned | T101 | PG-01B | Unassigned | — | — | — |
 | [T103](./tasks/T103-STORAGE-TRACING.md) — Configure Mastra storage and tracing | P01 | Planned | T101 | PG-01B | Unassigned | — | — | — |
 | [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | Planned | T101, T003, T004 | PG-01B | Unassigned | — | — | — |
