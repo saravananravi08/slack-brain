@@ -1,6 +1,6 @@
 # T106 — Integrate foundation runtime
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
 - **Owner:** pi-coder-4
 - **Branch:** `task/T106-integrate-foundation-runtime`
@@ -80,6 +80,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `b8f4da3cd600824d227d1db22c3997a5086dd511`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: cffce23
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

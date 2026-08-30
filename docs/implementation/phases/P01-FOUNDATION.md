@@ -30,7 +30,7 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 | [T103](../tasks/T103-STORAGE-TRACING.md) | Completed | T101 | PG-01B | pi-coder-3 | 9f701a5 |
 | [T104](../tasks/T104-SLACK-CHANNEL.md) | Completed | T101, T003, T004 | PG-01B | claude-planner | 5b211d0 |
 | [T105](../tasks/T105-GIST-AGENT.md) | Completed | T101, T004 | PG-01B | pi-coder | 5a3f443 |
-| [T106](../tasks/T106-FOUNDATION-INTEGRATION.md) | Planned | T102–T105 | PG-01C | Unassigned | — |
+| [T106](../tasks/T106-FOUNDATION-INTEGRATION.md) | Completed | T102–T105 | PG-01C | pi-coder-4 | cffce23 |
 
 ## Integration procedure
 
