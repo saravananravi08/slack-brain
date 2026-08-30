@@ -197,6 +197,17 @@ describe('typing indicator (FR-SLK-006)', () => {
 });
 
 describe('request normalization', () => {
+  it('removes the adapter prefix from the Slack channel ID', () => {
+    const request = toChannelRequest(
+      'channel_mention',
+      makeThread({ channelId: `slack:${SYNTHETIC.channelApproved}` }).thread,
+      makeMessage(),
+      false,
+    );
+
+    expect(request.channelId).toBe(SYNTHETIC.channelApproved);
+  });
+
   it('keeps the Slack ts as a verbatim string (slack-event.md §2)', () => {
     const precise = '1735689600.000200';
     const request = toChannelRequest(

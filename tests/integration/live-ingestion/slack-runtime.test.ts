@@ -8,6 +8,7 @@ import type {
   HandleMutationInput,
 } from '../../../src/ingestion/index.js';
 import { createLiveSlackChannel } from '../../../src/mastra/channels/slack.js';
+import type { ChannelRequest } from '../../../src/mastra/channels/types.js';
 import type { PolicySnapshot, SenderAttributes } from '../../../src/security/index.js';
 import { makeMessage, makeThread } from '../../channels/helpers.js';
 import {
@@ -51,7 +52,7 @@ function makeHarness(state = makeMemoryState()) {
     warn: vi.fn(),
     error: vi.fn(),
   };
-  const generation = vi.fn(async () => 'Synthetic reply.');
+  const generation = vi.fn(async (_request: ChannelRequest) => 'Synthetic reply.');
   const resolveSender = vi.fn(async () => FULL_MEMBER);
   const persist = vi.fn(async (_input: AmbientPersistenceInput) => ({
     outcome: 'inserted' as const,
@@ -230,6 +231,10 @@ describe('live silent Slack ingestion', () => {
     await harness.deliver(envelope(mentionEvent()));
 
     expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.generation.mock.calls[0]?.[0]).toMatchObject({
+      channelId: SYNTHETIC.channel,
+      threadId: `slack:${SYNTHETIC.channel}:${SYNTHETIC.rootTs}`,
+    });
     expect(harness.posts).toHaveLength(1);
     expect(harness.persist).not.toHaveBeenCalled();
   });
