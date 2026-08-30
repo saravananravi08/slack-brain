@@ -1,8 +1,8 @@
 # T505 — Execute internal beta release
 
-- **Status:** Planned
+- **Status:** In Progress (preparation complete; beta not run — blocked, see below)
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner-2
 - **Branch:** `task/T505-execute-internal-beta-release`
 - **Parallel group:** PG-05B
 - **Depends on:** T501, T502, T503, T504
@@ -65,17 +65,44 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] No critical/privacy incident.
-- [ ] Metrics meet launch thresholds.
-- [ ] Production approval is recorded.
+- [ ] No critical/privacy incident. **Requires the beta to run.**
+- [ ] Metrics meet launch thresholds. **Blocked — T503 not started; no
+      thresholds defined.**
+- [ ] Production approval is recorded. **Requires the two above.**
 - [ ] Task log is current and contains no sensitive content.
 - [ ] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
+## Status note
+
+**Preparation deliverable merged; the beta has not been executed.**
+[`docs/releases/beta.md`](../../releases/beta.md) carries the scope, pre-flight
+checklist, test-workspace deployment procedure, observation plan, exit criteria,
+and blocker register.
+
+The beta is technically ready to start — the Slack app is a member of the beta
+channel (verified 2026-08-30), scopes and provider credential are in place, and
+Socket Mode plus live generation both passed T501's opt-in checks. What stops
+T505 from completing is not readiness to run but the following:
+
+- **Dependency gap:** T505 depends on T501, T502, T503, T504. **T503 has never
+  been assigned**, so "metrics meet launch thresholds" cannot be evaluated —
+  no thresholds exist.
+- **B-08 (new):** `npm run build` fails — `"mastra" is not exported by
+  src/mastra/index.ts`, a consequence of the F-05 security fix. Low impact on
+  the beta because the documented start path does not use `mastra build`, but it
+  must be fixed before T506.
+- **Execution requires an operator.** The acceptance criteria need a beta window
+  to have run; nothing here can satisfy them.
+
+The beta is deliberately scoped to exclude historical recall: B-03 means no
+archive has been imported, so the corpus is only what is posted during the
+window. That expectation must reach beta users before the first message.
+
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `2dccf1f`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
