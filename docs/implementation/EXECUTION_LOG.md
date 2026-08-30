@@ -56,3 +56,4 @@ _No implementation events recorded yet._
 - T304 Completed: idempotent memory writer (pi-coder-10, merge da7558d). Integration: 392/392 tests.
 - T402 Completed: live event normalization + dual-key dedup (claude-planner-2, merge 4c615da).
 - T403 Completed: silent ambient persistence, no model calls (pi-coder-10, merge c3365cd).
+- T404 Completed: edit/delete + retention mutation policy (pi-coder-11, merge 21f5d72).

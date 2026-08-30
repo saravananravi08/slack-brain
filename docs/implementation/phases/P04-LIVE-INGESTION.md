@@ -31,7 +31,7 @@ P04 component work may run in parallel with P03 component/import work because so
 | [T401](../tasks/T401-ADAPTER-EVENT-SPIKE.md) | Completed | T104, T206 | PG-04A | claude-planner-2 | 8ba694e |
 | [T402](../tasks/T402-EVENT-NORMALIZATION.md) | Completed | T401 | PG-04B | claude-planner-2 | 4c615da |
 | [T403](../tasks/T403-SILENT-PERSISTENCE.md) | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | c3365cd |
-| [T404](../tasks/T404-MUTATION-POLICY.md) | Planned | T001, T203, T401 | PG-04B | Unassigned | — |
+| [T404](../tasks/T404-MUTATION-POLICY.md) | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | 21f5d72 |
 | [T405](../tasks/T405-LIVE-INTEGRATION.md) | Planned | T402–T404, T204 | PG-04C | Unassigned | — |
 | [T406](../tasks/T406-LIVE-VALIDATION.md) | Planned | T405, T205 | PG-04D | Unassigned | — |
 
