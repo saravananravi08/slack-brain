@@ -1,8 +1,8 @@
 # T105 — Implement Gist agent behavior
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder
 - **Branch:** `task/T105-implement-gist-agent-behavior`
 - **Parallel group:** PG-01B
 - **Depends on:** T101, T004
