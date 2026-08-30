@@ -76,6 +76,7 @@
 | Task | Owner | Paths | Acquired | Released |
 |---|---|---|---|---|
 | T103-dep | pi-coder-3 | package.json, package-lock.json (pinned @mastra/observability add only; transferred from T101) | 2026-08-30 | reverts to T508 after T103 merge |
+| T205-dep | pi-coder-6 | package.json (add benchmark:retrieval script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T205 merge |
 
 ## Blockers
 
