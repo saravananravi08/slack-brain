@@ -1,8 +1,8 @@
 # T104 — Implement Mastra Slack channel adapter
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner
 - **Branch:** `task/T104-implement-mastra-slack-channel-adapter`
 - **Parallel group:** PG-01B
 - **Depends on:** T101, T003, T004
@@ -10,6 +10,8 @@
 - **Can run parallel with:** T102, T103, T105
 - **Conflicts with:** T405
 - **Task log:** [`../logs/T104.md`](../logs/T104.md)
+- **Worktree:** `../worktrees/T104`
+- **Open verification gap:** **B-01** — live Socket Mode smoke check is not run; operator Slack credentials are not yet available. Adapter construction, mode selection, routing, and error mapping are covered offline. A real connect/reconnect check must run before T106 closes.
 - **Write scope:**
   - `src/mastra/channels/**`
   - `tests/channels/**`
@@ -66,17 +68,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Adapter initializes with test config.
-- [ ] DM and mention fixtures route once.
-- [ ] No production Slack call occurs in unit tests.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Adapter initializes with test config.
+- [x] DM and mention fixtures route once.
+- [x] No production Slack call occurs in unit tests.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `5c9884a`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
