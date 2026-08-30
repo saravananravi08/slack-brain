@@ -1,6 +1,6 @@
 # T403 — Persist ambient messages silently
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** pi-coder-10
 - **Branch:** `task/T403-persist-ambient-messages-silently`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `d54f794bc7a059549f675ed3c7ca04e9c96ac322`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: c3365cd
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
