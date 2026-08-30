@@ -34,6 +34,5 @@ Pin the current defective Chat SDK `concurrency: 'drop'` behavior for ambient in
 
 ## Commit record
 
-- Implementation: —
-- Handoff metadata: —
+- Implementation: `c6fc4c2`
 - Merge: —
