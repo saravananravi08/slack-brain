@@ -1,8 +1,8 @@
 # T105 — Implement Gist agent behavior
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder
 - **Branch:** `task/T105-implement-gist-agent-behavior`
 - **Parallel group:** PG-01B
 - **Depends on:** T101, T004
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Agent display identity is Gist.
-- [ ] No tools are registered.
-- [ ] Unknown evidence yields uncertainty instruction.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Agent display identity is Gist.
+- [x] No tools are registered.
+- [x] Unknown evidence yields uncertainty instruction.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `2f1764442833c89dad133b28dbbaccd4bbad8156`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
