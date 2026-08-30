@@ -63,3 +63,4 @@ _No implementation events recorded yet._
 - T405 Completed: live silent ingestion integrated (pi-coder-12, merge f64b2dc). 513/513 tests.
 - T502 early security design review merged (claude-planner-2, review at f9ad978 tip). Findings in docs/security/design-review.md.
 - T306 synthetic import rehearsal merged (pi-coder-13). Real sample import still pending B-03.
+- Security fix packs dispatched: A (F-01/F-03/F-10 memory+agent, pi-coder-13), B (F-02/F-05/F-06/F-07 ingestion/storage/migration, claude-planner-2).
