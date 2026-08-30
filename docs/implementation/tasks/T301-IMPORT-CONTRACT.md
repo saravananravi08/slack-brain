@@ -1,6 +1,6 @@
 # T301 — Define archive import contract and fixtures
 
-- **Status:** Blocked
+- **Status:** Ready for Integration
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-8
 - **Branch:** `task/T301-define-archive-import-contract-and-fixtures`
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Fixtures contain no real Slack text/IDs.
-- [ ] All source edge cases have expected normalized output.
-- [ ] Contract is versioned and immutable for parallel component work.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Fixtures contain no real Slack text/IDs.
+- [x] All source edge cases have expected normalized output.
+- [x] Contract is versioned and immutable for parallel component work.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `cefbe2bd723c21e16979719d18773460bf563b38`
+- Handoff commit: pending metadata commit (hash recorded in follow-up)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
