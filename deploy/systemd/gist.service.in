@@ -1,4 +1,15 @@
 # EARLY DRAFT: do not install until all @...@ fields are resolved from merged T406/operator evidence.
+#
+# SINGLE INSTANCE ONLY. Do not convert this to a template unit (gist@.service),
+# do not run it on a second host, and do not start a second copy by hand.
+# Mutation serialization is in-process (security finding F-12), so a second
+# writer corrupts the store silently. See docs/runbooks/deployment.md,
+# "Single-instance constraint".
+#
+# @T406_VALIDATED_START_COMMAND@ must be an absolute-path invocation of the
+# COMPILED entry, e.g. `/usr/bin/node /opt/slack-brain/current/dist/src/index.js`.
+# `node --experimental-strip-types src/index.ts` does not work: the sources use
+# NodeNext .js specifiers and the process exits with ERR_MODULE_NOT_FOUND.
 [Unit]
 Description=Gist Slack Socket Mode runtime
 After=network-online.target

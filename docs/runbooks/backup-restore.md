@@ -11,6 +11,10 @@ The current single-process runtime stores Mastra messages, vectors, channel stat
 - Keep database, sidecars, backup archives, checksums, and restore staging outside Git with operator-only access.
 - Encrypt backup storage using the organization-approved mechanism and restrict restore permission to operators.
 - Never back up a live local database by copying only its main file. Stop Gist cleanly first so Socket Mode, memory work, vector writes, and storage handles close.
+- The stop is not only about file handles. Mutation serialization is in-process
+  (finding F-12; see the deployment runbook's single-instance constraint), so
+  any tool that writes to the store while the service is running is an
+  unserialized second writer. Stop the service, run the job, restart.
 - Restoring a backup may reintroduce messages/embeddings already removed by edit/delete or retention. Run the merged, T406-validated retention/deletion reconciliation before reopening service.
 - Legal/HR hold policy is pending security-owner confirmation. Accepted safe default remains 35-day backup rotation; do not silently extend it.
 

@@ -4,6 +4,14 @@
 
 Rollback has one invariant: **old and new Slack runtimes are never active together**. Both can receive the same addressed events and create duplicate replies/writes. Stop and prove the active runtime is down before starting its replacement.
 
+Duplicate replies are the visible half. The silent half is that mutation
+serialization is in-process only (finding F-12; see the deployment runbook's
+[single-instance constraint](./deployment.md#single-instance-constraint)), so
+two live runtimes can interleave a row write with a vector write and leave a
+message whose text and embedding disagree. That failure produces no error and
+no duplicate reply — it is only visible by comparing a message against what
+recall returns for it. Prove the old runtime is down; do not assume it.
+
 ## Rollback owners and assets
 
 Keep these in the private operator inventory:
