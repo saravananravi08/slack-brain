@@ -1,4 +1,5 @@
 import type { SlackAdapter } from '@chat-adapter/slack';
+import type { MastraDBMessage } from '@mastra/core/agent';
 import { MastraStateAdapter } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
 import { LibSQLVector, type LibSQLStore } from '@mastra/libsql';
@@ -8,6 +9,7 @@ import {
   AmbientPersistenceService,
   MastraMutationStorage,
   MutationHandler,
+  sentAtFrom,
 } from '../ingestion/index.js';
 import {
   AUTHORIZATION_CONTRACT_VERSION,
@@ -28,6 +30,7 @@ import type { ChannelRequest } from './channels/types.js';
 import { createGistMemory } from './memory/gist-memory.js';
 import {
   IDENTITY_CONTRACT_VERSION,
+  messageKey,
   resolveIdentity,
 } from './memory/resource-policy.js';
 import {
@@ -116,6 +119,75 @@ function identityForChannelRequest(
     thread_ts: threadTs === '' ? null : threadTs,
     sender_id: request.senderId,
   });
+}
+
+/**
+ * Build the user turn the agent persists, as the canonical record for that
+ * Slack message.
+ *
+ * The agent's own Mastra memory writes the user turn as a row of its own. Left
+ * to itself it assigns a random UUID, so the same Slack message ended up
+ * stored twice — once here and once by the ingestion writers under
+ * `messageKey` — and `MutationHandler`, which resolves targets by `messageKey`,
+ * could reach only one of them. A user deleting their message left its text in
+ * memory, and recall saw the message twice (design review F-17, confirmed by
+ * `tests/integration/live-ingestion/f17-diagnostic.test.ts`).
+ *
+ * Assigning the ID alone is not enough. Once both writers share a key, the
+ * ambient writer compares what it finds against its canonical shape and
+ * refuses to overwrite a row it did not recognise — so a bare agent row would
+ * turn every subscribed-thread message into a `content_conflict`. The row this
+ * builds is therefore identical to the one `ambient-persistence.ts` writes,
+ * field for field, so whichever writer gets there first the other converges on
+ * it.
+ *
+ * `messageKey` throws on identifiers that do not satisfy the identity
+ * contract. Every caller here has already passed `authorize`, which resolves
+ * an identity over the same workspace, channel, and timestamp, so a throw
+ * would mean the guard admitted something it should not have.
+ */
+export function agentUserTurn(input: {
+  readonly identity: ReturnType<typeof resolveIdentity>;
+  readonly workspaceId: string;
+  readonly channelId: string;
+  readonly messageTs: string;
+  readonly senderId: string;
+  readonly senderName: string;
+  readonly text: string;
+}): MastraDBMessage {
+  const key = messageKey({
+    workspace_id: input.workspaceId,
+    channel_id: input.channelId,
+    message_ts: input.messageTs,
+  });
+  const sentAt = sentAtFrom(input.messageTs) ?? new Date().toISOString();
+
+  return {
+    id: key,
+    role: 'user',
+    // The row describes the Slack message, not the moment the agent ran.
+    createdAt: new Date(sentAt),
+    threadId: input.identity.thread_id,
+    resourceId: input.identity.resource_id,
+    content: {
+      format: 2,
+      parts: [{ type: 'text', text: input.text }],
+      metadata: {
+        contract_version: '1.0.0',
+        message_key: key,
+        boundary_id: input.identity.boundary_id,
+        thread_id: input.identity.thread_id,
+        conversation_type: input.identity.conversation_type,
+        sender_id: input.senderId,
+        sender_name: input.senderName,
+        sent_at: sentAt,
+        message_ts: input.messageTs,
+        channel_id: input.channelId,
+        edited_at: null,
+        source: 'live',
+      },
+    },
+  } as MastraDBMessage;
 }
 
 export interface FoundationRuntime {
@@ -233,12 +305,23 @@ export async function createFoundationRuntime(
         }
       }
 
-      const response = await gistAgent.stream(request.text, {
-        memory: {
-          resource: context.identity.resource_id,
-          thread: context.identity.thread_id,
+      const response = await gistAgent.stream(
+        agentUserTurn({
+          identity: context.identity,
+          workspaceId: context.event.workspace_id,
+          channelId: context.event.channel_id,
+          messageTs: request.messageTs,
+          senderId: context.event.sender_id,
+          senderName: request.senderName,
+          text: request.text,
+        }),
+        {
+          memory: {
+            resource: context.identity.resource_id,
+            thread: context.identity.thread_id,
+          },
         },
-      });
+      );
       return response.textStream;
     },
   });

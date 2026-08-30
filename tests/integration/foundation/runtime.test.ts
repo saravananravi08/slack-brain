@@ -111,11 +111,17 @@ describe('foundation runtime', () => {
       expect(turn.thread.posts).toHaveLength(1);
       expect(turn.thread.posts[0]).toBeInstanceOf(ReadableStream);
     }
-    expect(agentStream.mock.calls.map(([request]) => request)).toEqual([
-      expect.any(String),
-      expect.any(String),
-      expect.any(String),
-    ]);
+    // The agent receives a user turn keyed on the message's content identity,
+    // not a bare string: both writers must land on one row, or a delete keyed
+    // on messageKey cannot reach the agent's copy (design review F-17).
+    const streamedTurns = agentStream.mock.calls.map(([request]) => request);
+    expect(streamedTurns).toHaveLength(3);
+    for (const turn of streamedTurns) {
+      expect(turn).toMatchObject({
+        id: expect.stringMatching(/^T[^/]+\/[^/]+\/\d+\.\d+$/),
+        role: 'user',
+      });
+    }
 
     const denied = makeThread({ channelId: SYNTHETIC.channelUnapproved });
     await runtime.channel.handlers.onNewMention(denied.thread, makeMessage());
