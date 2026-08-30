@@ -50,9 +50,9 @@
 | [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | Completed | T201, T202, T203, T106 | PG-02B | pi-coder-5 | task/T204-integrate-memory-identity-and-access | 2026-08-30 | b296c18 |
 | [T206](./tasks/T206-MEMORY-VALIDATION.md) — Validate memory, retrieval, and privacy | P02 | Completed | T204, T205 | PG-02C | pi-coder-6 | task/T206-validate-memory-retrieval-and-privacy | 2026-08-30 | a5c77e7 |
 | [T301](./tasks/T301-IMPORT-CONTRACT.md) — Define archive import contract and fixtures | P03 | Completed | P02 | PG-03A | pi-coder-8 | task/T301-define-archive-import-contract-and-fixtures | 2026-08-30 | f50438e |
-| [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
-| [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
-| [T304](./tasks/T304-MEMORY-WRITER.md) — Implement idempotent Mastra memory writer | P03 | Planned | T201, T301 | PG-03B | Unassigned | — | — | — |
+| [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | In Progress | T301 | PG-03B | pi-coder-8 | task/T302-implement-read-only-archive-source-reader | 2026-08-30 | — |
+| [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | In Progress | T301 | PG-03B | pi-coder-9 | task/T303-implement-archive-message-normalization | 2026-08-30 | — |
+| [T304](./tasks/T304-MEMORY-WRITER.md) — Implement idempotent Mastra memory writer | P03 | In Progress | T201, T301 | PG-03B | pi-coder-10 | task/T304-implement-idempotent-mastra-memory-writer | 2026-08-30 | — |
 | [T305](./tasks/T305-IMPORT-ORCHESTRATION.md) — Integrate archive importer and reporting | P03 | Planned | T302, T303, T304 | PG-03C | Unassigned | — | — | — |
 | [T306](./tasks/T306-SAMPLE-IMPORT.md) — Run sample archive import and quality gate | P03 | Planned | T205, T305 | PG-03D | Unassigned | — | — | — |
 | [T307](./tasks/T307-FULL-IMPORT.md) — Execute full historical import | P03 | Planned | T306, Product/security approval | PG-03E | Unassigned | — | — | — |
