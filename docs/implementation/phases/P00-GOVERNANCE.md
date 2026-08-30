@@ -25,7 +25,7 @@ Repository is safe, product decisions are explicit, baseline behavior is measura
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
 | [T000](../tasks/T000-REPOSITORY-SAFETY.md) | Completed | — | PG-00A | pi-coder | 730a415 |
-| [T001](../tasks/T001-PRODUCT-DECISIONS.md) | Planned | — | PG-00A | Unassigned | — |
+| [T001](../tasks/T001-PRODUCT-DECISIONS.md) | Completed | — | PG-00A | claude-planner + pi-coder | ef7838e |
 | [T002](../tasks/T002-BASELINE-BENCHMARK.md) | Completed | — | PG-00A | pi-coder-2 | 818734a |
 | [T003](../tasks/T003-SLACK-DEV-ENVIRONMENT.md) | Completed | — | PG-00A | pi-coder-3 | 090e8ad |
 | [T004](../tasks/T004-ARCHITECTURE-CONTRACTS.md) | Planned | T001 | PG-00B | Unassigned | — |

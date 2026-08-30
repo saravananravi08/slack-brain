@@ -23,3 +23,4 @@ _No implementation events recorded yet._
 - T000 Completed: repository safety and secret hygiene (pi-coder, merge 730a415). test_secrets.js removed from index; .gitignore hardened; docs/security/repository-safety.md added.
 - T002 Completed: baseline and retrieval benchmark (pi-coder-2, merge 818734a). Synthetic dataset + scoring under benchmarks/baseline; docs/reports/current-system-baseline.md added.
 - T003 Completed: Slack dev environment runbook (pi-coder-3, merge 090e8ad). docs/runbooks/slack-dev-environment.md added; live app creation/smoke check await operator credentials.
+- T001 Completed: product/security decisions D001-D010 Accepted (coordinator-delegated), PRD aligned (merge ef7838e).

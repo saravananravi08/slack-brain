@@ -1,6 +1,6 @@
 # T001 — Resolve product and security decisions
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** claude-planner
 - **Branch:** `task/T001-resolve-product-and-security-decisions`
@@ -79,6 +79,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 - Proposal commit (D001–D010 drafted, status `Proposed`): `0228518`
 - Implementation commit (acceptance recorded): `4924cdaa3a5229e3ad75c5c2720ca98829f529c0`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: ef7838e
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
