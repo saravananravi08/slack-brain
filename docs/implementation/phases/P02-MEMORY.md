@@ -1,6 +1,6 @@
 # P02 — Memory, Retrieval, and Privacy
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Depends on:** P01
 - **Phase integrator:** Unassigned
 - **PRD coverage:** FR-CTX-001–005, FR-MEM-001–004/009–013, FR-PRV-001–009

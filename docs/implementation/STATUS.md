@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P00 closed; P01 in progress
-- **Last updated:** 2026-08-30 (P00 closed)
+- **Current phase gate:** P02 in progress
+- **Last updated:** 2026-08-30 (P02 in progress)
 
 ## Assignment protocol
 
@@ -22,7 +22,7 @@
 | Phase | Status | Depends on | Integrator | Exit commit |
 |---|---|---|---|---|
 | [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
-| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke pending B-01) | P00 | Augment | cffce23 |
+| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke scheduled in P05 validation) | P00 | Augment | cffce23 |
 | [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | In Progress | P01 | Augment | — |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | Planned | P02 | Unassigned | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Planned | P02 | Unassigned | — |
@@ -75,8 +75,8 @@
 
 | Task | Owner | Paths | Acquired | Released |
 |---|---|---|---|---|
-| T103-dep | pi-coder-3 | package.json, package-lock.json (pinned @mastra/observability add only; transferred from T101) | 2026-08-30 | reverts to T508 after T103 merge |
-| T205-dep | pi-coder-6 | package.json (add benchmark:retrieval script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T205 merge |
+| T103-dep | pi-coder-3 | package.json, package-lock.json | 2026-08-30 | RELEASED 2026-08-30 (T103 merged 9f701a5) |
+| T205-dep | pi-coder-6 | package.json | 2026-08-30 | RELEASED 2026-08-30 (T205 merged bcfb465) |
 
 ## Blockers
 

@@ -13,7 +13,7 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 
 - [x] P00 completed.
 - [x] Model/provider and data-residency decisions accepted (D007/D008/D010).
-- [ ] Development Slack credentials available outside Git — received via DM; placement into local .env pending operator (B-01).
+- [x] Development Slack credentials available outside Git (.env, gitignored; placed 2026-08-30).
 
 ## Parallel execution plan
 
@@ -41,10 +41,10 @@ A minimal Gist agent runs through Mastra and Slack Socket Mode with validated co
 
 ## Exit criteria
 
-- [ ] Gist responds to DM and mention in correct thread — mocked routing passes; live check pending B-01.
-- [ ] Streaming/typing appears — pending live check (B-01).
+- [ ] Gist responds to DM and mention in correct thread — mocked routing passes; live check scheduled in P05 validation (credentials ready).
+- [ ] Streaming/typing appears — live check scheduled in P05 validation (credentials ready).
 - [x] Duplicate event smoke test produces one reply (mocked; AC-06 double-dedup contract).
-- [ ] Restart reconnects Socket Mode — pending live check (B-01).
+- [ ] Restart reconnects Socket Mode — live check scheduled in P05 validation (credentials ready).
 - [x] Persistent store and tracing initialize.
 - [x] No Slack Bolt or Claude CLI is used by new runtime.
 
