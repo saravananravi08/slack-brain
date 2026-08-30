@@ -1,8 +1,8 @@
 # T003 — Prepare isolated Slack development environment
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-3
 - **Branch:** `task/T003-prepare-isolated-slack-development-environment`
 - **Parallel group:** PG-00A
 - **Depends on:** —
