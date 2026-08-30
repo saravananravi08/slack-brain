@@ -136,3 +136,75 @@ Worked in the order the triage recommended (`docs/security/remaining-findings-tr
 - Recorded rather than fixed out of scope: `tsconfig.json` includes `tests/**`, so a plain `npx tsc` emits `dist/tests` beside `dist/src`.
 - **Not cutover approval.** Restore and rollback rehearsals need a non-production environment plus T307 (B-03) and T406 (B-07) evidence; acceptance criterion 2 stays unchecked.
 - Verified after merge: `npm test` — 550 passing (2 skipped, 4 todo) across 37 files; `npm run typecheck` clean.
+
+### 2026-08-30 — T501 — acceptance suite merged
+
+- Actor: integration coordinator / pi coding agent
+- Branch: `task/T501-run-complete-prd-acceptance-suite`
+- Commits: implementation `c3e3edc`, evidence `1405b46`, merge `0839422`
+- Result: AC-01 through AC-15, config, real-provider, Socket Mode, ambient silence, recall, mutation, archive idempotency, and privacy coverage merged. Automated acceptance passed; launch recommendation remained NO-GO on open P03/P04 gates.
+- Verification: typecheck; full suite 569 passing; E2E suite; opt-in real OpenAI generation and Slack Socket Mode reconnect.
+- Follow-up: Complete B-03/B-07 operator evidence before launch approval.
+
+### 2026-08-30 — BUILD-FIX — Mastra production build restored
+
+- Actor: integration coordinator / pi coding agent
+- Branch: `integration/mastra-rewrite`
+- Commits: `92aa6a3`
+- Result: Added the Mastra CLI-required named `mastra` export without restoring the F-05 import-time configured storage defect. B-08 resolved.
+- Verification: `npm run build`, `npm run typecheck`, compiled standalone-entry fail-closed check, and full suite 569 passing.
+- Follow-up: None for build; production cutover still requires operator approval.
+
+### 2026-08-30 — T503 — performance and observability suite merged
+
+- Actor: integration coordinator / pi coding agent
+- Branch: `task/T503-validate-performance-and-observability`
+- Commits: implementation `aadf6f6`, blocker record `044f2e5`, merge `f9b7723`
+- Result: Repeatable latency, throughput, trace-redaction, correlation, cost, and opt-in provider measurements merged. Gate remains NO-GO pending production-path correlation and concurrent-ingestion remediation.
+- Verification: performance suites, real GPT-4.1 sample, retrieval benchmark, typecheck, and full regression.
+- Follow-up: Add content-free Slack run correlation and remediate concurrent persistence before claiming operational SLOs.
+
+### 2026-08-30 — T504 — coordinator status synchronized
+
+- Actor: integration coordinator / claude-planner-2
+- Branch: `task/T504-write-and-rehearse-deployment-backup-restore-rollback-runbook`
+- Commits: implementation `820a393`, status `1b1e1cc`, merge `eebe8a9`
+- Result: Deployment, backup/restore, rollback, systemd, service/secret inventory, and F-12 single-instance guidance are merged. Rehearsals remain pending T307/T406.
+- Verification: build/start-command checks, runbook link/syntax checks, typecheck, and full regression.
+- Follow-up: Operator supplies T307/T406 evidence and performs restore/rollback rehearsals.
+
+### 2026-08-30 — T505 — beta release preparation merged
+
+- Actor: integration coordinator / claude-planner-2
+- Branch: `task/T505-execute-internal-beta-release`
+- Commits: implementation `2dccf1f`, blocker record `c8f4a51`, merge `956393c`
+- Result: Beta scope, preflight, deployment procedure, observation plan, exit criteria, and blocker register merged. No beta window or production approval has occurred.
+- Verification: Documentation reviewed against merged T501/T503/T504 evidence; current integration build/typecheck/tests pass.
+- Follow-up: Operator runs the beta window, captures B-07 evidence, and records go/no-go.
+
+### 2026-08-30 — T507 — handover documentation merged
+
+- Actor: integration coordinator / claude-planner-2
+- Branch: `task/T507-complete-operator-and-developer-handover`
+- Commits: implementation `fb76167`, status `e34e66d`, merge `67f8e5e`
+- Result: Developer architecture/setup guide and operator monitoring/troubleshooting/rollback handover merged. Walkthrough and named-owner acceptance remain pending.
+- Verification: `npm ci`, typecheck, full suite 576 passing, and production build at the documented baseline.
+- Follow-up: Incoming operator completes the practical walkthrough and private acceptance record.
+
+### 2026-08-30 — T508 — legacy cleanup assessment merged
+
+- Actor: integration coordinator / pi coding agent
+- Branch: `task/T508-remove-legacy-runtime-after-rollback-window`
+- Commits: assessment `a9a8f4d`, merge `f1e856b`
+- Result: Eight dead root legacy modules, stale README/config surfaces, dependency candidates, rollback risks, and safe deletion sequence documented. Nothing was removed.
+- Verification: static import/dependency/config scans, typecheck, full suite 576 passing, and production build.
+- Follow-up: Deletion remains blocked on T506, explicit rollback-window approval, and verified external rollback assets.
+
+### 2026-08-30 — F-11 — residual source-reader test relocated
+
+- Actor: integration coordinator / coding agent
+- Branch: `integration/mastra-rewrite`
+- Commits: `7f86d3a`
+- Result: Moved `src/migration/source/tests/migration/source/archive-reader.test.ts` to `tests/migration/source/archive-reader.test.ts`; no test files remain under `src/migration/**`.
+- Verification: source-reader suite 7 passing; `npm run typecheck`; full suite 576 passing; `git diff --check`.
+- Follow-up: None; F-11 source-tree test hygiene is complete.

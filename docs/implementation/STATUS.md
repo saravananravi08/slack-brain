@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 closed; P03 + P04 in progress; P05 partially underway (T502 sign-off and T504 runbook merged). D012 accepted (generation on OpenAI `gpt-4.1`). T406 e2e scaffold merged with live cases pending an operator ambient message (B-07).
-- **Last updated:** 2026-08-30 (F-17 `3d7390b`, F-20 `3f35c00`, F-18 `be979ec`, F-19 test `c6fc4c2`, T502 sign-off `276cf52`, T504 runbook `eebe8a9` merged; 550 tests passing)
+- **Current phase gate:** P02 closed; P03 + P04 remain in progress on operator inputs (B-03/B-07). P05 deliverables T501–T505, T507, and the T508 assessment are merged; T506 production cutover is pending operator approval. D012 remains accepted (generation on OpenAI `gpt-4.1`).
+- **Last updated:** 2026-08-30 (T501 `0839422`, T503 `f9b7723`, T504 `eebe8a9`, T505 `956393c`, T507 `67f8e5e`, T508 `f1e856b`, build fix `92aa6a3`; residual F-11 relocation verified; 576 tests passing)
 
 ### Security review status
 
@@ -45,7 +45,7 @@ offline evidence.
 | [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed | P01 | Augment | a5c77e7 |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | In Progress | P02 | Augment | — |
-| [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | Planned | P03, P04 | Unassigned | — |
+| [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | In Progress (deliverables merged; operator beta/cutover/rollback gates pending) | P03, P04 | Unassigned | — |
 
 ## Task dashboard
 
@@ -81,14 +81,14 @@ offline evidence.
 | [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | task/T404-implement-edit-delete-and-retention-mutation-policy | 2026-08-30 | 21f5d72 |
 | [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Completed | T402, T403, T404, T204 | PG-04C | pi-coder-12 | task/T405-integrate-live-silent-ingestion | 2026-08-30 | f64b2dc |
 | [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | In Progress (scaffold merged `347ec14`; live cases pending operator ambient message) | T405, T205 | PG-04D | pi-coder-14 | task/T406-validate-live-ingestion-end-to-end | 2026-08-30 | — |
-| [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
-| [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Ready for Integration (sign-off merged `276cf52`; does not close PG-05A — deps P03/P04 open) | T203, P03, P04 | PG-05A | claude-planner-2 | — (worked on integration) | 2026-08-30 | — |
-| [T503](./tasks/T503-PERFORMANCE-OBSERVABILITY.md) — Validate performance and observability | P05 | Planned | P03, P04 | PG-05A | Unassigned | — | — | — |
-| [T504](./tasks/T504-DEPLOYMENT-RUNBOOK.md) — Write and rehearse deployment, backup, restore, rollback runbook | P05 | Ready for Integration (runbook merged `eebe8a9`; rehearsals blocked on T307/T406 — not cutover approval) | T106, T307, T406 | PG-05A | claude-planner-2 | task/T504-write-and-rehearse-deployment-backup-restore-rollback-runbook | 2026-08-30 | — |
-| [T505](./tasks/T505-BETA-RELEASE.md) — Execute internal beta release | P05 | Planned | T501, T502, T503, T504 | PG-05B | Unassigned | — | — | — |
-| [T506](./tasks/T506-PRODUCTION-CUTOVER.md) — Perform production cutover | P05 | Planned | T505, Product/technical/security approval | PG-05C | Unassigned | — | — | — |
-| [T507](./tasks/T507-HANDOVER.md) — Complete operator and developer handover | P05 | Planned | T505 | PG-05D | Unassigned | — | — | — |
-| [T508](./tasks/T508-LEGACY-CLEANUP.md) — Remove legacy runtime after rollback window | P05 | Planned | T506, Rollback-window approval | PG-05D | Unassigned | — | — | — |
+| [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Merged (automated acceptance passes; launch gate remains NO-GO pending P03/P04) | P03, P04 | PG-05A | pi coding agent | task/T501-run-complete-prd-acceptance-suite | 2026-08-30 | 0839422 |
+| [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Merged (conditional beta sign-off; live cross-boundary evidence pending B-07) | T203, P03, P04 | PG-05A | claude-planner-2 | task/T502-security-design-review-early | 2026-08-30 | 276cf52 |
+| [T503](./tasks/T503-PERFORMANCE-OBSERVABILITY.md) — Validate performance and observability | P05 | Merged (suite/report; NO-GO pending runtime correlation and concurrent-ingestion remediation) | P03, P04 | PG-05A | pi coding agent | task/T503-validate-performance-and-observability | 2026-08-30 | f9b7723 |
+| [T504](./tasks/T504-DEPLOYMENT-RUNBOOK.md) — Write and rehearse deployment, backup, restore, rollback runbook | P05 | Merged (runbooks complete; rehearsals pending T307/T406) | T106, T307, T406 | PG-05A | claude-planner-2 | task/T504-write-and-rehearse-deployment-backup-restore-rollback-runbook | 2026-08-30 | eebe8a9 |
+| [T505](./tasks/T505-BETA-RELEASE.md) — Execute internal beta release | P05 | Merged (preparation only; operator-run beta and approval pending) | T501, T502, T503, T504 | PG-05B | claude-planner-2 | task/T505-execute-internal-beta-release | 2026-08-30 | 956393c |
+| [T506](./tasks/T506-PRODUCTION-CUTOVER.md) — Perform production cutover | P05 | Pending operator approval (cutover not run) | T505, Product/technical/security approval | PG-05C | Unassigned | — | — | — |
+| [T507](./tasks/T507-HANDOVER.md) — Complete operator and developer handover | P05 | Merged (documents complete; walkthrough and owner acceptance pending) | T505 | PG-05D | claude-planner-2 | task/T507-complete-operator-and-developer-handover | 2026-08-30 | 67f8e5e |
+| [T508](./tasks/T508-LEGACY-CLEANUP.md) — Remove legacy runtime after rollback window | P05 | Merged (assessment only; deletion blocked on T506 and rollback-window approval) | T506, Rollback-window approval | PG-05D | pi coding agent | task/T508-remove-legacy-runtime-after-rollback-window | 2026-08-30 | f1e856b |
 
 ## Active write locks
 
@@ -109,3 +109,4 @@ offline evidence.
 | B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |
 | B-06 | FR-SLK-002 DMs | RESOLVED 2026-08-30: im scopes added + app reinstalled by operator; probe re-run to confirm | Operator (saravanan) | done | 2026-08-30 |
 | B-07 | T406/PG-04D | T406 live validation cannot close offline: the ambient-ingestion cases need a real human message posted in the approved dev channel (the bot cannot generate one — its own messages are filtered as `isMe`) | Operator (saravanan) | A human posts a message in the approved dev channel while the runtime is connected, then T406 re-runs its live cases | 2026-08-30 |
+| B-08 | T505/T506 build gate | RESOLVED 2026-08-30: Mastra CLI-required named `mastra` export restored without reintroducing import-time configured storage | Integration | `92aa6a3`; `npm run build`, typecheck, and full tests pass | 2026-08-30 |
