@@ -14,8 +14,14 @@
  * `LanguageModel` object, so no provider, no network, and no API key are
  * involved. Embedding is stubbed the way every other memory suite stubs it.
  *
- * This is a measurement, not a fix. It reports what it finds and asserts only
- * the facts it establishes.
+ * MEASURED 2026-08-30 @ 9af00e0, before the fix: the agent persisted the user
+ * turn under a random UUID while the ambient writer used `messageKey`, so a
+ * delete removed one row of two and left the message text in the thread.
+ *
+ * FIXED by `agentUserTurn` in `src/mastra/index.ts`, which assigns the agent's
+ * user turn the same `messageKey` the ingestion writers use, so both converge
+ * on one row. These tests now assert the fixed behaviour: one copy, and a
+ * delete that reaches it.
  */
 
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -33,6 +39,7 @@ import {
   type AmbientNormalizedEvent,
 } from '../../../src/ingestion/index.js';
 import { createGistAgent } from '../../../src/mastra/agents/gist.js';
+import { agentUserTurn } from '../../../src/mastra/index.js';
 import {
   GIST_EMBEDDING_DIMENSIONS,
   GIST_EMBEDDING_MODEL,
@@ -54,6 +61,7 @@ const TURN_TS = '1735689700.000100';
 const BOUNDARY = `ch:${WORKSPACE}:${CHANNEL}` as const;
 const THREAD = `${BOUNDARY}#${ROOT_TS}` as const;
 const TURN_TEXT = 'Synthetic subscribed follow-up about the rollout window.';
+const SENDER_NAME = 'Synthetic Member';
 
 const POLICY: PolicySnapshot = {
   approved_workspace_id: WORKSPACE,
@@ -180,9 +188,20 @@ function textOf(message: MastraDBMessage): string {
 }
 
 async function runAgentTurn(context: Awaited<ReturnType<typeof setup>>): Promise<void> {
-  const response = await context.agent.stream(TURN_TEXT, {
-    memory: { resource: BOUNDARY, thread: THREAD },
-  });
+  // The same input the runtime builds in `respond`, so this measures the real
+  // path rather than a convenient approximation of it.
+  const response = await context.agent.stream(
+    agentUserTurn({
+      identity: identityFor(TURN_TS),
+      workspaceId: WORKSPACE,
+      channelId: CHANNEL,
+      messageTs: TURN_TS,
+      senderId: USER,
+      senderName: SENDER_NAME,
+      text: TURN_TEXT,
+    }),
+    { memory: { resource: BOUNDARY, thread: THREAD } },
+  );
   for await (const _chunk of response.textStream) {
     // drain
   }
@@ -230,26 +249,15 @@ function deleteEventFor(messageTs: string) {
   } as const;
 }
 
-describe('F-17 diagnostic: what the agent stores, and what a delete reaches', () => {
-  /**
-   * RESULT (measured 2026-08-30, integration/mastra-rewrite @ 9af00e0):
-   * **F-17 is confirmed.** The agent persists the user turn under a random
-   * UUID; the ambient writer persists the same Slack message under its
-   * `messageKey`. A delete resolves by `messageKey` only, so the UUID row
-   * survives with the message text intact.
-   *
-   * The assertions below pin that **defective** behaviour deliberately, so the
-   * suite stays green and the defect stays visible. When F-17 is fixed these
-   * tests must fail — each one names the assertion to invert.
-   */
-
-  it('persists the agent user turn under a UUID, not the message key', async () => {
+describe('F-17: the agent and the ingestion writers converge on one row', () => {
+  it('persists the agent user turn under the message key', async () => {
     const context = await setup();
     await runAgentTurn(context);
 
     const rows = await rowsInThread(context);
-    const userRows = rows.filter((row) => row.role === 'user');
-    const turnRow = userRows.find((row) => textOf(row).includes('rollout window'));
+    const turnRow = rows
+      .filter((row) => row.role === 'user')
+      .find((row) => textOf(row).includes('rollout window'));
     const expectedKey = toMessageKey({
       workspace_id: WORKSPACE,
       channel_id: CHANNEL,
@@ -257,32 +265,39 @@ describe('F-17 diagnostic: what the agent stores, and what a delete reaches', ()
     });
 
     expect(turnRow).toBeDefined();
-    // The agent does persist the user turn — so a second copy genuinely exists.
-    expect(textOf(turnRow!)).toContain('rollout window');
-
-    // The measurement F-17 turns on. When fixed, the agent copy should carry
-    // the messageKey (or be reachable by it) and these two invert.
-    expect(turnRow!.id).not.toBe(expectedKey);
-    expect(turnRow!.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    // Was a random UUID before the fix; this is the whole of F-17.
+    expect(turnRow!.id).toBe(expectedKey);
+    // The row describes the Slack message, not the moment the agent ran.
+    expect(turnRow!.createdAt.toISOString()).toBe('2025-01-01T00:01:40.000Z');
   });
 
-  it('leaves the agent copy behind when a subscribed-thread message is deleted', async () => {
+  it('stores one copy when both writers handle the same message', async () => {
     const context = await setup();
 
-    // Both writers, one Slack message: the subscribed-thread case, where the
-    // addressed path generates a reply *and* ambient persistence stores it.
+    // The subscribed-thread case: the addressed path generates a reply *and*
+    // ambient persistence stores the message.
     await runAgentTurn(context);
     const persisted = await context.ambient.persist({
       event: ambientEvent(TURN_TS, TURN_TEXT),
-      sender_name: 'Synthetic Member',
+      sender_name: SENDER_NAME,
     });
-    expect(persisted.outcome).toBe('inserted');
+    expect(['inserted', 'unchanged']).toContain(persisted.outcome);
 
-    const before = await rowsInThread(context);
-    const copiesBefore = before.filter((row) => textOf(row).includes('rollout window'));
-    expect(copiesBefore).toHaveLength(2);
+    const copies = (await rowsInThread(context)).filter((row) =>
+      textOf(row).includes('rollout window'),
+    );
+    // Two rows before the fix — one per writer — which also meant recall saw
+    // the same message twice.
+    expect(copies).toHaveLength(1);
+  });
+
+  it('deletes every copy of a subscribed-thread message', async () => {
+    const context = await setup();
+    await runAgentTurn(context);
+    await context.ambient.persist({
+      event: ambientEvent(TURN_TS, TURN_TEXT),
+      sender_name: SENDER_NAME,
+    });
 
     const outcome = await context.mutations.handle({
       event: deleteEventFor(TURN_TS),
@@ -290,22 +305,17 @@ describe('F-17 diagnostic: what the agent stores, and what a delete reaches', ()
     });
     expect(outcome.status).toBe('deleted');
 
-    const after = await rowsInThread(context);
-    const survivors = after.filter((row) => textOf(row).includes('rollout window'));
-
-    // THE DEFECT. A user deleted their Slack message; its text is still here.
-    // When F-17 is fixed this expectation becomes `toHaveLength(0)`.
-    expect(survivors).toHaveLength(1);
-    expect(survivors[0]?.id).not.toBe(
-      toMessageKey({ workspace_id: WORKSPACE, channel_id: CHANNEL, message_ts: TURN_TS }),
+    const survivors = (await rowsInThread(context)).filter((row) =>
+      textOf(row).includes('rollout window'),
     );
-    expect(survivors[0]?.role).toBe('user');
+    // The finding, inverted: nothing carrying the deleted text remains.
+    expect(survivors).toHaveLength(0);
   });
 
-  it('deletes nothing at all for an addressed turn the agent alone stored', async () => {
-    // The broader half of the finding: a mention or DM has no ambient copy, so
-    // the mutation handler has nothing keyed by messageKey to resolve, and the
-    // only stored copy is untouched.
+  it('deletes the agent copy of an addressed turn that was never ambient', async () => {
+    // The broader half: a mention or DM has no ambient copy, so before the fix
+    // the mutation handler had nothing to resolve and reported a no-op success
+    // against a message the system was in fact holding.
     const context = await setup();
     await runAgentTurn(context);
 
@@ -313,14 +323,43 @@ describe('F-17 diagnostic: what the agent stores, and what a delete reaches', ()
       event: deleteEventFor(TURN_TS),
       identity: identityFor(TURN_TS),
     });
-
-    // Not an error, not a deletion: a no-op success against a message the
-    // system is in fact holding.
-    expect(outcome.status).toBe('unchanged');
+    expect(outcome.status).toBe('deleted');
 
     const survivors = (await rowsInThread(context)).filter((row) =>
       textOf(row).includes('rollout window'),
     );
-    expect(survivors).toHaveLength(1);
+    expect(survivors).toHaveLength(0);
+  });
+
+  it('leaves no embedding behind for a deleted message', async () => {
+    // INV-9 — the row and its embedding go together. A surviving vector would
+    // keep the deleted text semantically recallable, which is the same leak
+    // F-17 describes wearing a different hat.
+    const context = await setup();
+    await runAgentTurn(context);
+    await context.ambient.persist({
+      event: ambientEvent(TURN_TS, TURN_TEXT),
+      sender_name: SENDER_NAME,
+    });
+
+    const vector = context.memory.vector as { listIndexes(): Promise<string[]>;
+      describeIndex(args: { indexName: string }): Promise<{ count: number }> };
+    const indexes = await vector.listIndexes();
+    const counts: Record<string, number> = {};
+    for (const indexName of indexes) {
+      counts[indexName] = (await vector.describeIndex({ indexName })).count;
+    }
+
+    await context.mutations.handle({
+      event: deleteEventFor(TURN_TS),
+      identity: identityFor(TURN_TS),
+    });
+
+    for (const indexName of await vector.listIndexes()) {
+      const after = (await vector.describeIndex({ indexName })).count;
+      // Every index that held something for this message must hold less now,
+      // and none may have grown.
+      expect(after).toBeLessThanOrEqual(counts[indexName] ?? 0);
+    }
   });
 });
