@@ -1,8 +1,8 @@
 # T103 — Configure Mastra storage and tracing
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-3
 - **Branch:** `task/T103-configure-mastra-storage-and-tracing`
 - **Parallel group:** PG-01B
 - **Depends on:** T101
@@ -68,18 +68,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] State survives close/reopen.
-- [ ] Database path is not inside tracked data by default.
-- [ ] Trace errors expose no message/token values.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] State survives close/reopen.
+- [x] Database path is not inside tracked data by default.
+- [x] Trace errors expose no message/token values.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `396e6e4241f326da22a47787914a248f68c4a236`
+- Handoff commit: `HEAD` (`docs(T103): hand off storage and tracing`)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
