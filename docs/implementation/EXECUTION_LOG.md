@@ -34,3 +34,4 @@ _No implementation events recorded yet._
 - T103 Completed: storage + tracing with pinned @mastra/observability@1.17.4 (pi-coder-3, merge 9f701a5). Integration regression: 87/87 tests, typecheck, build all pass.
 - T106 Completed: foundation runtime integrated (pi-coder-4, merge cffce23). 91/91 tests; build ok. Live Slack smoke pending B-01.
 - P01 code gate closed (live Slack smoke pending B-01 credentials placement). P02 opened.
+- B-01 resolved: Slack dev credentials placed in .env by operator.
