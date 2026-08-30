@@ -130,7 +130,7 @@ Typical needs:
 
 1. User sends Gist a direct message.
 2. Gist loads the user's private DM conversation history.
-3. If authorized by product policy, Gist may also use shared knowledge from approved channels.
+3. Gist uses only the user's private DM conversation memory; shared approved-channel knowledge is disabled under D002 unless that decision is explicitly amended.
 4. Gist responds in the DM.
 5. DM content remains private and is never added to shared channel knowledge.
 
@@ -202,7 +202,7 @@ Typical needs:
 - **FR-PRV-002:** Channel knowledge must not be recalled in another channel unless explicitly approved.
 - **FR-PRV-003:** Each user's DM conversation history must be isolated from other users.
 - **FR-PRV-004:** DM content must never become part of shared channel knowledge.
-- **FR-PRV-005:** Access to shared channel knowledge from DMs must follow the explicit policy in Section 15 before launch.
+- **FR-PRV-005:** DMs must use private conversation memory only and must not access shared approved-channel knowledge unless D002 is explicitly amended after its fail-closed authorization and privacy-test conditions are met.
 - **FR-PRV-006:** Slack Connect/external users must be denied by default.
 - **FR-PRV-007:** Secrets, database files, embeddings, and imported Slack data must never be committed to Git.
 - **FR-PRV-008:** Standard application logs must not contain full message bodies, tokens, or private DM content.
@@ -250,7 +250,7 @@ A DM has two distinct context types:
 1. **Private conversation memory:** messages between one user and Gist.
 2. **Shared approved knowledge:** historical information from channels the user is allowed to access.
 
-Private DM messages must never be written to a channel knowledge boundary. Whether DMs may read shared channel knowledge is a launch decision and must be enforced consistently.
+Private DM messages must never be written to a channel knowledge boundary. Under D002, DMs use private conversation memory only; shared approved-channel knowledge remains disabled unless D002 is explicitly amended after its fail-closed authorization and privacy-test conditions are met.
 
 ### External access
 
@@ -370,19 +370,19 @@ Metrics should be recalibrated after the test corpus and baseline are measured. 
 - Keep old code and archive available for rollback.
 - Complete the rollback window before deleting old infrastructure.
 
-## 15. Required product decisions
+## 15. Accepted product decisions
 
-These decisions must be resolved before implementation is considered launch-ready:
+The nine launch questions are resolved in [`docs/implementation/DECISIONS.md`](./docs/implementation/DECISIONS.md) as D001–D010; the model-selection question is split into generation (D007) and embedding (D008). All ten decisions are `Accepted` and are the authoritative policy for downstream implementation.
 
-1. **Approved channel set:** Which Slack channel IDs may Gist ingest and answer from?
-2. **DM knowledge access:** May authorized users query approved channel knowledge from DMs, or may DMs use only private conversation memory?
-3. **Historical scope:** Is the complete existing archive required, and what is its authoritative date range?
-4. **Retention:** How long should channel messages, DMs, embeddings, and traces be retained?
-5. **Deletion:** How should Slack message edits/deletions propagate to Mastra memory?
-6. **Authorization:** Is workspace membership sufficient, or is a user allowlist required?
-7. **Model selection:** Which generation and embedding providers meet cost, privacy, and quality requirements?
-8. **Response citations:** Is sender/date attribution required for every historical answer or only when available?
-9. **Data residency:** Are there restrictions on where message text and embeddings may be stored or processed?
+Five accepted deferrals retain safe defaults that are in force now:
+
+- **D001:** Product owner supplies production channel IDs before T505; until then, only the single approved beta channel is allowed.
+- **D003:** Product owner decides any archive date floor before T301; until then, no date floor applies within approved channels.
+- **D004:** Security owner resolves any legal, contractual, or HR retention hold before T504; until then, the accepted tiered retention schedule applies.
+- **D006:** Security owner confirms production authorization before T506; until then, production cutover defaults to an enabled user allowlist.
+- **D010:** Security owner confirms the internal-corpus residency assumption before T506; until then, the accepted US/EU-provider, no-training, limited-retention constraints apply.
+
+These deferrals do not reopen or block their parent decisions. Any policy change requires an explicit amendment to the decision register.
 
 ## 16. Risks and mitigations
 
