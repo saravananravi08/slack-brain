@@ -1,8 +1,8 @@
 # T401 — Spike supported ordinary Slack event handling
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner-2
 - **Branch:** `task/T401-spike-supported-ordinary-slack-event-handling`
 - **Parallel group:** PG-04A
 - **Depends on:** T104, T206
@@ -66,17 +66,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Ambient event can be captured without model call/reply.
-- [ ] Event identity and acknowledgement behavior are understood.
-- [ ] Unsupported assumption blocks P04 rather than adding polling silently.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Ambient event can be captured without model call/reply.
+- [x] Event identity and acknowledgement behavior are understood.
+- [x] Unsupported assumption blocks P04 rather than adding polling silently.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `2d36a86`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
