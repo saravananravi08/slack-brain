@@ -1,8 +1,8 @@
 # T201 — Configure Mastra Memory and semantic recall
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-7
 - **Branch:** `task/T201-configure-mastra-memory-and-semantic-recall`
 - **Parallel group:** PG-02A
 - **Depends on:** T103, T105
