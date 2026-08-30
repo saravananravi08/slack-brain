@@ -1,8 +1,8 @@
 # T004 — Define architecture and data contracts
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner
 - **Branch:** `task/T004-define-architecture-and-data-contracts`
 - **Parallel group:** PG-00B
 - **Depends on:** T001
@@ -10,6 +10,7 @@
 - **Can run parallel with:** None until dependencies merge
 - **Conflicts with:** None under declared write scope
 - **Task log:** [`../logs/T004.md`](../logs/T004.md)
+- **Worktree:** `../worktrees/T004`
 - **Write scope:**
   - `docs/architecture/gist-mastra-architecture.md`
   - `docs/architecture/contracts/**`
@@ -67,17 +68,17 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] All downstream task inputs/outputs are explicit.
-- [ ] No contract permits cross-boundary data access.
-- [ ] Contract changes require coordinator approval after merge.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] All downstream task inputs/outputs are explicit.
+- [x] No contract permits cross-boundary data access.
+- [x] Contract changes require coordinator approval after merge.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `49eb6ed`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —

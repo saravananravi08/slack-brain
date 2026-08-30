@@ -1,0 +1,57 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "identity.md",
+  "cases": [
+    {
+      "name": "channel_root",
+      "input": { "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1", "conversation_type": "channel", "message_ts": "1735689650.000100", "thread_ts": null, "sender_id": "U0MEMBER01" },
+      "expect": { "boundary_id": "ch:T0SYNTH01:C0APPROVED1", "resource_id": "ch:T0SYNTH01:C0APPROVED1", "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100", "conversation_type": "channel" }
+    },
+    {
+      "name": "channel_root_self_referential_thread_ts",
+      "note": "identity.md §3 — MUST equal channel_root exactly.",
+      "input": { "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1", "conversation_type": "channel", "message_ts": "1735689650.000100", "thread_ts": "1735689650.000100", "sender_id": "U0MEMBER01" },
+      "expect": { "boundary_id": "ch:T0SYNTH01:C0APPROVED1", "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100" }
+    },
+    {
+      "name": "channel_reply",
+      "input": { "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1", "conversation_type": "channel", "message_ts": "1735689700.000100", "thread_ts": "1735689650.000100", "sender_id": "U0MEMBER02" },
+      "expect": { "boundary_id": "ch:T0SYNTH01:C0APPROVED1", "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689650.000100" }
+    },
+    {
+      "name": "dm_root",
+      "note": "DM boundary keys on the HUMAN USER, not the D... conversation ID.",
+      "input": { "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV01", "conversation_type": "dm", "message_ts": "1735689600.000100", "thread_ts": null, "sender_id": "U0MEMBER01" },
+      "expect": { "boundary_id": "dm:T0SYNTH01:U0MEMBER01", "resource_id": "dm:T0SYNTH01:U0MEMBER01", "thread_id": "dm:T0SYNTH01:U0MEMBER01#1735689600.000100", "conversation_type": "dm" }
+    },
+    {
+      "name": "dm_second_user_isolated",
+      "note": "FR-PRV-003 — distinct users get distinct boundaries.",
+      "input": { "workspace_id": "T0SYNTH01", "channel_id": "D0DMCONV02", "conversation_type": "dm", "message_ts": "1735689600.000300", "thread_ts": null, "sender_id": "U0MEMBER02" },
+      "expect": { "boundary_id": "dm:T0SYNTH01:U0MEMBER02" }
+    },
+    {
+      "name": "suffix_collision_pair",
+      "note": "INV-3 — a channel ID and a user ID sharing a suffix must still land in different boundaries. The prefix comes from conversation_type, never from the Slack ID.",
+      "input_channel": { "workspace_id": "T0SYNTH01", "channel_id": "C0COLLIDE1", "conversation_type": "channel", "message_ts": "1735690000.000100", "thread_ts": null, "sender_id": "U0MEMBER01" },
+      "input_dm": { "workspace_id": "T0SYNTH01", "channel_id": "D0COLLIDE1", "conversation_type": "dm", "message_ts": "1735690000.000200", "thread_ts": null, "sender_id": "U0COLLIDE1" },
+      "expect_channel_boundary": "ch:T0SYNTH01:C0COLLIDE1",
+      "expect_dm_boundary": "dm:T0SYNTH01:U0COLLIDE1",
+      "expect_distinct": true
+    },
+    {
+      "name": "workspace_disambiguation",
+      "note": "Same channel ID in the alpha test workspace and the beta workspace must not share a boundary (T003 setup).",
+      "input_a": { "workspace_id": "T0SYNTH01", "channel_id": "C0APPROVED1", "conversation_type": "channel", "message_ts": "1735690100.000100", "thread_ts": null, "sender_id": "U0MEMBER01" },
+      "input_b": { "workspace_id": "T0SYNTH99", "channel_id": "C0APPROVED1", "conversation_type": "channel", "message_ts": "1735690100.000100", "thread_ts": null, "sender_id": "U0MEMBER01" },
+      "expect_distinct": true
+    }
+  ],
+  "forbidden": [
+    { "name": "dm_event_to_channel_boundary", "expect": "impossible_by_construction", "reason": "INV-3" },
+    { "name": "channel_event_to_dm_boundary", "expect": "impossible_by_construction", "reason": "INV-3" },
+    { "name": "bare_unprefixed_boundary_id", "value": "C0APPROVED1", "expect": "rejected", "reason": "identity.md §4" },
+    { "name": "malformed_input_missing_workspace", "input": { "channel_id": "C0APPROVED1", "conversation_type": "channel" }, "expect": "throws", "reason": "identity.md §5 — a guessed identity writes to the wrong boundary" }
+  ]
+}

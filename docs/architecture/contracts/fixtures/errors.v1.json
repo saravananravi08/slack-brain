@@ -1,0 +1,60 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "errors.md",
+  "user_facing": [
+    { "class": "unauthorized", "slack_message": "I can't help with that here.", "note": "Never explains why — a reason would confirm the channel exists and reveal policy." },
+    { "class": "retrieval_failed", "slack_message": "I couldn't get to my notes just now — try again in a moment." },
+    { "class": "storage_unavailable", "slack_message": "I couldn't get to my notes just now — try again in a moment." },
+    { "class": "model_unavailable", "slack_message": "I couldn't finish that one. Try again in a moment." },
+    { "class": "model_refused", "slack_message": "I couldn't finish that one. Try again in a moment." },
+    { "class": "event_malformed", "slack_message": "Something went wrong on my end." },
+    { "class": "internal", "slack_message": "Something went wrong on my end." },
+    { "class": "config_invalid", "slack_message": null, "note": "FR-OPS-001 — the service does not start. No user message exists." }
+  ],
+  "must_never_reach_slack": [
+    "Mastra", "libSQL", "claude-opus-5", "openai/text-embedding-3-small",
+    "anthropic", "openai", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+    "/src/", ".db", "stack trace", "boundary_id", "thread_id", "message_key",
+    "unapproved_channel", "not_in_allowlist", "guest_user", "external_user"
+  ],
+  "assertion": "For every case, the Slack-visible string must match exactly and must contain no substring from must_never_reach_slack (INV-11, FR-RSP-007/008).",
+  "containment": [
+    {
+      "name": "model_fails_mid_request",
+      "note": "NFR-REL-003.",
+      "expect": { "memory_state_changed": false, "partial_assistant_record": false, "user_turn_retained": true, "reply_count": 1 }
+    },
+    {
+      "name": "retrieval_fails",
+      "note": "The highest-risk row. An empty result and a failed search MUST be distinguishable — otherwise Gist answers confidently from no evidence.",
+      "expect": { "permitted": ["answer_without_recall_and_say_so", "return_retrieval_failed"], "forbidden": "silently answer as though history were searched and empty" }
+    },
+    {
+      "name": "storage_write_fails_during_silent_ingestion",
+      "expect": { "user_visible": false, "model_called": false, "reply_posted": false, "logged_by_class": true }
+    },
+    {
+      "name": "duplicate_delivery",
+      "expect": { "is_error": false, "skip_reason": "duplicate_delivery", "reply_count": 0 }
+    },
+    {
+      "name": "authorization_denies",
+      "expect": { "is_exception": false, "is_normal_outcome": true, "deny_reason_present": true }
+    },
+    {
+      "name": "config_invalid_at_startup",
+      "expect": { "process_exits_nonzero": true, "starts_with_partial_policy": false }
+    },
+    {
+      "name": "error_after_partial_stream",
+      "note": "FR-SLK-007 — one final response per accepted message.",
+      "expect": { "edits_existing_message": true, "posts_second_message": false }
+    }
+  ],
+  "logging": {
+    "permitted": ["error_class", "run_id", "message_key", "boundary_id", "counts", "durations", "skip_reason_code", "deny_reason_code"],
+    "forbidden": ["message_text", "thread_text", "tokens", "api_keys", "prompt_content", "retrieved_item_text", "dm_display_names"],
+    "note": "Deny reason codes are permitted in operator logs but never in Slack. Traces may hold content but are operator-restricted with 30-day retention (D004, D010, R7)."
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "storage.md",
+  "records": [
+    {
+      "name": "valid_channel_record",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0SYNTH01/C0APPROVED1/1735689800.000100",
+        "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+        "thread_id": "ch:T0SYNTH01:C0APPROVED1#1735689800.000100",
+        "conversation_type": "channel",
+        "sender_id": "U0MEMBER02", "sender_name": "Synthetic Member Two",
+        "sent_at": "2025-01-01T00:03:20.000Z", "message_ts": "1735689800.000100",
+        "text": "rollout window is Tuesday 09:00-11:00 UTC",
+        "edited_at": null, "source": "live", "ingested_at": "2025-01-01T00:03:21.000Z"
+      }
+    },
+    {
+      "name": "valid_dm_record",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0SYNTH01/D0DMCONV01/1735689600.000100",
+        "boundary_id": "dm:T0SYNTH01:U0MEMBER01",
+        "thread_id": "dm:T0SYNTH01:U0MEMBER01#1735689600.000100",
+        "conversation_type": "dm",
+        "sender_id": "U0MEMBER01", "sender_name": "Synthetic Member One",
+        "sent_at": "2025-01-01T00:00:00.000Z", "message_ts": "1735689600.000100",
+        "text": "what did we decide about the retry policy",
+        "edited_at": null, "source": "live", "ingested_at": "2025-01-01T00:00:01.000Z"
+      }
+    }
+  ],
+  "embedding": {
+    "name": "valid_embedding",
+    "record": {
+      "message_key": "T0SYNTH01/C0APPROVED1/1735689800.000100",
+      "boundary_id": "ch:T0SYNTH01:C0APPROVED1",
+      "vector_length": 1536,
+      "model": "openai/text-embedding-3-small",
+      "embedded_at": "2025-01-01T00:03:22.000Z"
+    },
+    "expect_reject": [
+      { "case": "wrong_dimension", "vector_length": 768, "reason": "D008 — dimension is fixed at 1536; must fail at startup, not at query time" },
+      { "case": "missing_boundary_id", "reason": "storage.md §2 — boundary must be filterable inside the vector query, not post-filtered" }
+    ]
+  },
+  "upsert_convergence": {
+    "note": "INV-10 / FR-MEM-007 / AC-14 — the same message from live and from import is ONE record.",
+    "write_1": { "source": "live", "message_key": "T0SYNTH01/C0APPROVED1/1735689800.000100", "expect": "inserted" },
+    "write_2": { "source": "import", "message_key": "T0SYNTH01/C0APPROVED1/1735689800.000100", "expect": "unchanged" },
+    "expect_row_count": 1
+  },
+  "delete": {
+    "note": "INV-9 — message and embedding removed together; content-free tombstone remains.",
+    "input_keys": ["T0SYNTH01/C0APPROVED1/1735689800.000100"],
+    "expect": {
+      "deleted": 1,
+      "embeddings_deleted": 1,
+      "tombstoned": ["T0SYNTH01/C0APPROVED1/1735689800.000100"],
+      "missing": [],
+      "tombstone_contains_text": false,
+      "orphaned_embeddings": 0
+    }
+  },
+  "delete_missing_key_is_success": {
+    "input_keys": ["T0SYNTH01/C0APPROVED1/1700000000.000000"],
+    "expect": { "deleted": 0, "embeddings_deleted": 0, "missing": ["T0SYNTH01/C0APPROVED1/1700000000.000000"], "is_error": false }
+  },
+  "forbidden_writes": [
+    {
+      "name": "dm_content_into_channel_boundary",
+      "note": "INV-4 / FR-PRV-004 — rejected at the storage layer as well as at authorization. Defense in depth.",
+      "record": { "conversation_type": "dm", "boundary_id": "ch:T0SYNTH01:C0APPROVED1" },
+      "expect": "rejected"
+    },
+    {
+      "name": "boundary_prefix_mismatch",
+      "record": { "conversation_type": "channel", "boundary_id": "dm:T0SYNTH01:U0MEMBER01" },
+      "expect": "rejected"
+    }
+  ],
+  "retention_classes": [
+    { "boundary_prefix": "ch:", "class": "channel_message", "retention": "indefinite_while_approved", "purge_after_unapproval_days": 30 },
+    { "boundary_prefix": "dm:", "class": "dm_message", "retention_days": 90 },
+    { "store": "trace", "class": "trace", "retention_days": 30, "access": "operator_restricted" },
+    { "store": "app_log", "class": "app_log", "retention_days": 14, "contains_bodies": false },
+    { "store": "backup", "class": "backup", "retention_days": 35 }
+  ]
+}
