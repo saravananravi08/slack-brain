@@ -24,8 +24,8 @@ Gist has durable Mastra memory, automatic semantic recall, deterministic channel
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| [T201](../tasks/T201-MEMORY-CONFIG.md) | Planned | T103, T105 | PG-02A | Unassigned | — |
-| [T202](../tasks/T202-RESOURCE-POLICY.md) | Planned | T004, T106 | PG-02A | Unassigned | — |
+| [T201](../tasks/T201-MEMORY-CONFIG.md) | Completed | T103, T105 | PG-02A | pi-coder-7 | af8fb8d |
+| [T202](../tasks/T202-RESOURCE-POLICY.md) | Completed | T004, T106 | PG-02A | pi-coder-5 | a55ed56 |
 | [T203](../tasks/T203-ACCESS-PRIVACY.md) | Planned | T004, T102, T104 | PG-02A | Unassigned | — |
 | [T205](../tasks/T205-RETRIEVAL-BENCHMARK.md) | Planned | T002, T004 | PG-02A | Unassigned | — |
 | [T204](../tasks/T204-MEMORY-INTEGRATION.md) | Planned | T201–T203, T106 | PG-02B | Unassigned | — |

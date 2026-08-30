@@ -1,6 +1,6 @@
 # T202 — Implement resource and thread identity policy
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-5
 - **Branch:** `task/T202-implement-resource-and-thread-identity-policy`
@@ -79,6 +79,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `fb7231b0d8d9725053e4f4bc5ff75a850b5e2269`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: a55ed56
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

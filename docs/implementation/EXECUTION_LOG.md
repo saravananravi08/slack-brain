@@ -35,3 +35,5 @@ _No implementation events recorded yet._
 - T106 Completed: foundation runtime integrated (pi-coder-4, merge cffce23). 91/91 tests; build ok. Live Slack smoke pending B-01.
 - P01 code gate closed (live Slack smoke pending B-01 credentials placement). P02 opened.
 - B-01 resolved: Slack dev credentials placed in .env by operator.
+- T201 Completed: Mastra memory + semantic recall config (pi-coder-7, merge af8fb8d).
+- T202 Completed: resource/thread identity policy (pi-coder-5, merge a55ed56).

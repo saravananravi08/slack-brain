@@ -1,6 +1,6 @@
 # T201 — Configure Mastra Memory and semantic recall
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-7
 - **Branch:** `task/T201-configure-mastra-memory-and-semantic-recall`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `84718e95ca41b6b19658fac4e2da249e36b09e32`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: af8fb8d
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
