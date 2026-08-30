@@ -65,3 +65,4 @@ _No implementation events recorded yet._
 - T306 synthetic import rehearsal merged (pi-coder-13). Real sample import still pending B-03.
 - Security fix packs dispatched: A (F-01/F-03/F-10 memory+agent, pi-coder-13), B (F-02/F-05/F-06/F-07 ingestion/storage/migration, claude-planner-2).
 - Integrator added test:ingestion + test:e2e scripts; .env chmod 600. ANTHROPIC_API_KEY still missing from .env (B-02 open).
+- HANDOVER.md added: full orchestrator state for zero-knowledge continuation.
