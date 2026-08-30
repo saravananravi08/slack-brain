@@ -1,6 +1,6 @@
 # T002 — Capture baseline and retrieval benchmark
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** pi-coder-2
 - **Branch:** `task/T002-capture-baseline-and-retrieval-benchmark`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `a843a027e5fd46ff4cb5bb9db34a57fd740337eb`
 - Handoff commit: `3de4df1f8863b4e05ac498e96fa1f4c2af2f2b81`
-- Merge commit: —
+- Merge commit: 818734a
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

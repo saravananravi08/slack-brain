@@ -1,6 +1,6 @@
 # T003 — Prepare isolated Slack development environment
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** pi-coder-3
 - **Branch:** `task/T003-prepare-isolated-slack-development-environment`
@@ -77,6 +77,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 - Implementation commit: `841a9d9618b4314e19205a5d87ed716dc06242b8`
 - Handoff commit: `HEAD` (`docs(T003): hand off Slack development runbook`)
 - Operator follow-up: Live app creation, denied-channel API validation, credential connectivity, and end-to-end Socket Mode smoke check pending operator credentials; no real Slack app or credential was created or used in T003.
-- Merge commit: —
+- Merge commit: 090e8ad
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

@@ -1,6 +1,6 @@
 # T000 — Repository safety and secret hygiene
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** pi-coder
 - **Branch:** `task/T000-repository-safety-and-secret-hygiene`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `6c810121d9edba2ddc5a6280e483ad34d4e90b48`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: 730a415
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30
