@@ -1,8 +1,8 @@
 # T503 — Validate performance and observability
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T503-validate-performance-and-observability`
 - **Parallel group:** PG-05A
 - **Depends on:** P03, P04
