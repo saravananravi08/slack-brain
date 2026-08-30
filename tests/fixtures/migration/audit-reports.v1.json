@@ -1,0 +1,137 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "archive-import.md#audit-report-contract",
+  "reports": [
+    {
+      "name": "clean_first_run",
+      "report": {
+        "contract_version": "1.0.0",
+        "report_version": 1,
+        "import_run_id": "synthetic-clean-001",
+        "source_snapshot_id": "synthetic-snapshot-clean",
+        "started_at": "2025-02-01T00:00:00.000Z",
+        "completed_at": "2025-02-01T00:01:00.000Z",
+        "status": "succeeded",
+        "inventory": [{
+          "channel_alias": "synthetic-approved-one",
+          "channel_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "min_message_ts": "1735689600.000100",
+          "max_message_ts": "1735690440.001400",
+          "source_message_count": 8,
+          "logical_thread_count": 6,
+          "malformed_timestamp_count": 0
+        }],
+        "counts": {
+          "source_rows_seen": 8,
+          "normalized_records": 7,
+          "skipped_by_reason": { "duplicate_exact": 1 },
+          "failed_by_reason": {},
+          "warnings_by_reason": { "user_cache_miss_fallback": 1, "legacy_date_mismatch": 1 },
+          "writer": { "inserted": 7, "updated": 0, "unchanged": 0, "failed": 0 },
+          "embeddings": { "written": 7, "unchanged": 0, "failed": 0 }
+        },
+        "failures": [],
+        "reconciliation": {
+          "source_rows_balanced": true,
+          "normalized_rows_balanced": true,
+          "destination_count_before": 0,
+          "destination_count_after": 7
+        }
+      }
+    },
+    {
+      "name": "clean_rerun_is_idempotent",
+      "report": {
+        "contract_version": "1.0.0",
+        "report_version": 1,
+        "import_run_id": "synthetic-clean-002",
+        "source_snapshot_id": "synthetic-snapshot-clean",
+        "started_at": "2025-02-02T00:00:00.000Z",
+        "completed_at": "2025-02-02T00:01:00.000Z",
+        "status": "succeeded",
+        "inventory": [{
+          "channel_alias": "synthetic-approved-one",
+          "channel_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "min_message_ts": "1735689600.000100",
+          "max_message_ts": "1735690440.001400",
+          "source_message_count": 8,
+          "logical_thread_count": 6,
+          "malformed_timestamp_count": 0
+        }],
+        "counts": {
+          "source_rows_seen": 8,
+          "normalized_records": 7,
+          "skipped_by_reason": { "duplicate_exact": 1 },
+          "failed_by_reason": {},
+          "warnings_by_reason": { "user_cache_miss_fallback": 1, "legacy_date_mismatch": 1 },
+          "writer": { "inserted": 0, "updated": 0, "unchanged": 7, "failed": 0 },
+          "embeddings": { "written": 0, "unchanged": 7, "failed": 0 }
+        },
+        "failures": [],
+        "reconciliation": {
+          "source_rows_balanced": true,
+          "normalized_rows_balanced": true,
+          "destination_count_before": 7,
+          "destination_count_after": 7
+        }
+      }
+    },
+    {
+      "name": "edge_case_partial_report",
+      "report": {
+        "contract_version": "1.0.0",
+        "report_version": 1,
+        "import_run_id": "synthetic-edge-001",
+        "source_snapshot_id": "synthetic-snapshot-edge",
+        "started_at": "2025-02-03T00:00:00.000Z",
+        "completed_at": "2025-02-03T00:01:00.000Z",
+        "status": "partial",
+        "inventory": [{
+          "channel_alias": "synthetic-approved-one",
+          "channel_ref": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "min_message_ts": "1735689600.000100",
+          "max_message_ts": "1735690200.001000",
+          "source_message_count": 5,
+          "logical_thread_count": 4,
+          "malformed_timestamp_count": 1
+        }],
+        "counts": {
+          "source_rows_seen": 5,
+          "normalized_records": 1,
+          "skipped_by_reason": { "bot_message": 1 },
+          "failed_by_reason": { "invalid_timestamp": 1, "duplicate_conflict": 2 },
+          "warnings_by_reason": {},
+          "writer": { "inserted": 1, "updated": 0, "unchanged": 0, "failed": 0 },
+          "embeddings": { "written": 1, "unchanged": 0, "failed": 0 }
+        },
+        "failures": [
+          {
+            "record_ref": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "stage": "map",
+            "reason": "invalid_timestamp",
+            "retryable": false
+          },
+          {
+            "record_ref": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "stage": "deduplicate",
+            "reason": "duplicate_conflict",
+            "retryable": false
+          },
+          {
+            "record_ref": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+            "stage": "deduplicate",
+            "reason": "duplicate_conflict",
+            "retryable": false
+          }
+        ],
+        "reconciliation": {
+          "source_rows_balanced": true,
+          "normalized_rows_balanced": true,
+          "destination_count_before": 7,
+          "destination_count_after": 8
+        }
+      }
+    }
+  ]
+}
