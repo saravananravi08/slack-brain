@@ -4,11 +4,11 @@
 
 ## Program status
 
-- **Overall:** Planned
+- **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
-- **Coordinator:** Unassigned
-- **Current phase gate:** P00 not started
-- **Last updated:** —
+- **Coordinator:** Augment Agent (orchestrator)
+- **Current phase gate:** P00 in progress
+- **Last updated:** 2026-08-30
 
 ## Assignment protocol
 
@@ -32,10 +32,10 @@
 
 | Task | Phase | Status | Depends on | Parallel group | Owner | Branch | Start | Completion commit |
 |---|---|---|---|---|---|---|---|---|
-| [T000](./tasks/T000-REPOSITORY-SAFETY.md) — Repository safety and secret hygiene | P00 | Planned | — | PG-00A | Unassigned | — | — | — |
-| [T001](./tasks/T001-PRODUCT-DECISIONS.md) — Resolve product and security decisions | P00 | Planned | — | PG-00A | Unassigned | — | — | — |
-| [T002](./tasks/T002-BASELINE-BENCHMARK.md) — Capture baseline and retrieval benchmark | P00 | Planned | — | PG-00A | Unassigned | — | — | — |
-| [T003](./tasks/T003-SLACK-DEV-ENVIRONMENT.md) — Prepare isolated Slack development environment | P00 | Planned | — | PG-00A | Unassigned | — | — | — |
+| [T000](./tasks/T000-REPOSITORY-SAFETY.md) — Repository safety and secret hygiene | P00 | In Progress | — | PG-00A | pi-coder | task/T000-repository-safety-and-secret-hygiene | 2026-08-30 | — |
+| [T001](./tasks/T001-PRODUCT-DECISIONS.md) — Resolve product and security decisions | P00 | In Progress | — | PG-00A | claude-planner | task/T001-resolve-product-and-security-decisions | 2026-08-30 | — |
+| [T002](./tasks/T002-BASELINE-BENCHMARK.md) — Capture baseline and retrieval benchmark | P00 | In Progress | — | PG-00A | pi-coder-2 | task/T002-capture-baseline-and-retrieval-benchmark | 2026-08-30 | — |
+| [T003](./tasks/T003-SLACK-DEV-ENVIRONMENT.md) — Prepare isolated Slack development environment | P00 | In Progress | — | PG-00A | pi-coder-3 | task/T003-prepare-isolated-slack-development-environment | 2026-08-30 | — |
 | [T004](./tasks/T004-ARCHITECTURE-CONTRACTS.md) — Define architecture and data contracts | P00 | Planned | T001 | PG-00B | Unassigned | — | — | — |
 | [T101](./tasks/T101-PROJECT-SCAFFOLD.md) — Scaffold Mastra TypeScript project | P01 | Planned | P00 | PG-01A | Unassigned | — | — | — |
 | [T102](./tasks/T102-CONFIG-VALIDATION.md) — Implement startup configuration validation | P01 | Planned | T101 | PG-01B | Unassigned | — | — | — |
