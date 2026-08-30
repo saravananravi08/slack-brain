@@ -1,8 +1,8 @@
 # T002 — Capture baseline and retrieval benchmark
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-2
 - **Branch:** `task/T002-capture-baseline-and-retrieval-benchmark`
 - **Parallel group:** PG-00A
 - **Depends on:** —
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Dataset contains no private Slack data.
-- [ ] Scoring is deterministic enough for two reviewers.
-- [ ] Baseline limitations are explicit.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Dataset contains no private Slack data.
+- [x] Scoring is deterministic enough for two reviewers.
+- [x] Baseline limitations are explicit.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `a843a027e5fd46ff4cb5bb9db34a57fd740337eb`
+- Handoff commit: `3de4df1f8863b4e05ac498e96fa1f4c2af2f2b81`
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
