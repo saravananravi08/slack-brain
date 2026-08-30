@@ -43,10 +43,10 @@
 | [T104](./tasks/T104-SLACK-CHANNEL.md) — Implement Mastra Slack channel adapter | P01 | Completed | T101, T003, T004 | PG-01B | claude-planner | task/T104-implement-mastra-slack-channel-adapter | 2026-08-30 | 5b211d0 |
 | [T105](./tasks/T105-GIST-AGENT.md) — Implement Gist agent behavior | P01 | Completed | T101, T004 | PG-01B | pi-coder | task/T105-implement-gist-agent-behavior | 2026-08-30 | 5a3f443 |
 | [T106](./tasks/T106-FOUNDATION-INTEGRATION.md) — Integrate foundation runtime | P01 | Completed | T102, T103, T104, T105 | PG-01C | pi-coder-4 | task/T106-integrate-foundation-runtime | 2026-08-30 | cffce23 |
-| [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | Planned | T103, T105 | PG-02A | Unassigned | — | — | — |
-| [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | Planned | T004, T106 | PG-02A | Unassigned | — | — | — |
-| [T203](./tasks/T203-ACCESS-PRIVACY.md) — Implement Slack authorization and privacy guard | P02 | Planned | T004, T102, T104 | PG-02A | Unassigned | — | — | — |
-| [T205](./tasks/T205-RETRIEVAL-BENCHMARK.md) — Build retrieval benchmark harness | P02 | Planned | T002, T004 | PG-02A | Unassigned | — | — | — |
+| [T201](./tasks/T201-MEMORY-CONFIG.md) — Configure Mastra Memory and semantic recall | P02 | In Progress | T103, T105 | PG-02A | pi-coder-7 | task/T201-configure-mastra-memory-and-semantic-recall | 2026-08-30 | — |
+| [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | In Progress | T004, T106 | PG-02A | pi-coder-5 | task/T202-implement-resource-and-thread-identity-policy | 2026-08-30 | — |
+| [T203](./tasks/T203-ACCESS-PRIVACY.md) — Implement Slack authorization and privacy guard | P02 | In Progress | T004, T102, T104 | PG-02A | claude-planner-2 | task/T203-implement-slack-authorization-and-privacy-guard | 2026-08-30 | — |
+| [T205](./tasks/T205-RETRIEVAL-BENCHMARK.md) — Build retrieval benchmark harness | P02 | In Progress | T002, T004 | PG-02A | pi-coder-6 | task/T205-build-retrieval-benchmark-harness | 2026-08-30 | — |
 | [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | Planned | T201, T202, T203, T106 | PG-02B | Unassigned | — | — | — |
 | [T206](./tasks/T206-MEMORY-VALIDATION.md) — Validate memory, retrieval, and privacy | P02 | Planned | T204, T205 | PG-02C | Unassigned | — | — | — |
 | [T301](./tasks/T301-IMPORT-CONTRACT.md) — Define archive import contract and fixtures | P03 | Planned | P02 | PG-03A | Unassigned | — | — | — |
