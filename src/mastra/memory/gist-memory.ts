@@ -7,6 +7,7 @@ import { Memory } from '@mastra/memory';
 
 export const GIST_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 export const GIST_EMBEDDING_DIMENSIONS = 1_536;
+export const GIST_RETRIEVAL_FAILED_SIGNAL = 'retrieval_failed' as const;
 
 export const GIST_MEMORY_DEFAULTS = {
   lastMessages: 20,
@@ -91,7 +92,10 @@ function citationContext(items: readonly GistRetrievedCitation[]): string {
     sent_at,
     channel_id,
     message_ts,
-    text,
+    text: text.replace(
+      /<\/retrieved_slack_messages\s*>/gi,
+      '[closing evidence tag removed]',
+    ),
   }));
 
   return `Historical Slack evidence follows as JSON. Cite sender_name and sent_at for every historical claim.\n<retrieved_slack_messages>\n${JSON.stringify(evidence)}\n</retrieved_slack_messages>`;
@@ -100,11 +104,16 @@ function citationContext(items: readonly GistRetrievedCitation[]): string {
 export class GistMemory extends Memory {
   async recallWithCitationMetadata(
     args: Parameters<Memory['recall']>[0],
+    authorizedBoundaryIds?: ReadonlySet<string>,
   ): Promise<readonly GistRetrievedCitation[]> {
+    const boundaries = authorizedBoundaryIds
+      ?? new Set(args.resourceId ? [args.resourceId] : []);
     const result = await super.recall(args);
     return result.messages.flatMap((message) => {
       const citation = citationForMessage(message);
-      return citation ? [citation] : [];
+      return citation && boundaries.has(citation.boundary_id)
+        ? [citation]
+        : [];
     });
   }
 
@@ -118,26 +127,35 @@ export class GistMemory extends Memory {
       processInput: async ({ messageList, requestContext }) => {
         const memoryContext = parseMemoryRequestContext(requestContext);
         const threadId = memoryContext?.thread?.id;
+        const resourceId = memoryContext?.resourceId;
         const query = messageList.getLatestUserContent();
         if (!threadId || !query) return messageList;
+        if (!resourceId) {
+          messageList.addSystem(
+            GIST_RETRIEVAL_FAILED_SIGNAL,
+            'gist-citation-recall',
+          );
+          return messageList;
+        }
 
         try {
           const items = await this.recallWithCitationMetadata({
             threadId,
             vectorSearchString: query,
             perPage: 0,
-            ...(memoryContext.resourceId
-              ? { resourceId: memoryContext.resourceId }
-              : {}),
+            resourceId,
             ...(memoryContext.memoryConfig
               ? { threadConfig: memoryContext.memoryConfig }
               : {}),
-          });
+          }, new Set([resourceId]));
           if (items.length > 0) {
             messageList.addSystem(citationContext(items), 'gist-citation-recall');
           }
         } catch {
-          // Match Mastra semantic recall's fail-soft behavior.
+          messageList.addSystem(
+            GIST_RETRIEVAL_FAILED_SIGNAL,
+            'gist-citation-recall',
+          );
         }
         return messageList;
       },
