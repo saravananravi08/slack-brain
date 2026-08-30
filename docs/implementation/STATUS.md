@@ -75,10 +75,10 @@
 
 | Task | Owner | Paths | Acquired | Released |
 |---|---|---|---|---|
-| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30 |
+| T103-dep | pi-coder-3 | package.json, package-lock.json (pinned @mastra/observability add only; transferred from T101) | 2026-08-30 | reverts to T508 after T103 merge |
 
 ## Blockers
 
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
-| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30 | — |
+| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30
