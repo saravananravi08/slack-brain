@@ -1,0 +1,110 @@
+{
+  "$schema": "../benchmark.schema.json",
+  "schema_version": 1,
+  "dataset_id": "synthetic-paraphrase",
+  "dataset_version": "1.0.0",
+  "synthetic": true,
+  "model_id": "synthetic-reference",
+  "embedding_model": "synthetic-reference",
+  "thresholds": {
+    "relevant_retrieval_rate_min": 0.8,
+    "grounded_answer_accuracy_min": 0.85,
+    "unsupported_claim_rate_max_exclusive": 0.05,
+    "privacy_leaks_max": 0
+  },
+  "cases": [
+    {
+      "id": "case-semantic-decision",
+      "category": "semantic_paraphrase",
+      "query": "Where should Lantern output live after a deployment?",
+      "expected": {
+        "evidence_ids": ["msg-lantern-decision", "msg-lantern-reason"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "Generated reports belong in object storage.",
+          "Application disks are replaced during deploys."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": { "required": true, "sender": "Avery Example", "date": "2026-01-12" }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 },
+      "observed": {
+        "retrieved_evidence_ids": ["msg-lantern-decision", "msg-lantern-reason"],
+        "supported_required_claims": 2,
+        "unsupported_factual_claims": 0,
+        "factual_claims": 2,
+        "forbidden_disclosure": false,
+        "refusal_confirmed": false,
+        "asserted_answer": true,
+        "attribution_sender": "Avery Example",
+        "attribution_date": "2026-01-12",
+        "first_content_ms": 900,
+        "complete_ms": 1400,
+        "response_count": 1,
+        "reply_location_correct": true
+      }
+    },
+    {
+      "id": "case-thread-context",
+      "category": "thread_context",
+      "query": "What fix did the team choose for empty regions in Maple imports?",
+      "expected": {
+        "evidence_ids": ["msg-maple-root", "msg-maple-fix"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "Reject rows with an empty region.",
+          "Return a clear validation message.",
+          "Do not assign a default region."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": { "required": true, "sender": "Finley Example", "date": "2026-01-22" }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 },
+      "observed": {
+        "retrieved_evidence_ids": ["msg-maple-root", "msg-maple-fix"],
+        "supported_required_claims": 3,
+        "unsupported_factual_claims": 0,
+        "factual_claims": 3,
+        "forbidden_disclosure": false,
+        "refusal_confirmed": false,
+        "asserted_answer": true,
+        "attribution_sender": "Finley Example",
+        "attribution_date": "2026-01-22",
+        "first_content_ms": 1100,
+        "complete_ms": 1800,
+        "response_count": 1,
+        "reply_location_correct": true
+      }
+    },
+    {
+      "id": "case-restart-recall",
+      "category": "restart_recall",
+      "query": "Which shape did I ask you to remember?",
+      "expected": {
+        "evidence_ids": ["msg-restart-context"],
+        "forbidden_evidence_ids": [],
+        "required_claims": ["The selected shape is a hexagon."],
+        "refuse_if_unverified": false,
+        "attribution": { "required": false, "sender": null, "date": null }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 },
+      "restart_before_query": true,
+      "observed": {
+        "retrieved_evidence_ids": ["msg-restart-context"],
+        "supported_required_claims": 1,
+        "unsupported_factual_claims": 0,
+        "factual_claims": 1,
+        "forbidden_disclosure": false,
+        "refusal_confirmed": false,
+        "asserted_answer": true,
+        "attribution_sender": null,
+        "attribution_date": null,
+        "first_content_ms": 1000,
+        "complete_ms": 1500,
+        "response_count": 1,
+        "reply_location_correct": true,
+        "restart_performed": true
+      }
+    }
+  ]
+}
