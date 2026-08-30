@@ -1,0 +1,886 @@
+[
+  {
+    "id": "T000",
+    "title": "Repository safety and secret hygiene",
+    "phase": "P00",
+    "deps": [],
+    "blocks": [
+      "T101"
+    ],
+    "group": "PG-00A",
+    "parallel": [
+      "T001",
+      "T002",
+      "T003"
+    ],
+    "conflicts": [
+      "T508"
+    ],
+    "scope": [
+      ".gitignore",
+      "docs/security/repository-safety.md"
+    ]
+  },
+  {
+    "id": "T001",
+    "title": "Resolve product and security decisions",
+    "phase": "P00",
+    "deps": [],
+    "blocks": [
+      "T004",
+      "T203",
+      "T301",
+      "T404"
+    ],
+    "group": "PG-00A",
+    "parallel": [
+      "T000",
+      "T002",
+      "T003"
+    ],
+    "conflicts": [],
+    "scope": [
+      "docs/implementation/DECISIONS.md",
+      "GIST_MASTRA_PRD.md"
+    ]
+  },
+  {
+    "id": "T002",
+    "title": "Capture baseline and retrieval benchmark",
+    "phase": "P00",
+    "deps": [],
+    "blocks": [
+      "T205",
+      "T501"
+    ],
+    "group": "PG-00A",
+    "parallel": [
+      "T000",
+      "T001",
+      "T003"
+    ],
+    "conflicts": [],
+    "scope": [
+      "benchmarks/baseline/**",
+      "docs/reports/current-system-baseline.md"
+    ]
+  },
+  {
+    "id": "T003",
+    "title": "Prepare isolated Slack development environment",
+    "phase": "P00",
+    "deps": [],
+    "blocks": [
+      "T104",
+      "T401"
+    ],
+    "group": "PG-00A",
+    "parallel": [
+      "T000",
+      "T001",
+      "T002"
+    ],
+    "conflicts": [],
+    "scope": [
+      "docs/runbooks/slack-dev-environment.md"
+    ]
+  },
+  {
+    "id": "T004",
+    "title": "Define architecture and data contracts",
+    "phase": "P00",
+    "deps": [
+      "T001"
+    ],
+    "blocks": [
+      "T104",
+      "T105",
+      "T202",
+      "T203",
+      "T301",
+      "T401"
+    ],
+    "group": "PG-00B",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/architecture/gist-mastra-architecture.md",
+      "docs/architecture/contracts/**"
+    ]
+  },
+  {
+    "id": "T101",
+    "title": "Scaffold Mastra TypeScript project",
+    "phase": "P01",
+    "deps": [
+      "P00"
+    ],
+    "blocks": [
+      "T102",
+      "T103",
+      "T104",
+      "T105"
+    ],
+    "group": "PG-01A",
+    "parallel": [],
+    "conflicts": [
+      "T508"
+    ],
+    "scope": [
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "src/** (empty entry scaffolding only)",
+      "tests/smoke/project.test.ts"
+    ]
+  },
+  {
+    "id": "T102",
+    "title": "Implement startup configuration validation",
+    "phase": "P01",
+    "deps": [
+      "T101"
+    ],
+    "blocks": [
+      "T106",
+      "T203"
+    ],
+    "group": "PG-01B",
+    "parallel": [
+      "T103",
+      "T104",
+      "T105"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/config.ts",
+      "tests/config/**",
+      ".env.example"
+    ]
+  },
+  {
+    "id": "T103",
+    "title": "Configure Mastra storage and tracing",
+    "phase": "P01",
+    "deps": [
+      "T101"
+    ],
+    "blocks": [
+      "T106",
+      "T201"
+    ],
+    "group": "PG-01B",
+    "parallel": [
+      "T102",
+      "T104",
+      "T105"
+    ],
+    "conflicts": [
+      "T106",
+      "T204"
+    ],
+    "scope": [
+      "src/mastra/storage/**",
+      "src/mastra/index.ts",
+      "tests/storage/**"
+    ]
+  },
+  {
+    "id": "T104",
+    "title": "Implement Mastra Slack channel adapter",
+    "phase": "P01",
+    "deps": [
+      "T101",
+      "T003",
+      "T004"
+    ],
+    "blocks": [
+      "T106",
+      "T203",
+      "T401"
+    ],
+    "group": "PG-01B",
+    "parallel": [
+      "T102",
+      "T103",
+      "T105"
+    ],
+    "conflicts": [
+      "T405"
+    ],
+    "scope": [
+      "src/mastra/channels/**",
+      "tests/channels/**"
+    ]
+  },
+  {
+    "id": "T105",
+    "title": "Implement Gist agent behavior",
+    "phase": "P01",
+    "deps": [
+      "T101",
+      "T004"
+    ],
+    "blocks": [
+      "T106",
+      "T201"
+    ],
+    "group": "PG-01B",
+    "parallel": [
+      "T102",
+      "T103",
+      "T104"
+    ],
+    "conflicts": [
+      "T204"
+    ],
+    "scope": [
+      "src/mastra/agents/**",
+      "tests/agents/**"
+    ]
+  },
+  {
+    "id": "T106",
+    "title": "Integrate foundation runtime",
+    "phase": "P01",
+    "deps": [
+      "T102",
+      "T103",
+      "T104",
+      "T105"
+    ],
+    "blocks": [
+      "T202",
+      "T204"
+    ],
+    "group": "PG-01C",
+    "parallel": [],
+    "conflicts": [
+      "T103",
+      "T104",
+      "T105",
+      "T204"
+    ],
+    "scope": [
+      "src/mastra/index.ts",
+      "src/index.ts",
+      "tests/integration/foundation/**"
+    ]
+  },
+  {
+    "id": "T201",
+    "title": "Configure Mastra Memory and semantic recall",
+    "phase": "P02",
+    "deps": [
+      "T103",
+      "T105"
+    ],
+    "blocks": [
+      "T204",
+      "T304",
+      "T403"
+    ],
+    "group": "PG-02A",
+    "parallel": [
+      "T202",
+      "T203",
+      "T205"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/mastra/memory/gist-memory.ts",
+      "tests/memory/config.test.ts"
+    ]
+  },
+  {
+    "id": "T202",
+    "title": "Implement resource and thread identity policy",
+    "phase": "P02",
+    "deps": [
+      "T004",
+      "T106"
+    ],
+    "blocks": [
+      "T204",
+      "T403"
+    ],
+    "group": "PG-02A",
+    "parallel": [
+      "T201",
+      "T203",
+      "T205"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/mastra/memory/resource-policy.ts",
+      "tests/memory/resource-policy.test.ts"
+    ]
+  },
+  {
+    "id": "T203",
+    "title": "Implement Slack authorization and privacy guard",
+    "phase": "P02",
+    "deps": [
+      "T004",
+      "T102",
+      "T104"
+    ],
+    "blocks": [
+      "T204",
+      "T404",
+      "T502"
+    ],
+    "group": "PG-02A",
+    "parallel": [
+      "T201",
+      "T202",
+      "T205"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/security/**",
+      "tests/security/access/**"
+    ]
+  },
+  {
+    "id": "T205",
+    "title": "Build retrieval benchmark harness",
+    "phase": "P02",
+    "deps": [
+      "T002",
+      "T004"
+    ],
+    "blocks": [
+      "T206",
+      "T306",
+      "T406"
+    ],
+    "group": "PG-02A",
+    "parallel": [
+      "T201",
+      "T202",
+      "T203"
+    ],
+    "conflicts": [],
+    "scope": [
+      "benchmarks/retrieval/**",
+      "tests/benchmarks/**",
+      "docs/reports/retrieval-benchmark-template.md"
+    ]
+  },
+  {
+    "id": "T204",
+    "title": "Integrate memory, identity, and access",
+    "phase": "P02",
+    "deps": [
+      "T201",
+      "T202",
+      "T203",
+      "T106"
+    ],
+    "blocks": [
+      "T206",
+      "T405"
+    ],
+    "group": "PG-02B",
+    "parallel": [],
+    "conflicts": [
+      "T103",
+      "T104",
+      "T105",
+      "T405"
+    ],
+    "scope": [
+      "src/mastra/index.ts",
+      "src/mastra/agents/gist.ts",
+      "src/mastra/channels/slack.ts",
+      "tests/integration/memory/**"
+    ]
+  },
+  {
+    "id": "T206",
+    "title": "Validate memory, retrieval, and privacy",
+    "phase": "P02",
+    "deps": [
+      "T204",
+      "T205"
+    ],
+    "blocks": [
+      "T301",
+      "T401",
+      "T501"
+    ],
+    "group": "PG-02C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "tests/integration/memory-validation/**",
+      "docs/reports/memory-validation.md"
+    ]
+  },
+  {
+    "id": "T301",
+    "title": "Define archive import contract and fixtures",
+    "phase": "P03",
+    "deps": [
+      "P02"
+    ],
+    "blocks": [
+      "T302",
+      "T303",
+      "T304"
+    ],
+    "group": "PG-03A",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/architecture/contracts/archive-import.md",
+      "tests/fixtures/migration/**"
+    ]
+  },
+  {
+    "id": "T302",
+    "title": "Implement read-only archive source reader",
+    "phase": "P03",
+    "deps": [
+      "T301"
+    ],
+    "blocks": [
+      "T305"
+    ],
+    "group": "PG-03B",
+    "parallel": [
+      "T303",
+      "T304"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/migration/source/**",
+      "tests/migration/source/**"
+    ]
+  },
+  {
+    "id": "T303",
+    "title": "Implement archive message normalization",
+    "phase": "P03",
+    "deps": [
+      "T301"
+    ],
+    "blocks": [
+      "T305"
+    ],
+    "group": "PG-03B",
+    "parallel": [
+      "T302",
+      "T304"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/migration/mapping/**",
+      "tests/migration/mapping/**"
+    ]
+  },
+  {
+    "id": "T304",
+    "title": "Implement idempotent Mastra memory writer",
+    "phase": "P03",
+    "deps": [
+      "T201",
+      "T301"
+    ],
+    "blocks": [
+      "T305"
+    ],
+    "group": "PG-03B",
+    "parallel": [
+      "T302",
+      "T303"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/migration/writer/**",
+      "tests/migration/writer/**"
+    ]
+  },
+  {
+    "id": "T305",
+    "title": "Integrate archive importer and reporting",
+    "phase": "P03",
+    "deps": [
+      "T302",
+      "T303",
+      "T304"
+    ],
+    "blocks": [
+      "T306"
+    ],
+    "group": "PG-03C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "src/migration/index.ts",
+      "scripts/import-slack.ts",
+      "tests/migration/orchestration/**",
+      "docs/runbooks/archive-import.md"
+    ]
+  },
+  {
+    "id": "T306",
+    "title": "Run sample archive import and quality gate",
+    "phase": "P03",
+    "deps": [
+      "T205",
+      "T305"
+    ],
+    "blocks": [
+      "T307"
+    ],
+    "group": "PG-03D",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/reports/sample-import-summary.md",
+      "benchmarks/history/**"
+    ]
+  },
+  {
+    "id": "T307",
+    "title": "Execute full historical import",
+    "phase": "P03",
+    "deps": [
+      "T306",
+      "Product/security approval"
+    ],
+    "blocks": [
+      "T504",
+      "T501"
+    ],
+    "group": "PG-03E",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/reports/full-import-summary.md"
+    ]
+  },
+  {
+    "id": "T401",
+    "title": "Spike supported ordinary Slack event handling",
+    "phase": "P04",
+    "deps": [
+      "T104",
+      "T206"
+    ],
+    "blocks": [
+      "T402",
+      "T403",
+      "T404"
+    ],
+    "group": "PG-04A",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/spikes/slack-event-support.md",
+      "tests/spikes/slack-events/**"
+    ]
+  },
+  {
+    "id": "T402",
+    "title": "Normalize and deduplicate live Slack events",
+    "phase": "P04",
+    "deps": [
+      "T401"
+    ],
+    "blocks": [
+      "T405"
+    ],
+    "group": "PG-04B",
+    "parallel": [
+      "T403",
+      "T404"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/events/**",
+      "tests/ingestion/events/**"
+    ]
+  },
+  {
+    "id": "T403",
+    "title": "Persist ambient messages silently",
+    "phase": "P04",
+    "deps": [
+      "T201",
+      "T202",
+      "T401"
+    ],
+    "blocks": [
+      "T405"
+    ],
+    "group": "PG-04B",
+    "parallel": [
+      "T402",
+      "T404"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/persistence/**",
+      "tests/ingestion/persistence/**"
+    ]
+  },
+  {
+    "id": "T404",
+    "title": "Implement edit/delete and retention mutation policy",
+    "phase": "P04",
+    "deps": [
+      "T001",
+      "T203",
+      "T401"
+    ],
+    "blocks": [
+      "T405"
+    ],
+    "group": "PG-04B",
+    "parallel": [
+      "T402",
+      "T403"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/mutations/**",
+      "tests/ingestion/mutations/**"
+    ]
+  },
+  {
+    "id": "T405",
+    "title": "Integrate live silent ingestion",
+    "phase": "P04",
+    "deps": [
+      "T402",
+      "T403",
+      "T404",
+      "T204"
+    ],
+    "blocks": [
+      "T406"
+    ],
+    "group": "PG-04C",
+    "parallel": [],
+    "conflicts": [
+      "T104",
+      "T204"
+    ],
+    "scope": [
+      "src/mastra/channels/slack.ts",
+      "src/mastra/index.ts",
+      "src/ingestion/index.ts",
+      "tests/integration/live-ingestion/**"
+    ]
+  },
+  {
+    "id": "T406",
+    "title": "Validate live ingestion end to end",
+    "phase": "P04",
+    "deps": [
+      "T405",
+      "T205"
+    ],
+    "blocks": [
+      "T501",
+      "T502",
+      "T503"
+    ],
+    "group": "PG-04D",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "tests/e2e/live-ingestion/**",
+      "docs/reports/live-ingestion-validation.md"
+    ]
+  },
+  {
+    "id": "T501",
+    "title": "Run complete PRD acceptance suite",
+    "phase": "P05",
+    "deps": [
+      "P03",
+      "P04"
+    ],
+    "blocks": [
+      "T505"
+    ],
+    "group": "PG-05A",
+    "parallel": [
+      "T502",
+      "T503",
+      "T504"
+    ],
+    "conflicts": [],
+    "scope": [
+      "tests/e2e/acceptance/**",
+      "docs/reports/prd-acceptance.md"
+    ]
+  },
+  {
+    "id": "T502",
+    "title": "Perform security and privacy review",
+    "phase": "P05",
+    "deps": [
+      "T203",
+      "P03",
+      "P04"
+    ],
+    "blocks": [
+      "T505"
+    ],
+    "group": "PG-05A",
+    "parallel": [
+      "T501",
+      "T503",
+      "T504"
+    ],
+    "conflicts": [],
+    "scope": [
+      "tests/security/release/**",
+      "docs/reports/security-review.md"
+    ]
+  },
+  {
+    "id": "T503",
+    "title": "Validate performance and observability",
+    "phase": "P05",
+    "deps": [
+      "P03",
+      "P04"
+    ],
+    "blocks": [
+      "T505"
+    ],
+    "group": "PG-05A",
+    "parallel": [
+      "T501",
+      "T502",
+      "T504"
+    ],
+    "conflicts": [],
+    "scope": [
+      "tests/performance/**",
+      "docs/reports/performance-observability.md"
+    ]
+  },
+  {
+    "id": "T504",
+    "title": "Write and rehearse deployment, backup, restore, rollback runbook",
+    "phase": "P05",
+    "deps": [
+      "T106",
+      "T307",
+      "T406"
+    ],
+    "blocks": [
+      "T505",
+      "T506"
+    ],
+    "group": "PG-05A",
+    "parallel": [
+      "T501",
+      "T502",
+      "T503"
+    ],
+    "conflicts": [],
+    "scope": [
+      "docs/runbooks/deployment.md",
+      "docs/runbooks/backup-restore.md",
+      "docs/runbooks/rollback.md",
+      "deploy/**"
+    ]
+  },
+  {
+    "id": "T505",
+    "title": "Execute internal beta release",
+    "phase": "P05",
+    "deps": [
+      "T501",
+      "T502",
+      "T503",
+      "T504"
+    ],
+    "blocks": [
+      "T506",
+      "T507"
+    ],
+    "group": "PG-05B",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/releases/beta.md"
+    ]
+  },
+  {
+    "id": "T506",
+    "title": "Perform production cutover",
+    "phase": "P05",
+    "deps": [
+      "T505",
+      "Product/technical/security approval"
+    ],
+    "blocks": [
+      "T508"
+    ],
+    "group": "PG-05C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "docs/releases/production-cutover.md"
+    ]
+  },
+  {
+    "id": "T507",
+    "title": "Complete operator and developer handover",
+    "phase": "P05",
+    "deps": [
+      "T505"
+    ],
+    "blocks": [],
+    "group": "PG-05D",
+    "parallel": [
+      "T506"
+    ],
+    "conflicts": [],
+    "scope": [
+      "docs/operations/**",
+      "docs/development/**"
+    ]
+  },
+  {
+    "id": "T508",
+    "title": "Remove legacy runtime after rollback window",
+    "phase": "P05",
+    "deps": [
+      "T506",
+      "Rollback-window approval"
+    ],
+    "blocks": [],
+    "group": "PG-05D",
+    "parallel": [],
+    "conflicts": [
+      "T000",
+      "T101"
+    ],
+    "scope": [
+      "agent.ts",
+      "bot.ts",
+      "clickup.ts",
+      "cron.ts",
+      "db.ts",
+      "files.ts",
+      "proactive.ts",
+      "search.ts",
+      "package.json",
+      "package-lock.json",
+      ".env.example",
+      ".gitignore",
+      "README.md",
+      "tests/legacy/**"
+    ]
+  }
+]
