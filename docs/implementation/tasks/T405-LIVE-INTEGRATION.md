@@ -1,6 +1,6 @@
 # T405 — Integrate live silent ingestion
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** pi-coder-12
 - **Branch:** `task/T405-integrate-live-silent-ingestion`
@@ -81,6 +81,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `b9c52516aacac0a6f94825cbeecf8bdddf9be91e`
 - Handoff commit: This task/log metadata commit (exact hash in branch history and handoff report).
-- Merge commit: —
+- Merge commit: f64b2dc
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

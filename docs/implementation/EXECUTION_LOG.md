@@ -60,3 +60,4 @@ _No implementation events recorded yet._
 - Smoke assertion changed to subset match so T305+ script additions do not regress T101 smoke.
 - T305 Completed: archive importer orchestration + CLI + runbook (pi-coder-9, merge aa1b4ea). 499/499 tests.
 - T401 live probe re-run merged (6b0655b): post/edit/delete + users.info confirmed. New finding: derive is_external from team_id mismatch (is_stranger absent = fail-open risk); recorded in spike 7.1 as T405 requirement. B-05 resolved; B-06 opened for DM scopes/events.
+- T405 Completed: live silent ingestion integrated (pi-coder-12, merge f64b2dc). 513/513 tests.
