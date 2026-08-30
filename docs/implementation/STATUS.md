@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P00 in progress
-- **Last updated:** 2026-08-30
+- **Current phase gate:** P00 closed; P01 in progress
+- **Last updated:** 2026-08-30 (P00 closed)
 
 ## Assignment protocol
 
@@ -21,8 +21,8 @@
 
 | Phase | Status | Depends on | Integrator | Exit commit |
 |---|---|---|---|---|
-| [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Planned | — | Unassigned | — |
-| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Planned | P00 | Unassigned | — |
+| [P00](./phases/P00-GOVERNANCE.md) — Governance, Safety, and Contracts | Completed | — | Augment | T004 merge 151dc00 |
+| [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | In Progress | P00 | Augment | — |
 | [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Planned | P01 | Unassigned | — |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | Planned | P02 | Unassigned | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Planned | P02 | Unassigned | — |
@@ -75,10 +75,10 @@
 
 | Task | Owner | Paths | Acquired | Released |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30 |
 
 ## Blockers
 
 | ID | Task/phase | Blocker | Owner | Unblock condition | Opened |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| B-01 | T003/P01 | Slack dev app + credentials not yet created (runbook ready: docs/runbooks/slack-dev-environment.md) | Operator (saravanan) | Slack app created; SLACK_BOT_TOKEN + SLACK_APP_TOKEN provided | 2026-08-30 | — |

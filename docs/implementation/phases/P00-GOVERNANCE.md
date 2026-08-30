@@ -1,6 +1,6 @@
 # P00 — Governance, Safety, and Contracts
 
-- **Status:** Planned
+- **Status:** Completed
 - **Depends on:** None
 - **Phase integrator:** Unassigned
 - **PRD coverage:** Sections 10, 12, 15, 16
@@ -13,7 +13,7 @@ Repository is safe, product decisions are explicit, baseline behavior is measura
 
 - [x] PRD exists.
 - [x] Migration plan exists.
-- [ ] Coordinator and phase integrator assigned.
+- [x] Coordinator and phase integrator assigned (Augment = coordinator + integrator; pi-coder/-2/-3, claude-planner = workers).
 
 ## Parallel execution plan
 
@@ -39,12 +39,12 @@ Repository is safe, product decisions are explicit, baseline behavior is measura
 
 ## Exit criteria
 
-- [ ] Secret/data hygiene checks pass.
-- [ ] D001–D010 required outcomes are accepted or explicitly deferred with owners.
-- [ ] Benchmark corpus and baseline report exist.
-- [ ] Development Slack app/channel is usable.
-- [ ] Resource, event, storage, retrieval, and authorization contracts are documented.
-- [ ] P01 tasks can implement without inventing product policy.
+- [x] Secret/data hygiene checks pass.
+- [x] D001–D010 accepted (coordinator-delegated) with five recorded deferrals.
+- [x] Benchmark corpus and baseline report exist.
+- [ ] Development Slack app/channel is usable — runbook complete; live app creation pending operator credentials (blocker B-01; does not block T101–T103/T105).
+- [x] Resource, event, storage, retrieval, and authorization contracts are documented.
+- [x] P01 tasks can implement without inventing product policy.
 
 ## Phase verification
 
@@ -55,6 +55,6 @@ npm test
 
 ## Completion record
 
-- Gate approved by: —
-- Gate date: —
-- Commit: —
+- Gate approved by: Coordinator (Augment), delegated by product owner
+- Gate date: 2026-08-30
+- Commit: see integration metadata commits through T004
