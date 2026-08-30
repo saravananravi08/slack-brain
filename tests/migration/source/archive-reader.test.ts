@@ -12,13 +12,13 @@ import {
   ArchiveSourceError,
   ArchiveSourceReader,
   type ArchiveSourceMessage,
-} from '../../../archive-reader.js';
+} from '../../../src/migration/source/archive-reader.js';
 
 type JsonRecord = Record<string, any>;
 
 const fixture = JSON.parse(
   await readFile(
-    new URL('../../../../../../tests/fixtures/migration/source-records.v1.json', import.meta.url),
+    new URL('../../fixtures/migration/source-records.v1.json', import.meta.url),
     'utf8',
   ),
 ) as JsonRecord;
