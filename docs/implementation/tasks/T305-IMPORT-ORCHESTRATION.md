@@ -1,8 +1,8 @@
 # T305 — Integrate archive importer and reporting
 
-- **Status:** Planned
+- **Status:** Blocked
 - **Phase:** [P03](../phases/P03-HISTORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-9
 - **Branch:** `task/T305-integrate-archive-importer-and-reporting`
 - **Parallel group:** PG-03C
 - **Depends on:** T302, T303, T304
