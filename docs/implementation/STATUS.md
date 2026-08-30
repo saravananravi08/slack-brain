@@ -87,4 +87,5 @@
 | B-02 | T206/runtime | ANTHROPIC_API_KEY + OPENAI_API_KEY not in .env; needed for generation/embedding and integrated benchmark | Operator (saravanan) | keys placed in .env | 2026-08-30 |
 | B-03 | T301/P03 | Legacy Slack archive DB (slack_messages.db or equivalent) not found on this machine; import inventory/counts need read-only source path | Operator (saravanan) | Read-only path to backed-up legacy archive DB provided | 2026-08-30 |
 | B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |
-| B-05 | T401/T405 | Slack app needs chat:write + users:read scopes, REINSTALL after scope change, membership in probe channel, GIST_DEV_CHANNEL_ID pointed at probe channel | Operator (saravanan) | Probe re-run passes write/edit/delete + users.info | 2026-08-30 |
+| B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |
+| B-06 | FR-SLK-002 DMs | App lacks im:read/im:write/im:history scopes and (unverified) message.im/message.channels event subscriptions | Operator (saravanan) | DM probe passes | 2026-08-30 |
