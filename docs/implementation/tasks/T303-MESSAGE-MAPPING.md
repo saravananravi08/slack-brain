@@ -1,6 +1,6 @@
 # T303 — Implement archive message normalization
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-9
 - **Branch:** `task/T303-implement-archive-message-normalization`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `6eb546d273392f9138b932141e201b6ef5247b78`
 - Handoff commit: `75f10ba563d265f233462ae233d40f0d1ae2f648`
-- Merge commit: —
+- Merge commit: 2640d21
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

@@ -1,6 +1,6 @@
 # T302 — Implement read-only archive source reader
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-8
 - **Branch:** `task/T302-implement-read-only-archive-source-reader`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `ed257f5113cfedab1630865d510cd51b8e784677`
 - Handoff commit: `1eb08a742d23277685fc89f83e0ce389d167eb96`
-- Merge commit: —
+- Merge commit: 2b14097
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

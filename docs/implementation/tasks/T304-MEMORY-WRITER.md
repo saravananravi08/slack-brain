@@ -1,6 +1,6 @@
 # T304 — Implement idempotent Mastra memory writer
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P03](../phases/P03-HISTORY.md)
 - **Owner:** pi-coder-10
 - **Branch:** `task/T304-implement-idempotent-mastra-memory-writer`
@@ -78,6 +78,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `8c3c32dc698510f78a8bf59035c19fbc6667728b`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: da7558d
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

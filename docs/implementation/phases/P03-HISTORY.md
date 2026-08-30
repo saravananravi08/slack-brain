@@ -28,9 +28,9 @@ Approved historical Slack messages are imported idempotently into Mastra-owned m
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
 | [T301](../tasks/T301-IMPORT-CONTRACT.md) | Completed | P02 | PG-03A | pi-coder-8 | f50438e |
-| [T302](../tasks/T302-SOURCE-READER.md) | Planned | T301 | PG-03B | Unassigned | — |
-| [T303](../tasks/T303-MESSAGE-MAPPING.md) | Planned | T301 | PG-03B | Unassigned | — |
-| [T304](../tasks/T304-MEMORY-WRITER.md) | Planned | T201, T301 | PG-03B | Unassigned | — |
+| [T302](../tasks/T302-SOURCE-READER.md) | Completed | T301 | PG-03B | pi-coder-8 | 2b14097 |
+| [T303](../tasks/T303-MESSAGE-MAPPING.md) | Completed | T301 | PG-03B | pi-coder-9 | 2640d21 |
+| [T304](../tasks/T304-MEMORY-WRITER.md) | Completed | T201, T301 | PG-03B | pi-coder-10 | da7558d |
 | [T305](../tasks/T305-IMPORT-ORCHESTRATION.md) | Planned | T302–T304 | PG-03C | Unassigned | — |
 | [T306](../tasks/T306-SAMPLE-IMPORT.md) | Planned | T205, T305 | PG-03D | Unassigned | — |
 | [T307](../tasks/T307-FULL-IMPORT.md) | Planned | T306 + approval | PG-03E | Unassigned | — |

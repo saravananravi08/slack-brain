@@ -51,3 +51,6 @@ _No implementation events recorded yet._
 - T301 Completed: archive import contract + synthetic fixtures (pi-coder-8, merge f50438e). Inventory counts pending B-03.
 - T401 Completed: ordinary event spike + live probe committed (claude-planner-2, merge 8ba694e).
 - B-04 resolved: workspace confirmed as test workspace by operator.
+- T302 Completed: read-only archive source reader (pi-coder-8, merge 2b14097).
+- T303 Completed: archive message normalization (pi-coder-9, merge 2640d21).
+- T304 Completed: idempotent memory writer (pi-coder-10, merge da7558d). Integration: 392/392 tests.
