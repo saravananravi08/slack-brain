@@ -1,8 +1,8 @@
 # T001 — Resolve product and security decisions
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-planner
 - **Branch:** `task/T001-resolve-product-and-security-decisions`
 - **Parallel group:** PG-00A
 - **Depends on:** —
@@ -10,6 +10,8 @@
 - **Can run parallel with:** T000, T002, T003
 - **Conflicts with:** None under declared write scope
 - **Task log:** [`../logs/T001.md`](../logs/T001.md)
+- **Worktree:** `../worktrees/T001`
+- **Awaiting:** human product/security/technical owner approval of the D001–D010 proposals. Proposals are recorded with status `Proposed`; the task cannot reach `Ready for Integration` until the named owners accept or amend them.
 - **Write scope:**
   - `docs/implementation/DECISIONS.md`
   - `GIST_MASTRA_PRD.md`
@@ -75,7 +77,8 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Completion record
 
-- Implementation commit: —
+- Proposal commit (D001–D010 drafted, status `Proposed`): __PROPOSAL_COMMIT__
+- Implementation commit (acceptance recorded): —
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
