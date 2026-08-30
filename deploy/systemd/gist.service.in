@@ -1,0 +1,33 @@
+# EARLY DRAFT: do not install until all @...@ fields are resolved from merged T406/operator evidence.
+[Unit]
+Description=Gist Slack Socket Mode runtime
+After=network-online.target
+Wants=network-online.target
+Conflicts=@LEGACY_BOT_UNIT@.service @LEGACY_CRON_UNIT@.service
+ConditionPathExists=@ENVIRONMENT_FILE@
+ConditionPathIsDirectory=@RELEASE_DIRECTORY@
+ConditionPathIsDirectory=@STATE_DIRECTORY@
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+WorkingDirectory=@RELEASE_DIRECTORY@
+Environment=NODE_ENV=production
+EnvironmentFile=@ENVIRONMENT_FILE@
+ExecStart=@T406_VALIDATED_START_COMMAND@
+KillSignal=SIGTERM
+TimeoutStopSec=90
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@STATE_DIRECTORY@
+
+[Install]
+WantedBy=multi-user.target

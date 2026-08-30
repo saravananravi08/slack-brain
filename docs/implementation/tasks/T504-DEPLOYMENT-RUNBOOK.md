@@ -1,8 +1,8 @@
 # T504 — Write and rehearse deployment, backup, restore, rollback runbook
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P05](../phases/P05-RELEASE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-11
 - **Branch:** `task/T504-write-and-rehearse-deployment-backup-restore-rollback-runbook`
 - **Parallel group:** PG-05A
 - **Depends on:** T106, T307, T406
