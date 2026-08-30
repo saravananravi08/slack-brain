@@ -1,8 +1,8 @@
 # T002 — Capture baseline and retrieval benchmark
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-2
 - **Branch:** `task/T002-capture-baseline-and-retrieval-benchmark`
 - **Parallel group:** PG-00A
 - **Depends on:** —

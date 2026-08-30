@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gist/baseline-benchmark.schema.json",
+  "title": "Gist synthetic retrieval benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "synthetic", "corpus", "cases"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "synthetic": { "type": "boolean", "const": true },
+    "corpus": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/message" }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "boundary_id",
+        "conversation_type",
+        "conversation_id",
+        "thread_id",
+        "sender_id",
+        "sender_name",
+        "sent_at",
+        "text"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^msg-[a-z0-9-]+$" },
+        "boundary_id": { "type": "string", "minLength": 1 },
+        "conversation_type": { "enum": ["channel", "dm"] },
+        "conversation_id": { "type": "string", "minLength": 1 },
+        "thread_id": { "type": "string", "minLength": 1 },
+        "sender_id": { "type": "string", "minLength": 1 },
+        "sender_name": { "type": "string", "minLength": 1 },
+        "sent_at": { "type": "string", "format": "date-time" },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "acceptance_scenarios",
+        "query",
+        "requester",
+        "expected",
+        "latency_budget_ms"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^case-[a-z0-9-]+$" },
+        "category": {
+          "enum": [
+            "semantic_paraphrase",
+            "exact_value",
+            "speaker_attribution",
+            "thread_context",
+            "unknown_history",
+            "channel_isolation",
+            "dm_isolation",
+            "restart_recall"
+          ]
+        },
+        "acceptance_scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^AC-[0-9]{2}$" }
+        },
+        "query": { "type": "string", "minLength": 1 },
+        "requester": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["user_id", "boundary_id", "conversation_type", "thread_id"],
+          "properties": {
+            "user_id": { "type": "string", "minLength": 1 },
+            "boundary_id": { "type": "string", "minLength": 1 },
+            "conversation_type": { "enum": ["channel", "dm"] },
+            "thread_id": { "type": "string", "minLength": 1 }
+          }
+        },
+        "restart_before_query": { "type": "boolean", "default": false },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_ids",
+            "forbidden_evidence_ids",
+            "required_claims",
+            "refuse_if_unverified",
+            "attribution"
+          ],
+          "properties": {
+            "evidence_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^msg-[a-z0-9-]+$" }
+            },
+            "forbidden_evidence_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^msg-[a-z0-9-]+$" }
+            },
+            "required_claims": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "refuse_if_unverified": { "type": "boolean" },
+            "attribution": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["required", "sender", "date"],
+              "properties": {
+                "required": { "type": "boolean" },
+                "sender": { "type": ["string", "null"] },
+                "date": { "type": ["string", "null"], "format": "date" }
+              }
+            }
+          }
+        },
+        "latency_budget_ms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["first_content", "complete"],
+          "properties": {
+            "first_content": { "type": "integer", "minimum": 1 },
+            "complete": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

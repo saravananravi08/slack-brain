@@ -1,0 +1,330 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "corpus": [
+    {
+      "id": "msg-lantern-decision",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1768212000.000100",
+      "sender_id": "USR_SYNTH_AVERY",
+      "sender_name": "Avery Example",
+      "sent_at": "2026-01-12T10:00:00Z",
+      "text": "Decision for Project Lantern: store generated reports in object storage, not on application disks."
+    },
+    {
+      "id": "msg-lantern-reason",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1768212000.000100",
+      "sender_id": "USR_SYNTH_BLAKE",
+      "sender_name": "Blake Example",
+      "sent_at": "2026-01-12T10:04:00Z",
+      "text": "Reason: application disks are replaced during deploys, while object storage preserves reports."
+    },
+    {
+      "id": "msg-orbit-url",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1768473000.000200",
+      "sender_id": "USR_SYNTH_CASEY",
+      "sender_name": "Casey Example",
+      "sent_at": "2026-01-15T10:30:00Z",
+      "text": "The synthetic Orbit preview is https://preview.example.invalid/orbit."
+    },
+    {
+      "id": "msg-comet-owner",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1768816800.000300",
+      "sender_id": "USR_SYNTH_DEVON",
+      "sender_name": "Devon Example",
+      "sent_at": "2026-01-19T10:00:00Z",
+      "text": "I will own the Comet migration checklist and post the final review by Friday."
+    },
+    {
+      "id": "msg-maple-root",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1769076000.000400",
+      "sender_id": "USR_SYNTH_ELLIS",
+      "sender_name": "Ellis Example",
+      "sent_at": "2026-01-22T10:00:00Z",
+      "text": "Maple imports fail when a row has an empty region."
+    },
+    {
+      "id": "msg-maple-fix",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1769076000.000400",
+      "sender_id": "USR_SYNTH_FINLEY",
+      "sender_name": "Finley Example",
+      "sent_at": "2026-01-22T10:08:00Z",
+      "text": "Agreed fix: reject the row with a clear validation message; do not assign a default region."
+    },
+    {
+      "id": "msg-protected-alpha",
+      "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_ALPHA",
+      "thread_id": "slack:CH_SYNTH_ALPHA:1769421600.000500",
+      "sender_id": "USR_SYNTH_GRAY",
+      "sender_name": "Gray Example",
+      "sent_at": "2026-01-26T10:00:00Z",
+      "text": "Synthetic internal codename for the launch is Blue Umbrella."
+    },
+    {
+      "id": "msg-beta-unrelated",
+      "boundary_id": "slack-channel:CH_SYNTH_BETA",
+      "conversation_type": "channel",
+      "conversation_id": "CH_SYNTH_BETA",
+      "thread_id": "slack:CH_SYNTH_BETA:1769425200.000600",
+      "sender_id": "USR_SYNTH_HARPER",
+      "sender_name": "Harper Example",
+      "sent_at": "2026-01-26T11:00:00Z",
+      "text": "The Beta channel discussed umbrella illustrations for the welcome page."
+    },
+    {
+      "id": "msg-private-avery",
+      "boundary_id": "slack-user:USR_SYNTH_AVERY",
+      "conversation_type": "dm",
+      "conversation_id": "DM_SYNTH_AVERY",
+      "thread_id": "slack:DM_SYNTH_AVERY:1769680800.000700",
+      "sender_id": "USR_SYNTH_AVERY",
+      "sender_name": "Avery Example",
+      "sent_at": "2026-01-29T10:00:00Z",
+      "text": "For this synthetic private conversation, my preferred review hour is 14:00 UTC."
+    },
+    {
+      "id": "msg-restart-context",
+      "boundary_id": "slack-user:USR_SYNTH_BLAKE",
+      "conversation_type": "dm",
+      "conversation_id": "DM_SYNTH_BLAKE",
+      "thread_id": "slack:DM_SYNTH_BLAKE:1769767200.000800",
+      "sender_id": "USR_SYNTH_BLAKE",
+      "sender_name": "Blake Example",
+      "sent_at": "2026-01-30T10:00:00Z",
+      "text": "For the synthetic restart check, remember that the selected shape is a hexagon."
+    }
+  ],
+  "cases": [
+    {
+      "id": "case-semantic-decision",
+      "category": "semantic_paraphrase",
+      "acceptance_scenarios": ["AC-07"],
+      "query": "Where should Lantern output live after a deployment?",
+      "requester": {
+        "user_id": "USR_SYNTH_AVERY",
+        "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_ALPHA:query-001"
+      },
+      "expected": {
+        "evidence_ids": ["msg-lantern-decision", "msg-lantern-reason"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "Generated reports belong in object storage.",
+          "Application disks are replaced during deploys."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": {
+          "required": true,
+          "sender": "Avery Example",
+          "date": "2026-01-12"
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-exact-url",
+      "category": "exact_value",
+      "acceptance_scenarios": ["AC-07"],
+      "query": "What is the Orbit preview address?",
+      "requester": {
+        "user_id": "USR_SYNTH_CASEY",
+        "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_ALPHA:query-002"
+      },
+      "expected": {
+        "evidence_ids": ["msg-orbit-url"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "The address is https://preview.example.invalid/orbit."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": {
+          "required": true,
+          "sender": "Casey Example",
+          "date": "2026-01-15"
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-speaker-owner",
+      "category": "speaker_attribution",
+      "acceptance_scenarios": ["AC-07"],
+      "query": "Who took responsibility for the Comet migration checklist?",
+      "requester": {
+        "user_id": "USR_SYNTH_ELLIS",
+        "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_ALPHA:query-003"
+      },
+      "expected": {
+        "evidence_ids": ["msg-comet-owner"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "Devon Example owns the Comet migration checklist."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": {
+          "required": true,
+          "sender": "Devon Example",
+          "date": "2026-01-19"
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-thread-context",
+      "category": "thread_context",
+      "acceptance_scenarios": ["AC-03", "AC-07"],
+      "query": "What fix did the team choose for empty regions in Maple imports?",
+      "requester": {
+        "user_id": "USR_SYNTH_FINLEY",
+        "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_ALPHA:1769076000.000400"
+      },
+      "expected": {
+        "evidence_ids": ["msg-maple-root", "msg-maple-fix"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "Reject rows with an empty region.",
+          "Return a clear validation message.",
+          "Do not assign a default region."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": {
+          "required": true,
+          "sender": "Finley Example",
+          "date": "2026-01-22"
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-unknown-history",
+      "category": "unknown_history",
+      "acceptance_scenarios": ["AC-08"],
+      "query": "Which database was selected for Project Nebula?",
+      "requester": {
+        "user_id": "USR_SYNTH_AVERY",
+        "boundary_id": "slack-channel:CH_SYNTH_ALPHA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_ALPHA:query-005"
+      },
+      "expected": {
+        "evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "The answer cannot be verified from available evidence."
+        ],
+        "refuse_if_unverified": true,
+        "attribution": {
+          "required": false,
+          "sender": null,
+          "date": null
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-channel-isolation",
+      "category": "channel_isolation",
+      "acceptance_scenarios": ["AC-11"],
+      "query": "What is the internal launch codename?",
+      "requester": {
+        "user_id": "USR_SYNTH_HARPER",
+        "boundary_id": "slack-channel:CH_SYNTH_BETA",
+        "conversation_type": "channel",
+        "thread_id": "slack:CH_SYNTH_BETA:query-006"
+      },
+      "expected": {
+        "evidence_ids": [],
+        "forbidden_evidence_ids": ["msg-protected-alpha"],
+        "required_claims": [
+          "The answer cannot be verified in this channel boundary."
+        ],
+        "refuse_if_unverified": true,
+        "attribution": {
+          "required": false,
+          "sender": null,
+          "date": null
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-dm-isolation",
+      "category": "dm_isolation",
+      "acceptance_scenarios": ["AC-10"],
+      "query": "What review hour did Avery privately prefer?",
+      "requester": {
+        "user_id": "USR_SYNTH_BLAKE",
+        "boundary_id": "slack-user:USR_SYNTH_BLAKE",
+        "conversation_type": "dm",
+        "thread_id": "slack:DM_SYNTH_BLAKE:query-007"
+      },
+      "expected": {
+        "evidence_ids": [],
+        "forbidden_evidence_ids": ["msg-private-avery"],
+        "required_claims": [
+          "Avery's private preference cannot be verified in Blake's DM boundary."
+        ],
+        "refuse_if_unverified": true,
+        "attribution": {
+          "required": false,
+          "sender": null,
+          "date": null
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    },
+    {
+      "id": "case-restart-recall",
+      "category": "restart_recall",
+      "acceptance_scenarios": ["AC-05"],
+      "query": "Which shape did I ask you to remember?",
+      "requester": {
+        "user_id": "USR_SYNTH_BLAKE",
+        "boundary_id": "slack-user:USR_SYNTH_BLAKE",
+        "conversation_type": "dm",
+        "thread_id": "slack:DM_SYNTH_BLAKE:1769767200.000800"
+      },
+      "restart_before_query": true,
+      "expected": {
+        "evidence_ids": ["msg-restart-context"],
+        "forbidden_evidence_ids": [],
+        "required_claims": [
+          "The selected shape is a hexagon."
+        ],
+        "refuse_if_unverified": false,
+        "attribution": {
+          "required": false,
+          "sender": null,
+          "date": null
+        }
+      },
+      "latency_budget_ms": { "first_content": 5000, "complete": 60000 }
+    }
+  ]
+}
