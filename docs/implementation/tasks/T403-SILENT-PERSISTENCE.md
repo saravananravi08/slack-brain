@@ -1,6 +1,6 @@
 # T403 — Persist ambient messages silently
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P04](../phases/P04-LIVE-INGESTION.md)
 - **Owner:** pi-coder-10
 - **Branch:** `task/T403-persist-ambient-messages-silently`
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] No model method is called.
-- [ ] No Slack post method is called.
-- [ ] Duplicate event creates no duplicate memory.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] No model method is called.
+- [x] No Slack post method is called.
+- [x] Duplicate event creates no duplicate memory.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `d54f794bc7a059549f675ed3c7ca04e9c96ac322`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
