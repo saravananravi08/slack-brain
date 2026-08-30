@@ -41,3 +41,4 @@ _No implementation events recorded yet._
 - T205 Completed: retrieval benchmark harness (pi-coder-6, merge bcfb465). Synthetic benchmark: 8 cases, all gates pass.
 - T204 scope amendment approved (coordinator): tests/integration/foundation/runtime.test.ts added to T204 write scope to mock the Slack users.info resolver required by T203 fail-closed sender attributes.
 - Doc drift fixes: STATUS gate -> P02 in progress; P02 phase file -> In Progress; T103-dep/T205-dep write locks released; B-01 marked resolved (credentials in .env); P01 live-smoke wording updated.
+- Fixed post-T205 smoke regression: project.test.ts now expects benchmark:retrieval script (integrator fix on integration branch). 302/302 tests pass.
