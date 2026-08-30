@@ -28,7 +28,7 @@ Gist has durable Mastra memory, automatic semantic recall, deterministic channel
 | [T202](../tasks/T202-RESOURCE-POLICY.md) | Completed | T004, T106 | PG-02A | pi-coder-5 | a55ed56 |
 | [T203](../tasks/T203-ACCESS-PRIVACY.md) | Completed | T004, T102, T104 | PG-02A | claude-planner-2 | 49751a4 |
 | [T205](../tasks/T205-RETRIEVAL-BENCHMARK.md) | Completed | T002, T004 | PG-02A | pi-coder-6 | bcfb465 |
-| [T204](../tasks/T204-MEMORY-INTEGRATION.md) | Planned | T201–T203, T106 | PG-02B | Unassigned | — |
+| [T204](../tasks/T204-MEMORY-INTEGRATION.md) | Completed | T201–T203, T106 | PG-02B | pi-coder-5 | b296c18 |
 | [T206](../tasks/T206-MEMORY-VALIDATION.md) | Planned | T204, T205 | PG-02C | Unassigned | — |
 
 ## Integration procedure

@@ -1,6 +1,6 @@
 # T204 — Integrate memory, identity, and access
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P02](../phases/P02-MEMORY.md)
 - **Owner:** pi-coder-5
 - **Branch:** `task/T204-integrate-memory-identity-and-access`
@@ -84,6 +84,6 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 - Implementation commit: `3d6f5ad206ef2d0636162fc55f87095e6c933bdd`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
+- Merge commit: b296c18
 - Integration metadata commit: —
-- Completed at: —
+- Completed at: 2026-08-30

@@ -42,3 +42,4 @@ _No implementation events recorded yet._
 - T204 scope amendment approved (coordinator): tests/integration/foundation/runtime.test.ts added to T204 write scope to mock the Slack users.info resolver required by T203 fail-closed sender attributes.
 - Doc drift fixes: STATUS gate -> P02 in progress; P02 phase file -> In Progress; T103-dep/T205-dep write locks released; B-01 marked resolved (credentials in .env); P01 live-smoke wording updated.
 - Fixed post-T205 smoke regression: project.test.ts now expects benchmark:retrieval script (integrator fix on integration branch). 302/302 tests pass.
+- T204 Completed: memory/identity/access integrated (pi-coder-5, merge b296c18). 305/305 tests in worker verification.

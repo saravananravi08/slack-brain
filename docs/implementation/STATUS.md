@@ -47,8 +47,8 @@
 | [T202](./tasks/T202-RESOURCE-POLICY.md) — Implement resource and thread identity policy | P02 | Completed | T004, T106 | PG-02A | pi-coder-5 | task/T202-implement-resource-and-thread-identity-policy | 2026-08-30 | a55ed56 |
 | [T203](./tasks/T203-ACCESS-PRIVACY.md) — Implement Slack authorization and privacy guard | P02 | Completed | T004, T102, T104 | PG-02A | claude-planner-2 | task/T203-implement-slack-authorization-and-privacy-guard | 2026-08-30 | 49751a4 |
 | [T205](./tasks/T205-RETRIEVAL-BENCHMARK.md) — Build retrieval benchmark harness | P02 | Completed | T002, T004 | PG-02A | pi-coder-6 | task/T205-build-retrieval-benchmark-harness | 2026-08-30 | bcfb465 |
-| [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | In Progress | T201, T202, T203, T106 | PG-02B | pi-coder-5 | task/T204-integrate-memory-identity-and-access | 2026-08-30 | — |
-| [T206](./tasks/T206-MEMORY-VALIDATION.md) — Validate memory, retrieval, and privacy | P02 | Planned | T204, T205 | PG-02C | Unassigned | — | — | — |
+| [T204](./tasks/T204-MEMORY-INTEGRATION.md) — Integrate memory, identity, and access | P02 | Completed | T201, T202, T203, T106 | PG-02B | pi-coder-5 | task/T204-integrate-memory-identity-and-access | 2026-08-30 | b296c18 |
+| [T206](./tasks/T206-MEMORY-VALIDATION.md) — Validate memory, retrieval, and privacy | P02 | In Progress | T204, T205 | PG-02C | pi-coder-6 | task/T206-validate-memory-retrieval-and-privacy | 2026-08-30 | — |
 | [T301](./tasks/T301-IMPORT-CONTRACT.md) — Define archive import contract and fixtures | P03 | Planned | P02 | PG-03A | Unassigned | — | — | — |
 | [T302](./tasks/T302-SOURCE-READER.md) — Implement read-only archive source reader | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
 | [T303](./tasks/T303-MESSAGE-MAPPING.md) — Implement archive message normalization | P03 | Planned | T301 | PG-03B | Unassigned | — | — | — |
