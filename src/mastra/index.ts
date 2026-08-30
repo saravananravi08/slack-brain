@@ -40,10 +40,12 @@ import {
 import { createGistObservability } from './storage/observability.js';
 
 /**
- * Storage and the Mastra instance are built inside {@link createFoundationRuntime},
- * from the **validated** configuration, and never at module scope.
+ * Storage and the configured runtime Mastra instance are built inside
+ * {@link createFoundationRuntime}, from the **validated** configuration.
+ * The empty module-level `mastra` export is only the configuration-free entry
+ * Mastra CLI requires for build discovery.
  *
- * They used to be module-level singletons constructed from a raw
+ * They used to be module-level configured singletons constructed from a raw
  * `process.env.MASTRA_DATABASE_URL` read, falling back to a default path and
  * creating that directory with `mkdirSync` as an import side effect. That ran
  * before `parseConfig()`, so a process with missing or invalid configuration
@@ -51,6 +53,8 @@ import { createGistObservability } from './storage/observability.js';
  * start D001 and FR-OPS-001 forbid (design review F-05). Importing this module
  * now touches no filesystem and reads no environment variable.
  */
+export const mastra = new Mastra({});
+
 export function createRuntimeStorage(config: Readonly<Config>): LibSQLStore {
   return createMastraStorage({ databaseUrl: config.databaseUrl });
 }
