@@ -1,6 +1,6 @@
 # T000 — Repository safety and secret hygiene
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P00](../phases/P00-GOVERNANCE.md)
 - **Owner:** pi-coder
 - **Branch:** `task/T000-repository-safety-and-secret-hygiene`
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] No secret fixture remains staged/tracked.
-- [ ] Runtime data patterns are ignored.
-- [ ] Safety runbook exists and contains no credential values.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] No secret fixture remains staged/tracked.
+- [x] Runtime data patterns are ignored.
+- [x] Safety runbook exists and contains no credential values.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `6c810121d9edba2ddc5a6280e483ad34d4e90b48`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
