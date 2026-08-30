@@ -1,8 +1,8 @@
 # T102 — Implement startup configuration validation
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P01](../phases/P01-FOUNDATION.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-2
 - **Branch:** `task/T102-implement-startup-configuration-validation`
 - **Parallel group:** PG-01B
 - **Depends on:** T101
