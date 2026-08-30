@@ -39,6 +39,7 @@ import type { ChannelLogger, SlackChannelOptions } from './types.js';
 
 const DELIVERY_TTL_MS = 24 * 60 * 60 * 1_000;
 const CONTENT_TTL_MS = 10 * 60 * 1_000;
+const MISSING_DELIVERY_CONTEXT_WARN_INTERVAL_MS = 60_000;
 
 interface SlackDeliveryContext {
   readonly eventId: string;
@@ -149,6 +150,20 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const deliveryContext = new AsyncLocalStorage<SlackDeliveryContext>();
   const dispatch = channel.adapter as unknown as DispatchableSlackAdapter;
   const processEventPayload = dispatch.processEventPayload.bind(channel.adapter);
+  let lastMissingDeliveryContextWarnAt: number | null = null;
+
+  function warnMissingDeliveryContext(): void {
+    const now = Date.now();
+    if (
+      lastMissingDeliveryContextWarnAt !== null &&
+      now - lastMissingDeliveryContextWarnAt < MISSING_DELIVERY_CONTEXT_WARN_INTERVAL_MS
+    ) return;
+
+    lastMissingDeliveryContextWarnAt = now;
+    logger.warn('ingestion.delivery_context.missing', {
+      reason: 'missing_delivery_context',
+    });
+  }
 
   dispatch.processEventPayload = (payload, webhookOptions) => {
     const rawEvent = asRecord(payload.event);
@@ -173,8 +188,13 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
 
   async function normalized(subscribedThread: boolean): Promise<NormalizedEvent | null> {
     const delivery = deliveryContext.getStore();
+    if (!delivery) {
+      warnMissingDeliveryContext();
+      return null;
+    }
+
     const botUserId = channel.adapter.botUserId;
-    if (!delivery || !botUserId) {
+    if (!botUserId) {
       logger.warn('ingestion.event.skipped', { reason: 'malformed_event' });
       return null;
     }

@@ -14,6 +14,8 @@
  * shared dispatch; nothing connects a socket and nothing calls the Slack API.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -30,6 +32,33 @@ import {
 function handlers(harness: ReturnType<typeof makeHarness>): string[] {
   return harness.log.calls.map((call) => call.handler);
 }
+
+describe('pinned Slack adapter delivery-context seam (F-18)', () => {
+  it('dispatches through processEventPayload synchronously inside AsyncLocalStorage', () => {
+    const harness = makeHarness();
+    const dispatch = harness.adapter as unknown as {
+      processEventPayload?: (payload: Record<string, unknown>, options?: unknown) => void;
+    };
+    expect(dispatch.processEventPayload).toBeTypeOf('function');
+    if (!dispatch.processEventPayload) throw new Error('Missing Slack adapter dispatch seam.');
+
+    const context = new AsyncLocalStorage<string>();
+    const chat = harness.bot as unknown as Record<string, (...args: never[]) => unknown>;
+    let observedContext: string | undefined;
+    chat.processMessage = (..._args: never[]) => {
+      observedContext = context.getStore();
+      return Promise.resolve();
+    };
+
+    const payload = envelope(channelMessage());
+    const eventId = String(payload.event_id);
+    context.run(eventId, () => {
+      dispatch.processEventPayload!(payload);
+    });
+
+    expect(observedContext).toBe(eventId);
+  });
+});
 
 describe('ordinary channel messages reach a handler without a reply', () => {
   it('routes an ambient root message to onNewMessage only', async () => {
