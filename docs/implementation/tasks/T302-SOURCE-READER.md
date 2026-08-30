@@ -1,8 +1,8 @@
 # T302 — Implement read-only archive source reader
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P03](../phases/P03-HISTORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-8
 - **Branch:** `task/T302-implement-read-only-archive-source-reader`
 - **Parallel group:** PG-03B
 - **Depends on:** T301
@@ -66,18 +66,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Source file is never mutated.
-- [ ] Counts are deterministic.
-- [ ] Errors identify record IDs without logging content.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Source file is never mutated.
+- [x] Counts are deterministic.
+- [x] Errors identify record IDs without logging content.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `ed257f5113cfedab1630865d510cd51b8e784677`
+- Handoff commit: pending metadata commit (hash recorded in follow-up)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
