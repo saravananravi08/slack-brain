@@ -57,3 +57,4 @@ _No implementation events recorded yet._
 - T402 Completed: live event normalization + dual-key dedup (claude-planner-2, merge 4c615da).
 - T403 Completed: silent ambient persistence, no model calls (pi-coder-10, merge c3365cd).
 - T404 Completed: edit/delete + retention mutation policy (pi-coder-11, merge 21f5d72).
+- Smoke assertion changed to subset match so T305+ script additions do not regress T101 smoke.
