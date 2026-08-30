@@ -1,4 +1,16 @@
 import {
+  IDENTITY_CONTRACT_VERSION,
+  messageKey as resolveMessageKey,
+  resolveIdentity,
+} from '../../mastra/memory/resource-policy.js';
+import {
+  AUTHORIZATION_CONTRACT_VERSION,
+  authorize,
+  type AuthorizationEvent,
+  type PolicySnapshot,
+  type ResourceIdentity,
+} from '../../security/index.js';
+import {
   ARCHIVE_IMPORT_CONTRACT_VERSION,
   type ArchiveImportContext,
   type ArchiveMappingFailure,
@@ -156,12 +168,124 @@ export function compareArchiveMessageTimestamps(left: string, right: string): nu
   return fraction || lexicalCompare(left, right);
 }
 
+
+/**
+ * How import describes an archive author to the authorization guard.
+ *
+ * A Slack export carries no external, guest, or deactivated flag, and bots and
+ * system subtypes are filtered before this point. D006's exclusions govern who
+ * may *interact* with Gist; whether an external or guest author's historical
+ * messages belong in the channel corpus is an open decision (design review
+ * F-16). Rather than let that decision hide inside a literal, it is named
+ * here: import treats archive authors as full members, and changing that means
+ * changing this constant and its test.
+ */
+const ARCHIVE_SENDER_ATTRIBUTES = {
+  sender_type: 'human',
+  sender_is_external: false,
+  sender_is_guest: false,
+  sender_is_deactivated: false,
+} as const satisfies Pick<
+  AuthorizationEvent,
+  'sender_type' | 'sender_is_external' | 'sender_is_guest' | 'sender_is_deactivated'
+>;
+
+/**
+ * The import run's policy, in the shape the shared guard takes.
+ *
+ * D001 has exactly one implementation — `authorize()` — and this is how the
+ * import context feeds it. `validateContext` has already checked the workspace
+ * and channel ID shapes by the time a row reaches the mapper.
+ */
+function policyFor(context: ArchiveImportContext): PolicySnapshot {
+  return {
+    approved_workspace_id: context.workspace_id,
+    approved_channel_ids: context.approved_channel_ids,
+    user_allowlist: [],
+    dm_shared_knowledge: false,
+  };
+}
+
+function authorizationEventFor(
+  row: ArchiveSourceMessage,
+  context: ArchiveImportContext,
+  senderId: string,
+): AuthorizationEvent {
+  return {
+    workspace_id: context.workspace_id,
+    channel_id: row.channel_id,
+    conversation_type: 'channel',
+    sender_id: senderId,
+    ...ARCHIVE_SENDER_ATTRIBUTES,
+  };
+}
+
+function identityFor(
+  row: ArchiveSourceMessage,
+  context: ArchiveImportContext,
+  senderId: string,
+  rootTimestamp: string,
+): ResourceIdentity | null {
+  try {
+    return resolveIdentity({
+      contract_version: IDENTITY_CONTRACT_VERSION,
+      workspace_id: context.workspace_id,
+      channel_id: row.channel_id,
+      conversation_type: 'channel',
+      message_ts: row.ts,
+      thread_ts: rootTimestamp === row.ts ? null : rootTimestamp,
+      sender_id: senderId,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Run the D001 gate through the shared guard.
+ *
+ * Returns `null` when the row is authorized, a deny reason when it is not, and
+ * `'unresolved'` when an identity could not be built — in which case the
+ * caller continues to its own field validation, which reports the precise
+ * reason the row is malformed.
+ */
+function archiveDenyReason(
+  row: ArchiveSourceMessage,
+  context: ArchiveImportContext,
+): 'unapproved_channel' | 'unresolved' | null {
+  const senderId = nonEmptyString(row.user_id) ?? nonEmptyString(row.user_name);
+  if (senderId === null) return 'unresolved';
+
+  const rootTimestamp = nonEmptyString(row.thread_ts) ?? row.ts;
+  const identity = identityFor(row, context, senderId, rootTimestamp);
+  if (identity === null) {
+    // The guard cannot judge a row whose identity will not resolve. Fall back
+    // to the plain allowlist question so an unapproved channel is still
+    // reported as such rather than as a malformed row.
+    return context.approved_channel_ids.includes(row.channel_id) ? 'unresolved' : 'unapproved_channel';
+  }
+
+  const decision = authorize({
+    contract_version: AUTHORIZATION_CONTRACT_VERSION,
+    gate: 'write_memory',
+    event: authorizationEventFor(row, context, senderId),
+    identity,
+    policy: policyFor(context),
+  });
+
+  return decision.allowed ? null : 'unapproved_channel';
+}
+
 /** Map one validated source row. Classification order matches archive-import.md §6. */
 export function mapArchiveMessage(
   row: ArchiveSourceMessage,
   context: ArchiveImportContext,
 ): ArchiveMessageMapResult {
-  if (!context.approved_channel_ids.includes(row.channel_id)) {
+  // D001 through the shared guard, so the allowlist has one implementation
+  // (design review F-06). Every deny this gate can produce for an import row
+  // maps to `unapproved_channel`: the workspace, sender, and allowlist inputs
+  // are fixed by the import context, so the channel is the only variable.
+  if (archiveDenyReason(row, context) === 'unapproved_channel') {
     return {
       outcome: 'skip',
       source_ref: row.source_ref,
@@ -263,14 +387,28 @@ export function mapArchiveMessage(
   }
 
   const sentAt = toRfc3339(timestamp);
-  const messageKey = `${context.workspace_id}/${row.channel_id}/${row.ts}` as const;
-  const boundaryId = `ch:${context.workspace_id}:${row.channel_id}` as const;
+  // identity.md §4 — composed by `resource-policy.ts` and nowhere else, so the
+  // import path gains the same ID-shape validation the live path has and a
+  // dropped prefix stops being expressible here (design review F-06).
+  const identity = identityFor(row, context, normalizedSenderId, rootTimestamp);
+  if (identity === null) {
+    return {
+      outcome: 'failure',
+      source_ref: row.source_ref,
+      reason: 'invalid_identity',
+    };
+  }
+  const messageKey = resolveMessageKey({
+    workspace_id: context.workspace_id,
+    channel_id: row.channel_id,
+    message_ts: row.ts,
+  });
   const record: NormalizedArchiveMessage = {
     contract_version: ARCHIVE_IMPORT_CONTRACT_VERSION,
     delivery_key: `import:${context.import_run_id}:${messageKey}`,
     message_key: messageKey,
-    boundary_id: boundaryId,
-    thread_id: `${boundaryId}#${rootTimestamp}`,
+    boundary_id: identity.boundary_id as NormalizedArchiveMessage['boundary_id'],
+    thread_id: identity.thread_id,
     conversation_type: 'channel',
     sender_id: normalizedSenderId,
     sender_name: normalizedSenderName,

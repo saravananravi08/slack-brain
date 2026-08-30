@@ -72,6 +72,8 @@ export type ImportFailureReason =
   | 'invalid_timestamp'
   | 'invalid_thread_timestamp'
   | 'invalid_edit_timestamp'
+  /** `resource-policy.ts` refused to build an identity for the row (F-06). */
+  | 'invalid_identity'
   | 'duplicate_conflict'
   | 'writer_failed';
 
