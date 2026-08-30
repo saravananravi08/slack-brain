@@ -79,7 +79,7 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `d978bb4`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
