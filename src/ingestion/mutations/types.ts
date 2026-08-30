@@ -72,7 +72,8 @@ export interface MutationStorage {
   editMessage(messageKey: MessageKey, newText: string, editedAt: string): Promise<'updated' | 'unchanged'>;
   deleteMessages(keys: readonly MessageKey[], deletedAt: string): Promise<DeleteResult>;
   isTombstoned(boundaryId: BoundaryId, messageKey: MessageKey): Promise<boolean>;
-  listMessages(): Promise<readonly MastraDBMessage[]>;
+  /** Stream one thread's messages at a time so retention never loads the corpus at once. */
+  listMessageBatches(): AsyncIterable<readonly MastraDBMessage[]>;
   /**
    * Finish deletions and edits interrupted between their vector and row
    * writes. Idempotent; returns the number of repairs (design review F-02).

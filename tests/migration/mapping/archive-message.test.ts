@@ -6,11 +6,11 @@ import {
   compareArchiveMessageTimestamps,
   mapArchiveMessage,
   mapArchiveMessages,
-} from '../../../archive-message.js';
+} from '../../../src/migration/mapping/archive-message.js';
 import type {
   ArchiveImportContext,
   ArchiveSourceMessage,
-} from '../../../types.js';
+} from '../../../src/migration/mapping/types.js';
 
 interface FixtureCase {
   readonly name: string;
@@ -34,7 +34,7 @@ interface ExpectedFixture {
 async function fixture<T>(name: string): Promise<T> {
   return JSON.parse(
     await readFile(
-      new URL(`../../../../../../tests/fixtures/migration/${name}`, import.meta.url),
+      new URL(`../../fixtures/migration/${name}`, import.meta.url),
       'utf8',
     ),
   ) as T;

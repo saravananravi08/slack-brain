@@ -1,5 +1,8 @@
 import type { MastraDBMessage } from '@mastra/core/agent';
-import { parseMemoryRequestContext } from '@mastra/core/memory';
+import {
+  parseMemoryRequestContext,
+  type MemoryConfigInternal,
+} from '@mastra/core/memory';
 import type { InputProcessor, InputProcessorOrWorkflow } from '@mastra/core/processors';
 import type { RequestContext } from '@mastra/core/request-context';
 import { LibSQLVector, type LibSQLStore } from '@mastra/libsql';
@@ -86,6 +89,16 @@ function citationForMessage(message: MastraDBMessage): GistRetrievedCitation | n
   };
 }
 
+function resourceScopedMemoryConfig(
+  config: MemoryConfigInternal,
+): MemoryConfigInternal {
+  if (typeof config.semanticRecall !== 'object') return config;
+  return {
+    ...config,
+    semanticRecall: { ...config.semanticRecall, scope: 'resource' },
+  };
+}
+
 function citationContext(items: readonly GistRetrievedCitation[]): string {
   const evidence = items.map(({ sender_name, sent_at, channel_id, message_ts, text }) => ({
     sender_name,
@@ -145,7 +158,7 @@ export class GistMemory extends Memory {
             perPage: 0,
             resourceId,
             ...(memoryContext.memoryConfig
-              ? { threadConfig: memoryContext.memoryConfig }
+              ? { threadConfig: resourceScopedMemoryConfig(memoryContext.memoryConfig) }
               : {}),
           }, new Set([resourceId]));
           if (items.length > 0) {

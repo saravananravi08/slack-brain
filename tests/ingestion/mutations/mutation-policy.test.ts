@@ -217,7 +217,7 @@ describe('mutation classification and authorization', () => {
       editMessage: vi.fn(),
       deleteMessages: vi.fn(),
       isTombstoned: vi.fn(),
-      listMessages: vi.fn(),
+      listMessageBatches: async function* () {},
       reconcileTombstones: vi.fn(),
     };
     const handler = new MutationHandler({ storage, policy });
@@ -308,6 +308,27 @@ describe('D005 edit/delete propagation', () => {
     })).resolves.toEqual({ status: 'allowed', suppressed: true });
   });
 
+  it('preserves unrelated resource metadata when adding a tombstone', async () => {
+    const context = await setup();
+    await seed(context);
+    const store = await context.storage.getStore('memory');
+    await store!.updateResource({
+      resourceId: BOUNDARY,
+      metadata: { synthetic_setting: 'preserved' },
+    });
+
+    await context.mutations.deleteMessages(
+      [MESSAGE_KEY],
+      '2025-01-01T00:12:00.000Z',
+    );
+
+    const resource = await store!.getResourceById({ resourceId: BOUNDARY });
+    expect(resource?.metadata?.synthetic_setting).toBe('preserved');
+    expect(JSON.stringify(resource?.metadata?.gist_message_tombstones)).toContain(
+      MESSAGE_KEY,
+    );
+  });
+
   it('restores the message but keeps the tombstone when vector deletion fails', async () => {
     // Behaviour changed by design review F-02. The tombstone is no longer
     // rolled back: it is the durable record that a delete was requested, it
@@ -383,6 +404,51 @@ describe('D004 retention sweep', () => {
     expect((await store!.listMessagesById({ messageIds: [oldDm.id, removed.id] })).messages).toEqual([]);
     expect((await store!.listMessagesById({ messageIds: [approved.id] })).messages).toHaveLength(1);
     expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
+  });
+
+  it('deletes each retention batch before loading the next thread', async () => {
+    const expiredDm = storedMessage({
+      id: `${WORKSPACE}/D0DMCONV01/1735689600.000100`,
+      resourceId: `dm:${WORKSPACE}:${USER}`,
+      threadId: `dm:${WORKSPACE}:${USER}#1735689600.000100`,
+      createdAt: new Date('2025-01-01T00:00:00.000Z'),
+      content: {
+        ...storedMessage().content,
+        metadata: {
+          ...storedMessage().content.metadata,
+          sent_at: '2025-01-01T00:00:00.000Z',
+        },
+      },
+    });
+    const deleteMessages = vi.fn(async (keys: readonly MessageKey[]) => ({
+      deleted: keys.length,
+      embeddings_deleted: keys.length,
+      tombstoned: keys,
+      missing: [],
+    }));
+    let firstBatchDeletedBeforeSecond = false;
+    const storage: MutationStorage = {
+      editMessage: vi.fn(),
+      deleteMessages,
+      isTombstoned: vi.fn(),
+      listMessageBatches: async function* () {
+        yield [expiredDm];
+        firstBatchDeletedBeforeSecond = deleteMessages.mock.calls.length === 1;
+        yield [storedMessage()];
+      },
+      reconcileTombstones: async () => 0,
+    };
+    const handler = new MutationHandler({ storage, policy });
+
+    const result = await handler.sweepRetention({
+      now: '2025-04-02T00:00:00.000Z',
+      approved_channel_ids: [APPROVED_CHANNEL],
+      channel_removed_at: {},
+    });
+
+    expect(firstBatchDeletedBeforeSecond).toBe(true);
+    expect(deleteMessages).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ examined: 2, deleted: 1, embeddings_deleted: 1 });
   });
 });
 
