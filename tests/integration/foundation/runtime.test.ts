@@ -7,7 +7,15 @@ import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ConfigError } from '../../../src/config.js';
+import type { SenderAttributes } from '../../../src/security/index.js';
 import { makeMessage, makeThread, SYNTHETIC } from '../../channels/helpers.js';
+
+const FULL_MEMBER: SenderAttributes = {
+  senderType: 'human',
+  isExternal: false,
+  isGuest: false,
+  isDeactivated: false,
+};
 
 let directory: string;
 let runtimeModule: typeof import('../../../src/mastra/index.js');
@@ -52,7 +60,9 @@ describe('foundation runtime', () => {
   });
 
   it('registers Gist, routes synthetic addressed turns, and settles cleanly', async () => {
-    const runtime = await runtimeModule.createFoundationRuntime();
+    const runtime = await runtimeModule.createFoundationRuntime({
+      resolveSender: () => FULL_MEMBER,
+    });
     const channelStart = vi.spyOn(runtime.channel, 'start').mockResolvedValue();
     const channelStop = vi.spyOn(runtime.channel, 'stop').mockResolvedValue();
     const mastraShutdown = vi.spyOn(runtime.mastra, 'shutdown');
@@ -78,7 +88,11 @@ describe('foundation runtime', () => {
     const addressedTurns = [
       {
         run: runtime.channel.handlers.onDirectMessage,
-        thread: makeThread({ isDM: true, channelId: SYNTHETIC.dmConversation }),
+        thread: makeThread({
+          isDM: true,
+          channelId: SYNTHETIC.dmConversation,
+          threadId: `slack:${SYNTHETIC.dmConversation}:1735689650.000100`,
+        }),
         surface: 'dm',
       },
       {

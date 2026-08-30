@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core/agent';
+import type { Memory } from '@mastra/memory';
 
 import { GIST_INSTRUCTIONS } from './instructions.js';
 
@@ -10,7 +11,10 @@ export function createGistModel(modelId: GistModelId) {
   return `anthropic/${modelId}` as const;
 }
 
-export function createGistAgent(model: ReturnType<typeof createGistModel>) {
+export function createGistAgent(
+  model: ReturnType<typeof createGistModel>,
+  memory?: Memory,
+) {
   return new Agent({
     id: 'gist',
     name: 'Gist',
@@ -18,5 +22,6 @@ export function createGistAgent(model: ReturnType<typeof createGistModel>) {
     instructions: GIST_INSTRUCTIONS,
     model,
     tools: {},
+    ...(memory ? { memory } : {}),
   });
 }

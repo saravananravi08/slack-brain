@@ -1,9 +1,10 @@
 # T204 — Integrate memory, identity, and access
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P02](../phases/P02-MEMORY.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-5
 - **Branch:** `task/T204-integrate-memory-identity-and-access`
+- **Worktree:** `../worktrees/T204`
 - **Parallel group:** PG-02B
 - **Depends on:** T201, T202, T203, T106
 - **Blocks:** T206, T405
@@ -15,6 +16,7 @@
   - `src/mastra/agents/gist.ts`
   - `src/mastra/channels/slack.ts`
   - `tests/integration/memory/**`
+  - `tests/integration/foundation/runtime.test.ts` (coordinator-approved scope amendment, `6cffe41`)
 - **Read-only references:** `GIST_MASTRA_PRD.md`, `MASTRA_MIGRATION_PLAN.md`, this phase file, `STATUS.md`, and other task files.
 
 ## Objective
@@ -70,18 +72,18 @@ Every changed path must be in this task's write scope or its own task/log metada
 
 ## Acceptance criteria
 
-- [ ] Automatic recall occurs on normal Gist call.
-- [ ] DM/channel boundaries match decisions.
-- [ ] Restart test retains context.
-- [ ] Task log is current and contains no sensitive content.
-- [ ] Implementation and handoff commits exist.
+- [x] Automatic recall occurs on normal Gist call.
+- [x] DM/channel boundaries match decisions.
+- [x] Restart test retains context.
+- [x] Task log is current and contains no sensitive content.
+- [x] Implementation and handoff commits exist.
 - [ ] Phase integrator reran checks after merge.
 - [ ] Task, phase, status dashboard, and global execution log are updated at completion.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `3d6f5ad206ef2d0636162fc55f87095e6c933bdd`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
