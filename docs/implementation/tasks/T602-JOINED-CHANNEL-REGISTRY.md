@@ -1,8 +1,8 @@
 # T602 — Implement joined-channel registry
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T602-implement-joined-channel-registry`
 - **Parallel group:** PG-06B
 - **Depends on:** T601
