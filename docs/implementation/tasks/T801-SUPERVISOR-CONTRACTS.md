@@ -1,6 +1,6 @@
 # T801 — Freeze Slack supervisor contracts
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
 - **Owner:** claude-opus5
 - **Branch:** `task/T801-freeze-slack-supervisor-contracts`
@@ -76,7 +76,7 @@ git diff --check
 - Architecture correction commit: `b483552e8d869db6b76f3e15fe2e99c318dc2de1` (one durable command/outbox protocol; strict action schemas; bounded limit control; bound/unbound checkpoints; target identity alternatives; serial retries; complete compatibility outcome evidence)
 - Focused re-review correction commit: `c0fa9afc1287019d67016edc5b826feeae7685f1` (intent-specific limit authority; full checkpoint schema validation; strict compatibility count shape; reopen unsupported pending product-owner decision)
 - Final focused correction commit: `1a81af9a58b00f618e2609a6fa1af1bbf20daf28` (configured approvers cannot redirect; checkpoint failure/key/destination semantics closed)
-- Handoff commit: —
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Handoff commit: `d66668acf0bf21120fc5b448d68e6330dfcc591a`
+- Merge commit: `73821b58b7f8602f65e347cc240966d750ae419c`
+- Integration metadata commit: this completion metadata commit
+- Completed at: 2026-08-31 23:31 UTC

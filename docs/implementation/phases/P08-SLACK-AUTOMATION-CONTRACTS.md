@@ -1,6 +1,6 @@
 # P08 — Slack Automation Contracts and Compatibility
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Depends on:** Channel-memory/context baseline through `5fdf8e2`; accepted D023–D029
 - **Phase integrator:** herdr orchestrator
 - **PRD coverage:** GS-FR-001–011, GS-FR-017–026, GS-NFR-003/004/007
@@ -14,7 +14,7 @@ Gist has an accepted, testable supervisor protocol and live proof that exact con
 - [x] P06/P07 implementation and offline suites are merged.
 - [x] All-sender persistence identifies Kilo by exact bot/app IDs.
 - [x] Product owner selected Slack-only bot steering with no direct connectors.
-- [ ] D023–D029 are recorded as accepted on the feature branch.
+- [x] D023–D029 are recorded as accepted on the feature branch.
 
 ## Parallel execution plan
 
@@ -28,7 +28,7 @@ The phase is intentionally serial. Runtime work must not start from assumed Slac
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | Planned | D023–D029, baseline `5fdf8e2` | PG-08A | Unassigned | — |
+| [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | Completed | D023–D029, baseline `5fdf8e2` | PG-08A | claude-contracts-1 | `73821b5` |
 | [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | Planned | T801, operator test access | PG-08B | Unassigned | — |
 | [T803](../tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | Planned | T802 | PG-08C | Unassigned | — |
 
@@ -42,8 +42,8 @@ The phase is intentionally serial. Runtime work must not start from assumed Slac
 
 ## Exit criteria
 
-- [ ] Human/trusted-bot/self/unknown-bot routing is frozen.
-- [ ] Workflow state and structured action contracts are versioned.
+- [x] Human/trusted-bot/self/unknown-bot routing is frozen.
+- [x] Workflow state and structured action contracts are versioned.
 - [ ] Kilo accepts Gist-authored tasks and replies correlatably.
 - [ ] Linear accepts Gist-authored tasks and replies correlatably.
 - [ ] Thread/workflow correlation strategy matches live bot behavior.

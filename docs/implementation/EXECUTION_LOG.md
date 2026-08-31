@@ -417,3 +417,12 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Added `GIST_SLACK_SUPERVISOR_PRD.md`, P08–P10 phases, T801–T803, T901–T906, and T1001–T1004 task/log specs, dependency waves, ownership, and dashboard records.
 - Baseline reverified before feature work: typecheck pass; 1063 tests pass / 5 skipped; build pass; working tree clean before documentation changes.
 - First implementation gate: T801 contracts, followed by T802 live Kilo/Linear bot-to-bot compatibility. No supervisor runtime code may start before P08 GO.
+
+### 2026-08-31 23:31 UTC — T801 completed
+
+- Actor: herdr orchestrator / claude-contracts-1 / pi verification and correction workers.
+- Branch: `task/T801-freeze-slack-supervisor-contracts`.
+- Commits: final implementation `1a81af9`, handoff `d66668a`, merge `73821b5`.
+- Result: Slack supervisor contract v1 merged; T802 unblocked. Reopen remains unsupported pending product-owner choice and blocks only the later T901/T904 reopen capability.
+- Verification: typecheck/build pass; supervisor 1483 passed; channel-memory/access 536 passed; full suite 2546 passed / 5 skipped; diff, scope, and credential scans clean.
+- Follow-up: assign T802 and obtain genuine operator Slack compatibility actions; no runtime work before T803 GO.
