@@ -21,8 +21,7 @@ export interface ProactiveClassifier {
 }
 
 export interface ProactiveActionEvaluator {
-  readonly hasChannels: boolean;
-  isEnabled(channelId: string): boolean;
+  isEnabled(workspaceId: string | undefined, channelId: string): Promise<boolean>;
   evaluate(request: ChannelRequest): Promise<boolean>;
 }
 
@@ -31,6 +30,7 @@ export interface ProactiveActionGateOptions {
   readonly cooldownMs: number;
   readonly classifier: ProactiveClassifier;
   readonly contextFor: (request: ChannelRequest) => Promise<ChannelContext>;
+  readonly isEnrolled: (workspaceId: string, channelId: string) => Promise<boolean>;
   readonly now?: () => number;
 }
 
@@ -39,11 +39,19 @@ export class ProactiveActionGate implements ProactiveActionEvaluator {
   readonly #cooldownMs: number;
   readonly #classifier: ProactiveClassifier;
   readonly #contextFor: (request: ChannelRequest) => Promise<ChannelContext>;
+  readonly #isEnrolled: (workspaceId: string, channelId: string) => Promise<boolean>;
   readonly #now: () => number;
   readonly #lastActionAt = new Map<string, number>();
   readonly #queues = new Map<string, Promise<void>>();
 
-  constructor({ channelIds, cooldownMs, classifier, contextFor, now }: ProactiveActionGateOptions) {
+  constructor({
+    channelIds,
+    cooldownMs,
+    classifier,
+    contextFor,
+    isEnrolled,
+    now,
+  }: ProactiveActionGateOptions) {
     if (!Number.isSafeInteger(cooldownMs) || cooldownMs < 0) {
       throw new TypeError('cooldownMs must be a non-negative safe integer.');
     }
@@ -51,19 +59,22 @@ export class ProactiveActionGate implements ProactiveActionEvaluator {
     this.#cooldownMs = cooldownMs;
     this.#classifier = classifier;
     this.#contextFor = contextFor;
+    this.#isEnrolled = isEnrolled;
     this.#now = now ?? Date.now;
   }
 
-  get hasChannels(): boolean {
-    return this.#channelIds.size > 0;
+  async isEnabled(workspaceId: string | undefined, channelId: string): Promise<boolean> {
+    if (this.#channelIds.size > 0) return this.#channelIds.has(channelId);
+    if (workspaceId === undefined) return false;
+    try {
+      return await this.#isEnrolled(workspaceId, channelId);
+    } catch {
+      return false;
+    }
   }
 
-  isEnabled(channelId: string): boolean {
-    return this.#channelIds.has(channelId);
-  }
-
-  evaluate(request: ChannelRequest): Promise<boolean> {
-    if (!this.isEnabled(request.channelId)) return Promise.resolve(false);
+  async evaluate(request: ChannelRequest): Promise<boolean> {
+    if (!await this.isEnabled(request.workspaceId, request.channelId)) return false;
 
     const previous = this.#queues.get(request.channelId) ?? Promise.resolve();
     const task = previous.then(() => this.#evaluate(request));
