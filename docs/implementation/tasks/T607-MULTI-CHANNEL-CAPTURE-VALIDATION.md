@@ -1,6 +1,6 @@
 # T607 — Validate complete multi-channel capture
 
-- **Status:** Ready for Integration
+- **Status:** Merged (offline GO; live gate pending operator)
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** T607 agent
 - **Branch:** `task/T607-validate-complete-multi-channel-capture`
@@ -65,6 +65,6 @@ git diff --check
 
 - Implementation commit: `37a717a`
 - Handoff commit: this handoff commit
-- Merge commit: —
-- Integration metadata commit: —
+- Merge commit: `1a63d5e`
+- Integration metadata commit: docs(P06) integrate T607 metadata commit
 - Completed at: —

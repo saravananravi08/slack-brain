@@ -29,7 +29,7 @@ T601 freezes contracts. T602, T603, T604, and T605 then run in parallel with dis
 | T604 — Persist all live channel messages | Completed | T601 | PG-06B | pi-coder-19 | a52871d |
 | T605 — Enforce edit fidelity and delete-ignore policy | Completed | T601 | PG-06B | pi-coder-18 | 9cc1326 |
 | T606 — Integrate multi-channel capture runtime | Completed | T602, T603, T604, T605 | PG-06C | pi-coder-20 | 7fd43b5 |
-| T607 — Validate complete multi-channel capture | Planned | T606 | PG-06D | Unassigned | — |
+| T607 — Validate complete multi-channel capture | Merged (offline GO; live pending operator) | T606 | PG-06D | pi-coder-21 | 1a63d5e |
 
 ## Integration procedure
 

@@ -320,3 +320,9 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `8403b3e`; handoff `8184faa`; merge `7fd43b5`.
 - Verification: ingestion 135/135; scoped 234/234; full 994 passed / 5 skipped; typecheck OK; build OK; scope/diff-check clean.
 - Result: merged GO. Blockers: none. Follow-up: T607 live two-channel validation (Wave 4).
+
+### 2026-08-31 — T607 integrated; P06 live gate pending operator
+
+- T607 merged at `1a63d5e` (offline GO: CM-AC-01…07, CM-AC-12 pass offline; restart-retry defect found by T607 and fixed via 45d2cac before re-verification).
+- Gates: typecheck OK; ingestion 135/135; full 999 passed / 5 skipped; build OK.
+- P06 remains OPEN: live two-channel validation requires the operator 16-step checklist in docs/reports/channel-memory-capture-validation.md. P07 Wave 5 starts in parallel (T701/T702/T703) — code work does not depend on the live run.
