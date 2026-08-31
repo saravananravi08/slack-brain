@@ -383,3 +383,14 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: The D019 trigger is extended to thread REPLIES: a human edit to any message (root or reply) in an enrolled channel that newly adds an addressed Gist mention MAY trigger exactly one response, posted to that message thread, subject to the same guards (human sender, edit outcome updated, new text adds mention absent before, authorization, delivery dedup). All other edits remain mutation-only.
 - Consequences: src/mastra/channels/slack.ts candidate gate drops the root-only restriction and threads the reply into the correct thread via the existing mention handler; regression tests add the thread-reply edit case (respond in-thread) plus negative cases (bot reply edit, replayed reply edit, already-mentioned reply edit).
 - Affected tasks/files: T608 follow-up, src/mastra/channels/slack.ts, tests/integration/live-ingestion/slack-runtime.test.ts.
+
+---
+
+## D021 — Proactive action on unaddressed channel messages
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Coordinator (operator-approved)
+- Context: Operator requires Gist to check every channel message and act when relevant even when the message is not tagged/mentioning Gist. P06 captures all messages but CM-FR-013/D014 restrict responses to addressed input.
+- Decision: Add an opt-in per-channel PROACTIVE mode (config GIST_PROACTIVE_CHANNELS, comma-separated channel IDs, empty = off). In an enrolled, authorized, proactive-enabled channel, every LIVE human message (root or reply) that is NOT already addressed (mention path unchanged) is evaluated by a relevance gate: a deterministic, content-safe LLM classification using the existing bounded channel context (T704) that returns act/no-act. act=true routes through the existing response pipeline exactly like a mention (same authorization, thread routing, delivery dedup; no double-response on retries). Guards: bot/app/Gist senders NEVER trigger proactive action (D014 intact); channels not in the proactive list behave exactly as before; DM behavior unchanged; a per-channel cooldown (default 60s between proactive actions) prevents flooding; classifier failures fail closed (no action).
+- Consequences: new relevance-gate module wired into the live runtime response eligibility; config addition GIST_PROACTIVE_CHANNELS; regression tests for act/no-act, bot exclusion, cooldown, dedup, non-proactive channel, classifier failure.
+- Affected tasks/files: src/config.ts, src/mastra/channels/**, tests/channels/**, tests/integration/live-ingestion/**.
