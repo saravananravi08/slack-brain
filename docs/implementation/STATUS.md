@@ -46,7 +46,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | In Progress (deliverables merged; operator beta/cutover/rollback gates pending) | P03, P04 | Unassigned | — |
 | [P06](./phases/P06-CHANNEL-CAPTURE.md) — Complete Multi-Channel Capture | Merged (offline GO; live checklist pending operator) | T406, D013–D015 | Kilo coordinator | 1a63d5e |
 | [P07](./phases/P07-CHANNEL-CONTEXT.md) — Channel Context and Observational Memory | Merged (offline GO; live checklist pending operator) | P06, D016–D017 | Kilo coordinator | 58f1cc1 |
-| [P08](./phases/P08-SLACK-AUTOMATION-CONTRACTS.md) — Slack Automation Contracts and Compatibility | Planned | baseline `5fdf8e2`, D023–D029 | pi coding agent | — |
+| [P08](./phases/P08-SLACK-AUTOMATION-CONTRACTS.md) — Slack Automation Contracts and Compatibility | In Progress | baseline `5fdf8e2`, D023–D029 | pi coding agent | — |
 | [P09](./phases/P09-DURABLE-SUPERVISOR.md) — Durable Slack Supervisor Runtime | Planned | P08 | Unassigned | — |
 | [P10](./phases/P10-BOT-STEERED-WORKFLOWS.md) — Bot-Steered Workflows and Live Validation | Planned | P09 | Unassigned | — |
 
@@ -105,7 +105,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) — Assemble bounded channel context | P07 | Completed | T701, T702, T703 | PG-07B | pi-coder-23 | task/T704-assemble-bounded-channel-context | 2026-08-31 | fb7e35c |
 | [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | Completed | T704, T703 | PG-07C | pi-coder-24 | task/T705-integrate-context-with-gist-agent | 2026-08-31 | 0ab9164 |
 | [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md) — Validate channel intelligence end to end | P07 | Merged (offline GO; live gate pending operator) | T705 | PG-07D | pi-coder-25 | task/T706-validate-channel-intelligence-end-to-end | 2026-08-31 | 58f1cc1 |
-| [T801](./tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | P08 | Planned | D023–D029, baseline `5fdf8e2` | PG-08A | Unassigned | task/T801-freeze-slack-supervisor-contracts | — | — |
+| [T801](./tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | P08 | In Progress | D023–D029, baseline `5fdf8e2` | PG-08A | pi coding agent | task/T801-freeze-slack-supervisor-contracts | 2026-08-31 | — |
 | [T802](./tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | P08 | Planned | T801, operator test access | PG-08B | Unassigned | task/T802-prove-kilo-linear-bot-compatibility | — | — |
 | [T803](./tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | P08 | Planned | T802 | PG-08C | Unassigned | task/T803-finalize-automation-threat-protocol | — | — |
 | [T901](./tasks/T901-WORKFLOW-REGISTRY.md) — Implement durable workflow registry | P09 | Planned | P08 | PG-09A | Unassigned | task/T901-implement-durable-workflow-registry | — | — |
@@ -126,6 +126,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | T103-dep | pi-coder-3 | package.json, package-lock.json | 2026-08-30 | RELEASED 2026-08-30 (T103 merged 9f701a5) |
 | T205-dep | pi-coder-6 | package.json | 2026-08-30 | RELEASED 2026-08-30 (T205 merged bcfb465) |
 | T305-dep | pi-coder-9 | package.json (add migration CLI script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T305 merge |
+| T801 | pi coding agent | `GIST_SLACK_SUPERVISOR_PRD.md`, `docs/architecture/slack-supervisor/**`, `tests/contracts/slack-supervisor/**` | 2026-08-31 | active |
 
 ## Blockers
 
