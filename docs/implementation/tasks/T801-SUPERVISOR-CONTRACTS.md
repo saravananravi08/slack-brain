@@ -73,6 +73,7 @@ git diff --check
 - Review fix commit: `3a05f73d93c4a82de67f88f784020bdd2d499d3e` (closes the five integration-review defects; contract set stays at 1.0.0, pre-merge)
 - Second review correction commit: `974a586c86be8e16f18820b8c440014c5f8763aa` (resolves seven contradictions found in the fix pack; contract set stays at 1.0.0, pre-merge)
 - Third review correction commit: `07217e9c42a17785bba21814a6d3a0505a1fd1c3` (continuation crash-safety plus two stale contradictions; contract set stays at 1.0.0, pre-merge)
+- Architecture correction commit: `b483552e8d869db6b76f3e15fe2e99c318dc2de1` (one durable command/outbox protocol; strict action schemas; bounded limit control; bound/unbound checkpoints; target identity alternatives; serial retries; complete compatibility outcome evidence)
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
