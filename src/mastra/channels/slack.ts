@@ -174,7 +174,7 @@ function mentionsGist(text: string, botUserId: string): boolean {
   return text.includes(`<@${botUserId}>`);
 }
 
-function isNewRootHumanMention(
+function isNewHumanMention(
   event: NormalizedEvent,
   raw: Record<string, unknown>,
   botUserId: string,
@@ -183,7 +183,6 @@ function isNewRootHumanMention(
   const previousText = previous?.text;
   return event.mutation?.kind === 'edit'
     && event.sender_class === 'human'
-    && !event.is_thread_reply
     && mentionsGist(event.text, botUserId)
     && typeof previousText === 'string'
     && !mentionsGist(previousText, botUserId);
@@ -506,7 +505,7 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       if (
         outcome.status === 'updated'
         && botUserId !== undefined
-        && isNewRootHumanMention(event, delivery.rawEvent, botUserId)
+        && isNewHumanMention(event, delivery.rawEvent, botUserId)
       ) {
         return { responseEligible: true, trigger: 'edit_mention' };
       }
