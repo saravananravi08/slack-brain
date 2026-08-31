@@ -361,3 +361,8 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `6eb9d17`; handoff `132b55f`; merge `0ab9164`.
 - Verification: typecheck OK; full 1026 passed / 5 skipped; e2e 28 passed / 4 skipped; build OK; scope/diff-check clean.
 - Result: merged GO. Blockers: none. Follow-up: T706 validation (Wave 8); live P07 gate follows P06 live pattern.
+
+### 2026-08-31 — T706 prep defect fixed: derived-invalidation sink wiring
+
+- T706 prep (pi-coder-25) found that createFoundationRuntime never wired MutationHandler.derivedInvalidationSink to memory.channelObservations, so edit invalidation was a no-op by default (edit-refresh would fail CM-AC-08/10).
+- Coordinator fix on integration: default derivedInvalidationSink to memory.channelObservations (which implements DerivedInvalidationSink). Full suite 1026 passed / 5 skipped; typecheck OK.
