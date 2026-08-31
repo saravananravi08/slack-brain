@@ -1,0 +1,44 @@
+{
+  "contract_set": "channel-memory",
+  "contract_version": "1.0.0",
+  "frozen_by": "T601",
+  "frozen_at": "2026-08-31",
+  "synthetic": true,
+  "note": "Every identifier here is invented. No real workspace, channel, user, bot, app, message body, URL, token, or trace appears in this directory (FR-PRV-007, CM-NFR-004, CM-INV-12).",
+  "defines": "docs/architecture/channel-memory/",
+  "synthetic_ids": {
+    "workspace": "T0CHANTEST",
+    "workspace_other": "T0OTHERWS9",
+    "channel_a": "C0CHANTESTA",
+    "channel_b": "C0CHANTESTB",
+    "channel_unenrolled": "C0CHANTESTZ",
+    "user_human_1": "U0TESTUSER1",
+    "user_human_2": "U0TESTUSER2",
+    "gist_bot_user": "U0GISTBOT01",
+    "gist_bot_id": "B0GISTBOT01",
+    "gist_app_id": "A0GISTAPP01",
+    "kilo_bot_user": "U0KILOBOT01",
+    "kilo_bot_id": "B0KILOBOT01",
+    "kilo_app_id": "A0KILOAPP01",
+    "other_bot_user": "U0OTHRBOT01",
+    "other_bot_id": "B0OTHRBOT01",
+    "app_id": "A0TESTAPP01",
+    "event_id_prefix": "Ev0CHANTEST",
+    "file_id_prefix": "F0CHANTEST"
+  },
+  "runtime_identity_config": {
+    "note": "message-record.md §2 — Gist and Kilo are recognised from configured identifiers, never from display name or text. These are the synthetic values the fixtures assume.",
+    "gist_bot_user_id": "U0GISTBOT01",
+    "kilo_bot_id": "B0KILOBOT01",
+    "kilo_app_id": "A0KILOAPP01"
+  },
+  "files": [
+    { "file": "enrollment.v1.json", "defines": "enrollment.md", "consumers": ["T602", "T606"] },
+    { "file": "senders.v1.json", "defines": "message-record.md §1, §2", "consumers": ["T603", "T606"] },
+    { "file": "capture-policy.v1.json", "defines": "capture-policy.md", "consumers": ["T603", "T604", "T606"] },
+    { "file": "messages.v1.json", "defines": "message-record.md §3, §4, §5", "consumers": ["T604", "T606"] },
+    { "file": "mutations.v1.json", "defines": "mutations.md", "consumers": ["T605", "T606"] },
+    { "file": "isolation.v1.json", "defines": "invariants.md", "consumers": ["T604", "T606", "T607"] }
+  ],
+  "usage": "Tests MUST pin contract_version and fail on a major bump rather than silently adopting new semantics."
+}

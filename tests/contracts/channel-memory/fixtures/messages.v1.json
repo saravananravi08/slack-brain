@@ -1,0 +1,275 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "message-record.md §3, §4, §5",
+  "records": [
+    {
+      "name": "channel_a_human_root",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767603700.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "message_ts": "1767603700.000100",
+        "thread_root_ts": "1767603700.000100",
+        "is_thread_reply": false,
+        "sender": {
+          "sender_class": "human",
+          "sender_id": "U0TESTUSER1",
+          "sender_display_name": "test-user-one",
+          "bot_id": null,
+          "app_id": null,
+          "username": null,
+          "is_gist_self": false,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:01:40.000Z",
+        "edited_at": null,
+        "text": "starting the rollout checklist",
+        "files": [],
+        "links": [],
+        "capture_source": "live_event",
+        "ingested_at": "2026-01-05T09:01:40.200Z",
+        "enrollment_epoch": 1
+      }
+    },
+    {
+      "name": "channel_a_human_reply",
+      "note": "CM-FR-008 — a thread reply under the root above.",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767603800.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "message_ts": "1767603800.000100",
+        "thread_root_ts": "1767603700.000100",
+        "is_thread_reply": true,
+        "sender": {
+          "sender_class": "human",
+          "sender_id": "U0TESTUSER2",
+          "sender_display_name": "test-user-two",
+          "bot_id": null,
+          "app_id": null,
+          "username": null,
+          "is_gist_self": false,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:03:20.000Z",
+        "edited_at": null,
+        "text": "step two is blocked on the migration window",
+        "files": [],
+        "links": [],
+        "capture_source": "live_event",
+        "ingested_at": "2026-01-05T09:03:20.200Z",
+        "enrollment_epoch": 1
+      }
+    },
+    {
+      "name": "channel_a_kilo_reply",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767603900.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "message_ts": "1767603900.000100",
+        "thread_root_ts": "1767603700.000100",
+        "is_thread_reply": true,
+        "sender": {
+          "sender_class": "kilo",
+          "sender_id": "U0KILOBOT01",
+          "sender_display_name": "kilo",
+          "bot_id": "B0KILOBOT01",
+          "app_id": "A0KILOAPP01",
+          "username": null,
+          "is_gist_self": false,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:05:00.000Z",
+        "edited_at": null,
+        "text": "migration window opens at 02:00",
+        "files": [],
+        "links": [],
+        "capture_source": "live_event",
+        "ingested_at": "2026-01-05T09:05:00.200Z",
+        "enrollment_epoch": 1
+      }
+    },
+    {
+      "name": "channel_a_gist_outgoing",
+      "note": "CM-FR-010 — written by the send path from the ts the Slack post returned, not from an echo.",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767604000.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "message_ts": "1767604000.000100",
+        "thread_root_ts": "1767603700.000100",
+        "is_thread_reply": true,
+        "sender": {
+          "sender_class": "gist",
+          "sender_id": "U0GISTBOT01",
+          "sender_display_name": "gist",
+          "bot_id": "B0GISTBOT01",
+          "app_id": "A0GISTAPP01",
+          "username": null,
+          "is_gist_self": true,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:06:40.000Z",
+        "edited_at": null,
+        "text": "the last migration window ran on the 2nd",
+        "files": [],
+        "links": [],
+        "capture_source": "outgoing_self",
+        "ingested_at": "2026-01-05T09:06:40.050Z",
+        "enrollment_epoch": 1
+      }
+    },
+    {
+      "name": "channel_b_other_bot_root",
+      "note": "Second channel, different sender class, independent thread.",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTB/1767604100.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTB",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTB#1767604100.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "message_ts": "1767604100.000100",
+        "thread_root_ts": "1767604100.000100",
+        "is_thread_reply": false,
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "U0OTHRBOT01",
+          "sender_display_name": "deploy-bot",
+          "bot_id": "B0OTHRBOT01",
+          "app_id": null,
+          "username": null,
+          "is_gist_self": false,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:08:20.000Z",
+        "edited_at": null,
+        "text": "build 412 deployed",
+        "files": [],
+        "links": [],
+        "capture_source": "live_event",
+        "ingested_at": "2026-01-05T09:08:20.200Z",
+        "enrollment_epoch": 1
+      }
+    },
+    {
+      "name": "channel_b_app_reply_with_file_and_link",
+      "note": "CM-FR-009 — file/link metadata only. No bytes, no fetched page content, synthetic host.",
+      "record": {
+        "contract_version": "1.0.0",
+        "message_key": "T0CHANTEST/C0CHANTESTB/1767604200.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTB",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTB#1767604100.000100",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "message_ts": "1767604200.000100",
+        "thread_root_ts": "1767604100.000100",
+        "is_thread_reply": true,
+        "sender": {
+          "sender_class": "app",
+          "sender_id": "A0TESTAPP01",
+          "sender_display_name": "status-app",
+          "bot_id": null,
+          "app_id": "A0TESTAPP01",
+          "username": "status-app",
+          "is_gist_self": false,
+          "is_external": false,
+          "is_guest": false
+        },
+        "sent_at": "2026-01-05T09:10:00.000Z",
+        "edited_at": null,
+        "text": "",
+        "files": [
+          { "file_id": "F0CHANTEST01", "name": "build-report.txt", "mimetype": "text/plain", "size_bytes": 2048 }
+        ],
+        "links": [
+          { "url": "https://build.example.invalid/412", "domain": "build.example.invalid" }
+        ],
+        "capture_source": "live_event",
+        "ingested_at": "2026-01-05T09:10:00.200Z",
+        "enrollment_epoch": 1
+      }
+    }
+  ],
+  "thread_root_encodings": {
+    "note": "identity.md §3 — both Slack root encodings must collapse to one thread_id, or one conversation splits in two.",
+    "encoding_a_absent": { "message_ts": "1767603700.000100", "thread_ts": null },
+    "encoding_b_self_referential": { "message_ts": "1767603700.000100", "thread_ts": "1767603700.000100" },
+    "expect_thread_root_ts": "1767603700.000100",
+    "expect_thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+    "expect_is_thread_reply": false
+  },
+  "idempotency": [
+    {
+      "name": "slack_retry_same_envelope",
+      "note": "CM-FR-011 — stopped at delivery dedup; storage is never reached.",
+      "deliveries": [
+        { "event_id": "Ev0CHANTEST0101", "message_ts": "1767603700.000100" },
+        { "event_id": "Ev0CHANTEST0101", "message_ts": "1767603700.000100" }
+      ],
+      "expect_capture_results": ["captured", "duplicate_delivery"],
+      "expect_upsert_calls": 1,
+      "expect_record_count": 1
+    },
+    {
+      "name": "same_message_different_envelope",
+      "note": "CM-NFR-001 — content dedup on message_key catches what delivery dedup cannot.",
+      "deliveries": [
+        { "event_id": "Ev0CHANTEST0102", "message_ts": "1767603800.000100" },
+        { "event_id": "Ev0CHANTEST0103", "message_ts": "1767603800.000100" }
+      ],
+      "expect_capture_results": ["captured", "captured"],
+      "expect_upsert_results": ["inserted", "unchanged"],
+      "expect_record_count": 1
+    },
+    {
+      "name": "outgoing_self_then_echo",
+      "note": "CM-FR-010 — the echo converges on the existing record; capture_source stays outgoing_self.",
+      "writes": [
+        { "source": "outgoing_self", "message_ts": "1767604000.000100" },
+        { "source": "live_event", "message_ts": "1767604000.000100" }
+      ],
+      "expect_upsert_results": ["inserted", "unchanged"],
+      "expect_record_count": 1,
+      "expect_capture_source": "outgoing_self"
+    },
+    {
+      "name": "restart_mid_burst_redelivery",
+      "note": "CM-FR-014 — delivery dedup must be durable; an in-memory set does not survive this.",
+      "deliveries": [
+        { "event_id": "Ev0CHANTEST0104", "message_ts": "1767603900.000100" },
+        { "restart": true },
+        { "event_id": "Ev0CHANTEST0104", "message_ts": "1767603900.000100" }
+      ],
+      "expect_capture_results": ["captured", "duplicate_delivery"],
+      "expect_record_count": 1
+    },
+    {
+      "name": "timestamp_precision_pair_are_distinct_messages",
+      "note": "CM-INV-06 — a float round-trip collapses these two into one record and silently loses a message.",
+      "a": { "message_ts": "1767603600.000200", "expect_message_key": "T0CHANTEST/C0CHANTESTA/1767603600.000200" },
+      "b": { "message_ts": "1767603600.0002", "expect_message_key": "T0CHANTEST/C0CHANTESTA/1767603600.0002" },
+      "expect_distinct_message_keys": true,
+      "expect_record_count": 2
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 # T601 — Freeze channel-memory contracts
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-opus5
 - **Branch:** `task/T601-freeze-channel-memory-contracts`
 - **Parallel group:** PG-06A
 - **Depends on:** T406, D013–D015 accepted
