@@ -10,7 +10,7 @@
  * coupling and are testable with plain objects.
  */
 
-/** slack-event.md §1. Determines whether generation is permitted. */
+/** Slack message shape. Response permission is decided separately. */
 export type EventClass = 'addressed' | 'ambient' | 'mutation';
 
 /** slack-event.md §5. Carries no message content. */
@@ -40,9 +40,41 @@ export type NormalizerSkipReason = Exclude<
 >;
 
 export type SenderType = 'human' | 'bot' | 'app' | 'system';
+export type ChannelSenderClass = 'human' | 'gist' | 'kilo' | 'bot' | 'app' | 'system';
 export type ConversationType = 'channel' | 'dm';
 
-/** slack-event.md §4 (D005). */
+export interface FileRef {
+  readonly file_id: string;
+  readonly name: string;
+  readonly mimetype: string;
+  readonly size_bytes: number;
+}
+
+export interface LinkRef {
+  readonly url: string;
+  readonly domain: string;
+}
+
+/** message-record.md §2. Eligibility deliberately does not live here. */
+export interface CanonicalSender {
+  readonly sender_class: ChannelSenderClass;
+  readonly sender_id: string;
+  readonly sender_display_name: string;
+  readonly bot_id: string | null;
+  readonly app_id: string | null;
+  readonly username: string | null;
+  readonly is_gist_self: boolean;
+  readonly is_external: boolean;
+  readonly is_guest: boolean;
+}
+
+/** capture-policy.md §4 rules 1–3. Null means authorization must continue. */
+export type ResponsePrecheckDenyReason =
+  | 'self_authored'
+  | 'non_human_sender'
+  | 'not_addressed';
+
+/** slack-event.md §4 plus channel-memory mutations.md §2. */
 export interface MutationDetail {
   readonly kind: 'edit' | 'delete';
   /** `message_ts` of the message being changed. */
@@ -50,6 +82,8 @@ export interface MutationDetail {
   readonly edited_at: string;
   /** Present iff `kind === 'edit'`. */
   readonly new_text?: string;
+  readonly new_files?: readonly FileRef[];
+  readonly new_links?: readonly LinkRef[];
 }
 
 /** slack-event.md §2. */
@@ -67,8 +101,13 @@ export interface NormalizedEvent {
   readonly conversation_type: ConversationType;
   /** Null for a root message; both Slack root encodings converge here. */
   readonly thread_ts: string | null;
+  /** Original Slack thread identity; equals `message_ts` for roots. */
+  readonly thread_root_ts: string;
+  readonly is_thread_reply: boolean;
   readonly sender_id: string;
   readonly sender_type: SenderType;
+  readonly sender_class: ChannelSenderClass;
+  readonly sender: CanonicalSender;
   readonly sender_is_external: boolean;
   readonly sender_is_guest: boolean;
   /**
@@ -85,8 +124,11 @@ export interface NormalizedEvent {
 
   /** RFC 3339 UTC, derived from `message_ts`. */
   readonly sent_at: string;
-  /** Never logged (INV-12). Empty only for a mutation delete. */
+  /** Never logged (INV-12). Channel messages may be empty. */
   readonly text: string;
+  readonly files: readonly FileRef[];
+  readonly links: readonly LinkRef[];
+  /** Syntactic addressing only. It is never response permission. */
   readonly addressed_to_gist: boolean;
 
   /** Present iff `class === 'mutation'`. */
@@ -120,6 +162,8 @@ export interface SenderAttributes {
   readonly is_external: boolean;
   readonly is_guest: boolean;
   readonly is_deactivated: boolean;
+  /** Optional here; persistence may resolve it at write time. */
+  readonly display_name?: string;
 }
 
 /**
@@ -134,9 +178,12 @@ export interface NormalizationContext {
   readonly bot_user_id: string;
   /** Gist's Slack bot ID (`B…`), when known. Also used for self-detection. */
   readonly bot_id?: string;
+  /** Configured Kilo IDs. Classification never uses display names or text. */
+  readonly kilo_bot_id?: string;
+  readonly kilo_app_id?: string;
   /**
-   * Resolved sender attributes. Absent means the lookup failed or was never
-   * made, and the event is rejected as malformed rather than assumed benign.
+   * Resolved workspace attributes. Required for humans; automation identities
+   * are classified from configured/raw IDs and remain response-ineligible.
    */
   readonly sender_attributes?: SenderAttributes;
   /**

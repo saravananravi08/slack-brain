@@ -37,7 +37,7 @@ export const SYSTEM_SUBTYPES: ReadonlySet<string> = Object.freeze(
   ]),
 );
 
-/** Subtypes that carry a message from a non-human sender. */
+/** Subtypes that carry captureable channel messages from non-human senders. */
 export const BOT_SUBTYPES: ReadonlySet<string> = Object.freeze(
   new Set(['bot_message', 'app_message']),
 );

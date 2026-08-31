@@ -9,7 +9,13 @@
  * module touches storage, the model, or the Slack API.
  */
 
-export { EVENT_CONTRACT_VERSION, normalize, normalizeThreadTs, sentAtFrom } from './normalize.js';
+export {
+  EVENT_CONTRACT_VERSION,
+  normalize,
+  normalizeThreadTs,
+  responsePrecheckDenyReason,
+  sentAtFrom,
+} from './normalize.js';
 
 export {
   CONTENT_KEY_PREFIX,
@@ -37,13 +43,18 @@ export {
 
 export { isSkip } from './types.js';
 export type {
+  CanonicalSender,
+  ChannelSenderClass,
   ConversationType,
   EventClass,
+  FileRef,
+  LinkRef,
   MutationDetail,
   NormalizationContext,
   NormalizationResult,
   NormalizedEvent,
   NormalizerSkipReason,
+  ResponsePrecheckDenyReason,
   SenderAttributes,
   SenderType,
   SkipReason,

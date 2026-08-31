@@ -24,10 +24,14 @@ import type {
 } from '../../../src/ingestion/events/index.js';
 import {
   SYNTHETIC,
+  appMessage,
+  botMessage,
   channelMessage,
   deleteEvent,
   editEvent,
   envelope,
+  gistMessage,
+  kiloMessage,
   makeContext,
 } from './helpers.js';
 
@@ -85,6 +89,26 @@ describe('delivery identity (FR-SLK-008, AC-06)', () => {
 
     expect(deliveryClaimKey(retry)).toBe(deliveryClaimKey(first));
     expect(contentClaimKey(retry)).toBe(contentClaimKey(first));
+  });
+
+  it('preserves retry keys for every captureable sender class', async () => {
+    const senders = [
+      channelMessage(),
+      gistMessage(),
+      kiloMessage(),
+      botMessage(),
+      appMessage(),
+    ];
+
+    for (const raw of senders) {
+      const ledger = createInMemoryLedger();
+      const first = normalized(raw, 'Ev0SYNTHALLSEND');
+      const retry = normalized(raw, 'Ev0SYNTHALLSEND');
+      expect(deliveryClaimKey(retry)).toBe(deliveryClaimKey(first));
+      expect(contentClaimKey(retry)).toBe(contentClaimKey(first));
+      expect((await deduplicate(first, ledger)).outcome).toBe('first_delivery');
+      expect((await deduplicate(retry, ledger)).outcome).toBe('duplicate_delivery');
+    }
   });
 
   it('stops before claiming the content key on a duplicate delivery', async () => {
