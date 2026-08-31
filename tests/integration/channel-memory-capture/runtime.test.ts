@@ -1,3 +1,8 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join as pathJoin } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 import { LibSQLFactoryStorage } from '@mastra/libsql';
 import type { Chat, StateAdapter, WebhookOptions } from 'chat';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +18,7 @@ import {
   createLiveSlackChannel,
   type ChannelMemoryMetrics,
 } from '../../../src/mastra/channels/slack.js';
+import { DurableChannelDedupLedger } from '../../../src/mastra/channels/durable-dedup.js';
 import type { ChannelRequest } from '../../../src/mastra/channels/types.js';
 import type { PolicySnapshot, SenderAttributes } from '../../../src/security/index.js';
 import { makeMemoryState } from '../../channels/helpers.js';
@@ -62,9 +68,13 @@ interface AdapterInternals {
 }
 
 const stores: LibSQLFactoryStorage[] = [];
+const directories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(stores.splice(0).map((store) => store.close()));
+  await Promise.all(directories.splice(0).map((directory) =>
+    rm(directory, { recursive: true, force: true }),
+  ));
 });
 
 function envelope(eventId: string, event: Record<string, unknown>) {
@@ -115,16 +125,24 @@ function message(overrides: Record<string, unknown> = {}) {
 async function createHarness(options: {
   state?: StateAdapter;
   registry?: JoinedChannelRegistry;
+  idempotencyLedger?: DurableChannelDedupLedger;
+  databaseUrl?: string;
   records?: Map<string, ChannelMessageRecord>;
 } = {}) {
   let storage: LibSQLFactoryStorage | undefined;
   let registry = options.registry;
+  let idempotencyLedger = options.idempotencyLedger;
   if (!registry) {
-    storage = new LibSQLFactoryStorage({ id: 't606-runtime', url: ':memory:' });
+    storage = new LibSQLFactoryStorage({
+      id: 't606-runtime',
+      url: options.databaseUrl ?? ':memory:',
+    });
     registry = storage.registerDomain(new JoinedChannelRegistry());
+    idempotencyLedger = storage.registerDomain(new DurableChannelDedupLedger());
     await storage.init();
     stores.push(storage);
   }
+  if (!idempotencyLedger) throw new Error('Synthetic durable ledger unavailable.');
 
   const records = options.records ?? new Map<string, ChannelMessageRecord>();
   const persist = vi.fn(async (record: ChannelMessageRecord) => {
@@ -157,6 +175,7 @@ async function createHarness(options: {
     state: options.state ?? makeMemoryState(),
     policy: POLICY,
     enrollment: registry,
+    idempotencyLedger,
     channelPersistence: {
       persist: async (record) => {
         generationOrder.push(`persist:${record.capture_source}`);
@@ -244,7 +263,9 @@ async function createHarness(options: {
     posts,
     records,
     registry,
+    idempotencyLedger,
     respond,
+    storage,
     runtime,
     state: options.state ?? undefined,
   };
@@ -405,24 +426,48 @@ describe('membership-authoritative live channel capture', () => {
     expect(serializedMetrics).not.toContain(IDS.channelA);
   });
 
-  it('keeps delivery dedup across re-composition with durable state', async () => {
-    const state = makeMemoryState();
-    const first = await createHarness({ state });
-    const replayed = envelope('Ev0CHANTEST-RETRY', message());
+  it('durably suppresses addressed delivery retry and generation after process restart', async () => {
+    const directory = await mkdtemp(pathJoin(tmpdir(), 't606-dedup-restart-'));
+    directories.push(directory);
+    const databaseUrl = pathToFileURL(pathJoin(directory, 'runtime.db')).href;
+    const replayed = envelope('Ev0CHANTEST-RETRY', {
+      ...message(),
+      type: 'app_mention',
+      text: `<@${IDS.gistUser}> synthetic retry question`,
+    });
+
+    const first = await createHarness({ databaseUrl });
     await first.deliver(
       join(IDS.channelA, '1767603600.000100', 'Ev0CHANTEST-JOIN'),
       replayed,
     );
+    expect(first.respond).toHaveBeenCalledOnce();
+    expect(first.posts).toHaveLength(1);
 
-    const restarted = await createHarness({
-      state,
-      registry: first.registry,
-      records: first.records,
-    });
-    await restarted.deliver(replayed);
+    if (!first.storage) throw new Error('Synthetic file storage unavailable.');
+    await first.storage.close();
+    stores.splice(stores.indexOf(first.storage), 1);
+
+    // New FactoryStorage, registry, StateAdapter, Chat instance, and ledger:
+    // only the LibSQL file and canonical message map survive the restart.
+    const restarted = await createHarness({ databaseUrl, records: first.records });
+    await restarted.deliver(
+      replayed,
+      { ...replayed, event_id: 'Ev0CHANTEST-REDELIVERY' },
+    );
 
     expect(restarted.persist).not.toHaveBeenCalled();
-    expect(first.records).toHaveLength(1);
+    expect(restarted.respond).not.toHaveBeenCalled();
+    expect(restarted.posts).toEqual([]);
+    expect(restarted.metrics.capture).toHaveBeenCalledTimes(2);
+    expect(restarted.metrics.capture).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      outcome: 'skipped',
+      reason: 'duplicate_delivery',
+    }));
+    expect(restarted.metrics.capture).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      outcome: 'skipped',
+      reason: 'duplicate_delivery',
+    }));
   });
 
   it('replays positive Slack memberships idempotently after restart', async () => {
