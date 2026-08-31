@@ -1,6 +1,6 @@
 # T606 — Integrate multi-channel capture runtime
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** pi coding agent
 - **Branch:** `task/T606-integrate-multi-channel-capture-runtime`
@@ -69,6 +69,6 @@ git diff --check
 
 - Implementation commit: `8403b3e`
 - Handoff commit: this commit (`docs(T606): hand off multi-channel capture runtime`)
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `7fd43b5`
+- Integration metadata commit: docs(P06) complete T606 metadata commit
+- Completed at: 2026-08-31

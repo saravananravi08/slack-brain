@@ -313,3 +313,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 
 - D005/D013 test alignment merged at `33b75e3`; full regression 981 passed / 5 skipped / 0 failed; typecheck OK; build OK.
 - All four Wave-2 tasks (T602, T603, T604, T605) are Completed; Wave 3 (T606) may begin.
+
+### 2026-08-31 — T606 completed (P06 Wave 3)
+
+- Task: T606 integrate multi-channel capture runtime; worker: pi-coder-20; branch: task/T606-integrate-multi-channel-capture-runtime.
+- Implementation `8403b3e`; handoff `8184faa`; merge `7fd43b5`.
+- Verification: ingestion 135/135; scoped 234/234; full 994 passed / 5 skipped; typecheck OK; build OK; scope/diff-check clean.
+- Result: merged GO. Blockers: none. Follow-up: T607 live two-channel validation (Wave 4).
