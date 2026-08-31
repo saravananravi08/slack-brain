@@ -340,3 +340,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `bb5335c`; handoff `82eadfe`; merge `e31d0b6`.
 - Verification: typecheck OK; 6 history tests; post-merge full 1011 passed / 5 skipped; build OK.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T703 completed (P07 Wave 5)
+
+- Task: T703 scoped semantic memory tool; worker: pi-coder-24 (rotated from pi-coder-18); branch: task/T703-implement-semantic-memory-tool.
+- Implementation `0ded46b`; handoff `57b7dc1`; merge `e18fcb1`.
+- Verification: 217 tool/security/memory tests pre-handoff; post-merge full 1016 passed / 5 skipped; typecheck OK; build OK.
+- Result: merged GO. Blockers: none.

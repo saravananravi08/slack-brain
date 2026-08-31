@@ -1,6 +1,6 @@
 # T703 — Implement scoped semantic memory tool
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** T703 worker
 - **Branch:** `task/T703-implement-semantic-memory-tool`
@@ -58,6 +58,6 @@ git diff --check
 
 - Implementation commit: `0ded46b1c5a4ab4cdeafd26197db4a9b579a9088`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `e18fcb1`
+- Integration metadata commit: docs(P07) complete T703 metadata commit
+- Completed at: 2026-08-31
