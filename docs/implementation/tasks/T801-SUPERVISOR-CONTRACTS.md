@@ -1,6 +1,6 @@
 # T801 — Freeze Slack supervisor contracts
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
 - **Owner:** claude-opus5
 - **Branch:** `task/T801-freeze-slack-supervisor-contracts`
@@ -60,16 +60,16 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] All GS requirements are mapped exactly once to implementation/validation ownership.
-- [ ] Contracts prohibit model-controlled Slack IDs and bot-text authority.
-- [ ] Gist self is persist-only; trusted bots are evaluate-eligible; unknown bots are capture-only.
-- [ ] One event/one checkpointed external-action invariant is executable.
-- [ ] State transition, approval, duplicate, restart, and wrong-boundary cases are executable.
-- [ ] No production data or identifiers appear.
+- [x] All GS requirements are mapped exactly once to implementation/validation ownership.
+- [x] Contracts prohibit model-controlled Slack IDs and bot-text authority.
+- [x] Gist self is persist-only; trusted bots are evaluate-eligible; unknown bots are capture-only.
+- [x] One event/one checkpointed external-action invariant is executable.
+- [x] State transition, approval, duplicate, restart, and wrong-boundary cases are executable.
+- [x] No production data or identifiers appear.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `df23b00eb10b9874aeafd0f9063bba4b6519a201`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
