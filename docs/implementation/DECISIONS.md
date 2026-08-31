@@ -372,3 +372,14 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: A human edit to a ROOT message in an enrolled channel that newly adds an addressed Gist mention (new text mentions Gist, prior text did not) MAY trigger exactly one response via the existing mention handler, subject to delivery dedup and authorization. All other edits (bot/app senders, replies, replays, already-mentioned text, unauthorized) remain mutation-only with responseEligible:false. Storage semantics are unchanged (edit still replaces text+vector in place).
 - Consequences: src/mastra/channels/slack.ts registers the P06 onMessageUpdated path and routes only the qualifying candidate through channel.handlers.onNewMention; regression coverage in tests/integration/live-ingestion/slack-runtime.test.ts for human root edit, bot edit, reply edit, replay, and already-mentioned edit.
 - Affected tasks/files: live runtime (slack.ts), channel handlers, slack-runtime tests. Fixed requirement "Capturing a message must not imply responding to it" is preserved — the edit trigger is response-eligibility evaluation, not capture.
+
+---
+
+## D020 — Edit-to-mention also applies inside threads
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Coordinator (operator-approved)
+- Context: Operator live test: edit-to-mention works for channel-root messages but not for messages inside threads. D019 restricted the trigger to thread roots; the operator requires thread replies covered too.
+- Decision: The D019 trigger is extended to thread REPLIES: a human edit to any message (root or reply) in an enrolled channel that newly adds an addressed Gist mention MAY trigger exactly one response, posted to that message thread, subject to the same guards (human sender, edit outcome updated, new text adds mention absent before, authorization, delivery dedup). All other edits remain mutation-only.
+- Consequences: src/mastra/channels/slack.ts candidate gate drops the root-only restriction and threads the reply into the correct thread via the existing mention handler; regression tests add the thread-reply edit case (respond in-thread) plus negative cases (bot reply edit, replayed reply edit, already-mentioned reply edit).
+- Affected tasks/files: T608 follow-up, src/mastra/channels/slack.ts, tests/integration/live-ingestion/slack-runtime.test.ts.
