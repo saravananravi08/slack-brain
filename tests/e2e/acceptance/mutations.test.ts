@@ -33,6 +33,12 @@ const POLICY: PolicySnapshot = {
   dm_shared_knowledge: false,
 };
 
+const ENROLLMENT = {
+  isEnrolled: (workspaceId: string, channelId: string) =>
+    workspaceId === WORKSPACE && channelId === CHANNEL,
+  captureFloorTs: () => '1735689700.000100',
+};
+
 function ambient(): AmbientNormalizedEvent {
   return {
     contract_version: '1.0.0',
@@ -98,6 +104,7 @@ describe('T501 edit/delete mutation acceptance', () => {
           storage: runtime.storage,
         }),
         policy: POLICY,
+        enrollment: ENROLLMENT,
       });
       const key = messageKey(event);
 
@@ -125,7 +132,7 @@ describe('T501 edit/delete mutation acceptance', () => {
     }
   });
 
-  it('propagates a delete to message/vector storage and retains only a content-free tombstone', async () => {
+  it('ignores a channel delete and retains message/vector storage without a tombstone', async () => {
     const database = await temporaryDatabase();
     const runtime = await openValidationMemory(database.databaseUrl);
     try {
@@ -149,22 +156,39 @@ describe('T501 edit/delete mutation acceptance', () => {
           storage: runtime.storage,
         }),
         policy: POLICY,
+        enrollment: ENROLLMENT,
       });
       const key = messageKey(event);
 
       await persistence.persist({ event, sender_name: 'Synthetic Member One' });
-      await expect(mutations.handle({ event: mutation('delete'), identity }))
-        .resolves.toMatchObject({ status: 'deleted', message_key: key });
-
       const store = await runtime.storage.getStore('memory');
-      expect((await store!.listMessagesById({ messageIds: [key] })).messages).toEqual([]);
-      expect((await runtime.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(0);
+      const resourceBefore = await store!.getResourceById({ resourceId: identity.boundary_id });
+      const vectorCountBefore = (
+        await runtime.vector.describeIndex({ indexName: 'memory_messages' })
+      ).count;
 
-      const resource = await store!.getResourceById({ resourceId: identity.boundary_id });
-      const tombstone = JSON.stringify(resource?.metadata);
-      expect(tombstone).toContain(key);
-      expect(tombstone).not.toContain(ORIGINAL_TEXT);
-      expect(tombstone).not.toContain(EDITED_TEXT);
+      await expect(mutations.handle({ event: mutation('delete'), identity }))
+        .resolves.toMatchObject({
+          status: 'ignored',
+          message_key: key,
+          derivedInvalidation: [],
+        });
+
+      const retained = (await store!.listMessagesById({ messageIds: [key] })).messages[0];
+      expect(retained?.content.parts).toEqual([{ type: 'text', text: ORIGINAL_TEXT }]);
+      expect((await runtime.vector.describeIndex({ indexName: 'memory_messages' })).count)
+        .toBe(vectorCountBefore);
+      const queryVector = await runtime.memory.embedder!.doEmbed({ values: [ORIGINAL_TEXT] });
+      const matches = await runtime.vector.query({
+        indexName: 'memory_messages',
+        queryVector: queryVector.embeddings[0]!,
+        topK: 5,
+      });
+      expect(matches.find(({ id }) => id === key)?.metadata?.content).toBe(ORIGINAL_TEXT);
+
+      const resourceAfter = await store!.getResourceById({ resourceId: identity.boundary_id });
+      expect(resourceAfter?.metadata).toEqual(resourceBefore?.metadata);
+      expect(JSON.stringify(resourceAfter?.metadata ?? {})).not.toContain(key);
     } finally {
       await closeValidationMemory(runtime);
       await database.remove();
