@@ -46,7 +46,7 @@ import { channelContextSystemMessage } from './agents/channel-context.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
 import { ChannelError, DurableChannelDedupLedger } from './channels/index.js';
 import {
-  OpenAIProactiveClassifier,
+  ALL_MESSAGES_PROACTIVE_CLASSIFIER,
   ProactiveActionGate,
 } from './channels/proactive.js';
 import {
@@ -400,10 +400,7 @@ export async function createFoundationRuntime(
   const proactive = new ProactiveActionGate({
     channelIds: config.proactiveChannelIds ?? [],
     cooldownMs: config.proactiveCooldownMs ?? 60_000,
-    classifier: new OpenAIProactiveClassifier({
-      apiKey: config.openaiApiKey,
-      model: config.gistModel,
-    }),
+    classifier: ALL_MESSAGES_PROACTIVE_CLASSIFIER,
     isEnrolled: enrollmentProbe.isEnrolled,
     contextFor: async (request) => {
       const context = authorizedContexts.get(request);
