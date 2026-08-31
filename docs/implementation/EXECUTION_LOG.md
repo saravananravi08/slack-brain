@@ -387,3 +387,11 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `135ec48`; handoff `c8fabd6`; merge `81fcb61`.
 - Verification: focused runtime 26 passed; live-ingestion 31 passed; full 1039 passed / 5 skipped; typecheck OK; build OK; scope clean.
 - Result: merged GO. Live Gist restarted.
+
+### 2026-08-31 — T609 completed (operator-approved D021)
+
+- Task: T609 proactive action on unaddressed channel messages; worker: pi-coder-26; branch: task/T609-proactive-action-mode.
+- Implementation `985bfee`; handoff `4e8ee73`; merge `cd98176`.
+- Coordinator scope ruling: src/mastra/index.ts added to scope (D018 precedent, granted mid-task). Operator hard requirement enforced and tested: Gist/bot/app sender classes excluded before classification (no circular self-action; sender-class identity, not text heuristics).
+- Verification: scoped 101 tests; full 1059 passed / 5 skipped; typecheck OK; build OK; scope clean.
+- Result: merged GO.
