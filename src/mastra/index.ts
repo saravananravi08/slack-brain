@@ -402,6 +402,7 @@ export async function createFoundationRuntime(
       apiKey: config.openaiApiKey,
       model: config.gistModel,
     }),
+    isEnrolled: enrollmentProbe.isEnrolled,
     contextFor: async (request) => {
       const context = authorizedContexts.get(request);
       if (!context || context.identity.conversation_type !== 'channel') {

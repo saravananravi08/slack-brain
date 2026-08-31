@@ -40,7 +40,7 @@ function validEnvironment(): Record<string, string> {
   };
 }
 
-describe('D021 proactive configuration', () => {
+describe('D021/D022 proactive configuration', () => {
   it('parses proactive channels and cooldown like validated policy inputs', () => {
     const config = parseConfig({
       ...validEnvironment(),
@@ -53,7 +53,7 @@ describe('D021 proactive configuration', () => {
     expect(Object.isFrozen(config.proactiveChannelIds)).toBe(true);
   });
 
-  it('defaults proactive mode off with a 60 second cooldown', () => {
+  it('defaults to all enrolled channels with a 60 second cooldown', () => {
     const config = parseConfig(validEnvironment());
 
     expect(config.proactiveChannelIds).toEqual([]);
@@ -71,6 +71,38 @@ describe('D021 proactive configuration', () => {
 });
 
 describe('ProactiveActionGate', () => {
+  it('enables an enrolled channel when the restriction list is empty', async () => {
+    const classify = vi.fn(async () => ({ act: false, reason: 'synthetic_irrelevance' }));
+    const isEnrolled = vi.fn(async () => true);
+    const gate = new ProactiveActionGate({
+      channelIds: [],
+      cooldownMs: 60_000,
+      classifier: { classify },
+      contextFor: async () => CONTEXT,
+      isEnrolled,
+    });
+
+    await expect(gate.evaluate(REQUEST)).resolves.toBe(false);
+    expect(isEnrolled).toHaveBeenCalledWith(REQUEST.workspaceId, CHANNEL);
+    expect(classify).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a non-empty list restrictive without consulting enrollment', async () => {
+    const classify = vi.fn(async () => ({ act: true, reason: 'synthetic_relevance' }));
+    const isEnrolled = vi.fn(async () => true);
+    const gate = new ProactiveActionGate({
+      channelIds: ['C0OTHER001'],
+      cooldownMs: 60_000,
+      classifier: { classify },
+      contextFor: async () => CONTEXT,
+      isEnrolled,
+    });
+
+    await expect(gate.evaluate(REQUEST)).resolves.toBe(false);
+    expect(isEnrolled).not.toHaveBeenCalled();
+    expect(classify).not.toHaveBeenCalled();
+  });
+
   it('serializes per-channel actions and applies cooldown before a second classification', async () => {
     const classify = vi.fn(async () => ({ act: true, reason: 'synthetic_relevance' }));
     const gate = new ProactiveActionGate({
@@ -78,6 +110,7 @@ describe('ProactiveActionGate', () => {
       cooldownMs: 60_000,
       classifier: { classify },
       contextFor: async () => CONTEXT,
+      isEnrolled: async () => true,
       now: () => 1_000,
     });
 

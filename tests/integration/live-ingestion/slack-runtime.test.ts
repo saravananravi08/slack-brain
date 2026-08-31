@@ -59,6 +59,7 @@ interface HarnessOptions {
   readonly proactiveCooldownMs?: number;
   readonly proactiveError?: Error;
   readonly proactiveNow?: () => number;
+  readonly proactiveEnrolled?: boolean;
 }
 
 function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
@@ -91,6 +92,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
     return { act: options.proactiveAct ?? false, reason: 'synthetic_relevance' };
   });
   const proactiveContext = vi.fn(async () => ({} as ChannelContext));
+  const proactiveEnrollment = vi.fn(async () => options.proactiveEnrolled ?? true);
   const proactive = options.proactiveChannelIds === undefined
     ? undefined
     : new ProactiveActionGate({
@@ -98,6 +100,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
         cooldownMs: options.proactiveCooldownMs ?? 60_000,
         classifier: { classify: classifyProactive },
         contextFor: proactiveContext,
+        isEnrolled: proactiveEnrollment,
         ...(options.proactiveNow === undefined ? {} : { now: options.proactiveNow }),
       });
 
@@ -203,6 +206,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
     persist,
     posts,
     proactiveContext,
+    proactiveEnrollment,
     resolveSender,
     shouldSuppressOriginal,
     state,
@@ -324,19 +328,32 @@ describe('D021 proactive action mode', () => {
   function proactiveHarness(options: HarnessOptions = {}) {
     return makeHarness(makeMemoryState(), {
       p06: true,
-      proactiveChannelIds: [SYNTHETIC.channel],
+      proactiveChannelIds: [],
       ...options,
     });
   }
 
-  it('responds once when an unaddressed human root is relevant', async () => {
+  it('routes an enrolled unaddressed human root through the default-all gate', async () => {
     const harness = proactiveHarness({ proactiveAct: true });
 
     await harness.deliver(envelope(channelMessage()));
 
+    expect(harness.proactiveEnrollment).toHaveBeenCalledWith(
+      SYNTHETIC.workspace,
+      SYNTHETIC.channel,
+    );
     expect(harness.classifyProactive).toHaveBeenCalledOnce();
     expect(harness.generation).toHaveBeenCalledOnce();
     expect(harness.posts).toHaveLength(1);
+    expect(harness.logger.info).toHaveBeenCalledWith(
+      'channel.proactive.gate.evaluated',
+      { channelAlias: SYNTHETIC.channel },
+    );
+    const [, fields] = harness.logger.info.mock.calls.find(
+      ([event]) => event === 'channel.proactive.gate.evaluated',
+    )!;
+    expect(Object.keys(fields as object)).toEqual(['channelAlias']);
+    expect(JSON.stringify(fields)).not.toContain('synthetic proactive candidate');
   });
 
   it('responds in-thread when an unaddressed human reply is relevant', async () => {
@@ -479,7 +496,7 @@ describe('D021 proactive action mode', () => {
     expect(harness.posts).toHaveLength(1);
   });
 
-  it('leaves non-proactive channels capture-only', async () => {
+  it('keeps a non-empty channel list restrictive', async () => {
     const harness = proactiveHarness({
       proactiveAct: true,
       proactiveChannelIds: ['C0OTHER001'],

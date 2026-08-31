@@ -40,6 +40,7 @@ const environmentSchema = z.object({
   GIST_APPROVED_WORKSPACE_ID: workspaceId,
   // D013: optional deny-only migration list; membership is the channel grant.
   GIST_APPROVED_CHANNEL_IDS: commaSeparatedIds(channelId, true).default([]),
+  // D022: empty means every enrolled channel; non-empty restricts to this list.
   GIST_PROACTIVE_CHANNELS: commaSeparatedIds(channelId, true).default([]),
   GIST_PROACTIVE_COOLDOWN_MS: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
     .default(60_000),
@@ -58,7 +59,7 @@ export interface Config {
   readonly slackAppToken: string;
   readonly approvedWorkspaceId: string;
   readonly approvedChannelIds: readonly string[];
-  /** D021 opt-in channels. Optional only for hand-built test/deployment Config values. */
+  /** D022 restriction list. Empty enables proactive mode for every enrolled channel. */
   readonly proactiveChannelIds?: readonly string[];
   /** D021 per-channel action cooldown. Optional values use the accepted 60s default. */
   readonly proactiveCooldownMs?: number;

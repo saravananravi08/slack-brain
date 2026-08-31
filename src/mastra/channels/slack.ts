@@ -276,7 +276,11 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
           if (!decision.allowed) return false;
           if (result.trigger === 'proactive') {
             try {
-              if (!options.proactive || !await options.proactive.evaluate(request)) return false;
+              if (!options.proactive) return false;
+              logger.info('channel.proactive.gate.evaluated', {
+                channelAlias: request.channelId,
+              });
+              if (!await options.proactive.evaluate(request)) return false;
             } catch {
               logger.error('channel.proactive.classification.failed', {
                 errorClass: 'model_unavailable',
@@ -580,7 +584,8 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       event.class === 'ambient'
       && event.sender_class === 'human'
       && !event.addressed_to_gist
-      && options.proactive?.isEnabled(event.channel_id) === true
+      && options.proactive !== undefined
+      && await options.proactive.isEnabled(event.workspace_id, event.channel_id)
     ) {
       return { responseEligible: true, trigger: 'proactive' };
     }
@@ -878,7 +883,7 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   };
 
   if (p06Enabled) {
-    if (options.proactive?.hasChannels === true) {
+    if (options.proactive) {
       channel.bot.onNewMessage(/[\s\S]*/, liveHandlers.onAmbientMessage);
     }
     channel.bot.onMessageUpdated(liveHandlers.onMessageUpdated);
