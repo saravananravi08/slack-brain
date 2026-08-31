@@ -1,8 +1,8 @@
 # T604 — Persist all live channel messages
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T604-persist-all-live-channel-messages`
 - **Parallel group:** PG-06B
 - **Depends on:** T601
@@ -47,16 +47,16 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Human, Gist, Kilo, bot, and app fixtures persist.
-- [ ] Duplicate delivery creates no duplicate row/vector.
-- [ ] Capture invokes no response/post path.
-- [ ] Embedding/model failure cannot corrupt the canonical record.
-- [ ] Channel/thread/sender metadata is preserved.
+- [x] Human, Gist, Kilo, bot, and app fixtures persist.
+- [x] Duplicate delivery creates no duplicate row/vector.
+- [x] Capture invokes no response/post path.
+- [x] Embedding/model failure cannot corrupt the canonical record.
+- [x] Channel/thread/sender metadata is preserved.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `bdf4beb`
+- Handoff commit: this handoff commit
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —

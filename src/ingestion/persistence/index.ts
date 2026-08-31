@@ -1,4 +1,16 @@
 export {
+  ChannelMessagePersistenceService,
+  type CanonicalSender,
+  type CaptureSource,
+  type ChannelMessagePersistenceOptions,
+  type ChannelMessagePersistenceResult,
+  type ChannelMessageRecord,
+  type ChannelSenderClass,
+  type FileRef,
+  type LinkRef,
+} from './channel-message-persistence.js';
+
+export {
   AmbientPersistenceService,
   type AmbientNormalizedEvent,
   type AmbientPersistenceInput,
