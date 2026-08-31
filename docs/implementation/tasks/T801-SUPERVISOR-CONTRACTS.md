@@ -75,6 +75,7 @@ git diff --check
 - Third review correction commit: `07217e9c42a17785bba21814a6d3a0505a1fd1c3` (continuation crash-safety plus two stale contradictions; contract set stays at 1.0.0, pre-merge)
 - Architecture correction commit: `b483552e8d869db6b76f3e15fe2e99c318dc2de1` (one durable command/outbox protocol; strict action schemas; bounded limit control; bound/unbound checkpoints; target identity alternatives; serial retries; complete compatibility outcome evidence)
 - Focused re-review correction commit: `c0fa9afc1287019d67016edc5b826feeae7685f1` (intent-specific limit authority; full checkpoint schema validation; strict compatibility count shape; reopen unsupported pending product-owner decision)
+- Final focused correction commit: `1a81af9a58b00f618e2609a6fa1af1bbf20daf28` (configured approvers cannot redirect; checkpoint failure/key/destination semantics closed)
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
