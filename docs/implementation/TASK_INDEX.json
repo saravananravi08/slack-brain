@@ -882,5 +882,292 @@
       "README.md",
       "tests/legacy/**"
     ]
+  },
+  {
+    "id": "T601",
+    "title": "Freeze channel-memory contracts",
+    "phase": "P06",
+    "deps": [
+      "T406",
+      "D013",
+      "D014",
+      "D015"
+    ],
+    "blocks": [
+      "T602",
+      "T603",
+      "T604",
+      "T605"
+    ],
+    "group": "PG-06A",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "GIST_CHANNEL_MEMORY_PRD.md",
+      "docs/architecture/channel-memory/**",
+      "tests/contracts/channel-memory/**"
+    ]
+  },
+  {
+    "id": "T602",
+    "title": "Implement joined-channel registry",
+    "phase": "P06",
+    "deps": [
+      "T601"
+    ],
+    "blocks": [
+      "T606"
+    ],
+    "group": "PG-06B",
+    "parallel": [
+      "T603",
+      "T604",
+      "T605"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/channel-memory/registry/**",
+      "tests/channel-memory/registry/**"
+    ]
+  },
+  {
+    "id": "T603",
+    "title": "Normalize all message senders",
+    "phase": "P06",
+    "deps": [
+      "T601"
+    ],
+    "blocks": [
+      "T606"
+    ],
+    "group": "PG-06B",
+    "parallel": [
+      "T602",
+      "T604",
+      "T605"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/events/**",
+      "tests/ingestion/events/**"
+    ]
+  },
+  {
+    "id": "T604",
+    "title": "Persist all live channel messages",
+    "phase": "P06",
+    "deps": [
+      "T601"
+    ],
+    "blocks": [
+      "T606"
+    ],
+    "group": "PG-06B",
+    "parallel": [
+      "T602",
+      "T603",
+      "T605"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/persistence/**",
+      "tests/ingestion/persistence/**"
+    ]
+  },
+  {
+    "id": "T605",
+    "title": "Enforce edit fidelity and delete-ignore policy",
+    "phase": "P06",
+    "deps": [
+      "T601"
+    ],
+    "blocks": [
+      "T606",
+      "T702"
+    ],
+    "group": "PG-06B",
+    "parallel": [
+      "T602",
+      "T603",
+      "T604"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/ingestion/mutations/**",
+      "tests/ingestion/mutations/**"
+    ]
+  },
+  {
+    "id": "T606",
+    "title": "Integrate multi-channel capture runtime",
+    "phase": "P06",
+    "deps": [
+      "T602",
+      "T603",
+      "T604",
+      "T605"
+    ],
+    "blocks": [
+      "T607"
+    ],
+    "group": "PG-06C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "src/config.ts",
+      "src/security/**",
+      "src/mastra/channels/**",
+      "src/mastra/index.ts",
+      "tests/config/**",
+      "tests/security/**",
+      "tests/channels/**",
+      "tests/integration/channel-memory-capture/**"
+    ]
+  },
+  {
+    "id": "T607",
+    "title": "Validate complete multi-channel capture",
+    "phase": "P06",
+    "deps": [
+      "T606"
+    ],
+    "blocks": [
+      "P07"
+    ],
+    "group": "PG-06D",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "tests/e2e/channel-memory-capture/**",
+      "docs/reports/channel-memory-capture-validation.md"
+    ]
+  },
+  {
+    "id": "T701",
+    "title": "Build chronological channel history provider",
+    "phase": "P07",
+    "deps": [
+      "P06"
+    ],
+    "blocks": [
+      "T704"
+    ],
+    "group": "PG-07A",
+    "parallel": [
+      "T702",
+      "T703"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/channel-memory/history/**",
+      "tests/channel-memory/history/**"
+    ]
+  },
+  {
+    "id": "T702",
+    "title": "Enable channel-scoped Observation Memory",
+    "phase": "P07",
+    "deps": [
+      "P06",
+      "T605"
+    ],
+    "blocks": [
+      "T704"
+    ],
+    "group": "PG-07A",
+    "parallel": [
+      "T701",
+      "T703"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/mastra/memory/gist-memory.ts",
+      "src/channel-memory/observations/**",
+      "tests/memory/observation-memory/**",
+      "tests/channel-memory/observations/**"
+    ]
+  },
+  {
+    "id": "T703",
+    "title": "Implement scoped semantic memory tool",
+    "phase": "P07",
+    "deps": [
+      "P06",
+      "D017"
+    ],
+    "blocks": [
+      "T704",
+      "T705"
+    ],
+    "group": "PG-07A",
+    "parallel": [
+      "T701",
+      "T702"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/mastra/tools/channel-memory-search.ts",
+      "tests/tools/channel-memory-search.test.ts"
+    ]
+  },
+  {
+    "id": "T704",
+    "title": "Assemble bounded channel context",
+    "phase": "P07",
+    "deps": [
+      "T701",
+      "T702",
+      "T703"
+    ],
+    "blocks": [
+      "T705"
+    ],
+    "group": "PG-07B",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "src/channel-memory/context/**",
+      "tests/channel-memory/context/**"
+    ]
+  },
+  {
+    "id": "T705",
+    "title": "Integrate context with Gist agent",
+    "phase": "P07",
+    "deps": [
+      "T704",
+      "T703"
+    ],
+    "blocks": [
+      "T706"
+    ],
+    "group": "PG-07C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "src/mastra/agents/**",
+      "src/mastra/channels/**",
+      "src/mastra/index.ts",
+      "tests/agents/**",
+      "tests/integration/channel-context/**"
+    ]
+  },
+  {
+    "id": "T706",
+    "title": "Validate channel intelligence end to end",
+    "phase": "P07",
+    "deps": [
+      "T705"
+    ],
+    "blocks": [
+      "Future orchestrator phase"
+    ],
+    "group": "PG-07D",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "tests/e2e/channel-context/**",
+      "docs/reports/channel-context-validation.md"
+    ]
   }
 ]

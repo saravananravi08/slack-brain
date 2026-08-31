@@ -258,3 +258,17 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Test count across the program is now **581 passing, 5 skipped, 4 todo**.
 - Recorded in this pass, each verified against the tree rather than taken from the brief: F-11 test relocation `7f86d3a`, CI workflow `f8a4357`, runtime start fix `7bfb04b`, tsx dependency `18f80f4`, vitest `dist/` exclusion `0ce82e2`, F-19 drop instrumentation `d48a6d2`, PostgreSQL archive support `0f1287a`, archive README `da8fec8`.
 - The first five of those were logged in the previous sync (`77e7ffb`) and are repeated here only as the consolidated list; their detail is in the entries above this one.
+
+### 2026-08-30 — T406 live validation completed
+
+- T406 merged GO at `f9e20de`. Human ambient capture, zero ambient generation/posts, bot/app exclusion, edit re-embedding, addressed recall/reply with attribution, channel isolation, and target deletion passed.
+- The channel-ID normalization defect found during live validation was fixed before handoff.
+- B-07 and P04 are closed; sanitized evidence is in `docs/reports/live-ingestion-validation.md`.
+
+## 2026-08-31
+
+### P06/P07 — channel-memory extension planned
+
+- Product owner accepted D013–D017: dynamic joined-channel enrollment, no backfill, all-sender capture, edit fidelity with temporary delete-ignore, channel-scoped Observation Memory, default history/summary/observations, and one scoped semantic memory tool.
+- Added `GIST_CHANNEL_MEMORY_PRD.md`, P06/P07 phase gates, T601–T607 and T701–T706 task/log specifications, dependency waves, ownership, dashboard entries, and machine-readable task index records.
+- Planning branch: `planning/channel-memory-v2`. No runtime implementation was changed or assigned.

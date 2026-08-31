@@ -11,6 +11,7 @@ flowchart LR
   P02 --> P04
   P03 --> P05
   P04 --> P05
+  P04 --> P06 --> P07
 ```
 
 ## Safe execution waves
@@ -83,11 +84,33 @@ flowchart LR
 
 [T508](./tasks/T508-LEGACY-CLEANUP.md)
 
+### W16 — channel-memory contracts
+
+[T601](./tasks/T601-CHANNEL-MEMORY-CONTRACTS.md)
+
+### W17 — channel capture components in parallel
+
+[T602](./tasks/T602-JOINED-CHANNEL-REGISTRY.md), [T603](./tasks/T603-ALL-SENDER-NORMALIZATION.md), [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md), [T605](./tasks/T605-EDIT-FIDELITY.md)
+
+### W18 — channel capture integration and validation
+
+[T606](./tasks/T606-MULTI-CHANNEL-CAPTURE-INTEGRATION.md) → [T607](./tasks/T607-MULTI-CHANNEL-CAPTURE-VALIDATION.md)
+
+### W19 — channel intelligence components in parallel
+
+[T701](./tasks/T701-CHANNEL-HISTORY.md), [T702](./tasks/T702-OBSERVATIONAL-MEMORY.md), [T703](./tasks/T703-SEMANTIC-MEMORY-TOOL.md)
+
+### W20 — channel context integration and validation
+
+[T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) → [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) → [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md)
+
 ## Critical path
 
-`T001 → T004 → T101 → T104/T105 → T106 → T201/T202/T203 → T204 → T206 → T301 → T302/T303/T304 → T305 → T306 → T307 → T501–T504 → T505 → T506 → T508`
+Original release path: `T001 → T004 → T101 → T104/T105 → T106 → T201/T202/T203 → T204 → T206 → T301 → T302/T303/T304 → T305 → T306 → T307 → T501–T504 → T505 → T506 → T508`
 
-P04 runs alongside P03 after P02. P05 waits for both. T507 can overlap production observation after beta.
+Channel-memory extension: `T406 → T601 → T602/T603/T604/T605 → T606 → T607 → T701/T702/T703 → T704 → T705 → T706`
+
+P04 runs alongside P03 after P02. P05 waits for P03/P04 under the original release plan. P06/P07 extend the completed live-ingestion foundation and do not depend on historical archive import.
 
 ## Task dependency edges
 
@@ -167,6 +190,24 @@ flowchart TD
   T505 --> T507
   T506 --> T508
   D_Rollback_window_approval["Rollback-window approval"] --> T508
+  T406 --> T601
+  T601 --> T602
+  T601 --> T603
+  T601 --> T604
+  T601 --> T605
+  T602 --> T606
+  T603 --> T606
+  T604 --> T606
+  T605 --> T606
+  T606 --> T607
+  D_P06["P06"] --> T701
+  D_P06 --> T702
+  D_P06 --> T703
+  T701 --> T704
+  T702 --> T704
+  T703 --> T704
+  T704 --> T705
+  T705 --> T706
 ```
 
 ## Conflict prevention
@@ -176,5 +217,7 @@ flowchart TD
 - Package/lock/config cleanup is exclusive to T101 then T508.
 - Phase/status/global-log edits are serialized through phase integrator.
 - Operational tasks T306, T307, T505, and T506 are serialized approvals, not parallel coding work.
+- T602–T605 and T701–T703 have disjoint primary scopes; T606 and T705 exclusively own shared composition in their phases.
+- P06/P07 task branches must start from the integration commit that contains this approved plan, not from the planning branch directly.
 
 See [`FILE_OWNERSHIP.md`](./FILE_OWNERSHIP.md) for path locks.

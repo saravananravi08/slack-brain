@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** P02 closed. **P03 in progress** — import code complete and the archive infrastructure is unblocked, but T306's real sample import and T307 still need an operator-supplied production archive path. **P04 in progress** — T406 live validation running against the real workspace. **P05** deliverables T501–T505, T507, and the T508 assessment are merged; T502's sign-off is Ready for Integration and T506 production cutover is pending operator approval. CI runs typecheck + test + build on push and PR.
-- **Last updated:** 2026-08-30 — F-11 move `7f86d3a`, CI `f8a4357`, runtime start fix `7bfb04b`, tsx dependency `18f80f4`, vitest `dist/` exclusion `0ce82e2`, F-19 instrumentation `d48a6d2`, PostgreSQL archive support `0f1287a`, archive README `da8fec8`. **581 passing, 5 skipped, 4 todo**; typecheck and build green.
+- **Current phase gate:** Original release work remains in progress on P03/P05. T406 live validation is merged GO. **P06/P07 channel-memory extension is planned on `planning/channel-memory-v2`**: capture every message in every joined internal channel, apply edits, ignore deletes temporarily, enable channel-scoped Observation Memory, inject history/summary/observations, and expose one scoped semantic memory tool. No P06/P07 implementation task is assigned. CI runs typecheck + test + build on push and PR.
+- **Last updated:** 2026-08-31 — T406 merged GO `f9e20de`; P06/P07 channel-memory extension planned on `planning/channel-memory-v2` with 13 tasks and accepted D013–D017. Current pre-plan runtime verification: **582 passing, 5 skipped**; typecheck and build green.
 
 ### Security review status
 
@@ -22,12 +22,10 @@ dispositioned. **Zero high-severity outstanding.**
 | Accepted as risk | 1 | **F-12** — in-process mutation lock; accepted on the single-instance deployment assumption, now documented in the T504 runbook (T502 sign-off §3.1) |
 | Test pinned, instrumented, fix deferred | 1 | **F-19** — ambient messages dropped by the shared `concurrency: 'drop'` lock. Data loss, not a leak. The fix is a design decision (should ambient ingestion share the reply path's concurrency control?); instrument the drop count before deciding. Drop-count instrumentation merged (`d48a6d2`), so the beta can now measure the frequency the decision depends on. Owner: T502 follow-up / T505 (sign-off §3.2) |
 
-T502 verdict: **conditional go for internal beta** — see
-[`security-review-signoff.md`](../reports/security-review-signoff.md). The
-condition is that design review §7 item 2, live cross-boundary validation, has
-never run: no real Slack message has traversed the system. It is blocked on
-B-07, and until it runs "zero known cross-boundary leak" means zero known from
-offline evidence.
+T502's recorded verdict is **conditional go for internal beta** — see
+[`security-review-signoff.md`](../reports/security-review-signoff.md). T406 has
+now supplied the previously missing real Slack and cross-boundary evidence and
+merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refresh.
 
 ## Assignment protocol
 
@@ -44,8 +42,10 @@ offline evidence.
 | [P01](./phases/P01-FOUNDATION.md) — Mastra and Slack Foundation | Completed (code gate; live smoke scheduled in P05 validation) | P00 | Augment | cffce23 |
 | [P02](./phases/P02-MEMORY.md) — Memory, Retrieval, and Privacy | Completed | P01 | Augment | a5c77e7 |
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
-| [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | In Progress | P02 | Augment | — |
+| [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Completed | P02 | Augment | f9e20de |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | In Progress (deliverables merged; operator beta/cutover/rollback gates pending) | P03, P04 | Unassigned | — |
+| [P06](./phases/P06-CHANNEL-CAPTURE.md) — Complete Multi-Channel Capture | Planned | T406, D013–D015 | Unassigned | — |
+| [P07](./phases/P07-CHANNEL-CONTEXT.md) — Channel Context and Observational Memory | Planned | P06, D016–D017 | Unassigned | — |
 
 ## Task dashboard
 
@@ -80,7 +80,7 @@ offline evidence.
 | [T403](./tasks/T403-SILENT-PERSISTENCE.md) — Persist ambient messages silently | P04 | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | task/T403-persist-ambient-messages-silently | 2026-08-30 | c3365cd |
 | [T404](./tasks/T404-MUTATION-POLICY.md) — Implement edit/delete and retention mutation policy | P04 | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | task/T404-implement-edit-delete-and-retention-mutation-policy | 2026-08-30 | 21f5d72 |
 | [T405](./tasks/T405-LIVE-INTEGRATION.md) — Integrate live silent ingestion | P04 | Completed | T402, T403, T404, T204 | PG-04C | pi-coder-12 | task/T405-integrate-live-silent-ingestion | 2026-08-30 | f64b2dc |
-| [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | In Progress (scaffold merged `347ec14`; live cases pending operator ambient message) | T405, T205 | PG-04D | pi-coder-14 | task/T406-validate-live-ingestion-end-to-end | 2026-08-30 | — |
+| [T406](./tasks/T406-LIVE-VALIDATION.md) — Validate live ingestion end to end | P04 | Completed (live matrix GO) | T405, T205 | PG-04D | pi-coder-14 | task/T406-validate-live-ingestion-end-to-end | 2026-08-30 | f9e20de |
 | [T501](./tasks/T501-E2E-ACCEPTANCE.md) — Run complete PRD acceptance suite | P05 | Merged (automated acceptance passes; launch gate remains NO-GO pending P03/P04) | P03, P04 | PG-05A | pi coding agent | task/T501-run-complete-prd-acceptance-suite | 2026-08-30 | 0839422 |
 | [T502](./tasks/T502-SECURITY-REVIEW.md) — Perform security and privacy review | P05 | Merged (conditional beta sign-off; live cross-boundary evidence pending B-07) | T203, P03, P04 | PG-05A | claude-planner-2 | task/T502-security-design-review-early | 2026-08-30 | 276cf52 |
 | [T503](./tasks/T503-PERFORMANCE-OBSERVABILITY.md) — Validate performance and observability | P05 | Merged (suite/report; NO-GO pending runtime correlation and concurrent-ingestion remediation) | P03, P04 | PG-05A | pi coding agent | task/T503-validate-performance-and-observability | 2026-08-30 | f9b7723 |
@@ -89,6 +89,19 @@ offline evidence.
 | [T506](./tasks/T506-PRODUCTION-CUTOVER.md) — Perform production cutover | P05 | Pending operator approval (cutover not run) | T505, Product/technical/security approval | PG-05C | Unassigned | — | — | — |
 | [T507](./tasks/T507-HANDOVER.md) — Complete operator and developer handover | P05 | Merged (documents complete; walkthrough and owner acceptance pending) | T505 | PG-05D | claude-planner-2 | task/T507-complete-operator-and-developer-handover | 2026-08-30 | 67f8e5e |
 | [T508](./tasks/T508-LEGACY-CLEANUP.md) — Remove legacy runtime after rollback window | P05 | Merged (assessment only; deletion blocked on T506 and rollback-window approval) | T506, Rollback-window approval | PG-05D | pi coding agent | task/T508-remove-legacy-runtime-after-rollback-window | 2026-08-30 | f1e856b |
+| [T601](./tasks/T601-CHANNEL-MEMORY-CONTRACTS.md) — Freeze channel-memory contracts | P06 | Planned | T406, D013–D015 | PG-06A | Unassigned | task/T601-freeze-channel-memory-contracts | — | — |
+| [T602](./tasks/T602-JOINED-CHANNEL-REGISTRY.md) — Implement joined-channel registry | P06 | Planned | T601 | PG-06B | Unassigned | task/T602-implement-joined-channel-registry | — | — |
+| [T603](./tasks/T603-ALL-SENDER-NORMALIZATION.md) — Normalize all message senders | P06 | Planned | T601 | PG-06B | Unassigned | task/T603-normalize-all-message-senders | — | — |
+| [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md) — Persist all live channel messages | P06 | Planned | T601 | PG-06B | Unassigned | task/T604-persist-all-live-channel-messages | — | — |
+| [T605](./tasks/T605-EDIT-FIDELITY.md) — Enforce edit fidelity and delete-ignore policy | P06 | Planned | T601 | PG-06B | Unassigned | task/T605-enforce-edit-fidelity | — | — |
+| [T606](./tasks/T606-MULTI-CHANNEL-CAPTURE-INTEGRATION.md) — Integrate multi-channel capture runtime | P06 | Planned | T602, T603, T604, T605 | PG-06C | Unassigned | task/T606-integrate-multi-channel-capture-runtime | — | — |
+| [T607](./tasks/T607-MULTI-CHANNEL-CAPTURE-VALIDATION.md) — Validate complete multi-channel capture | P06 | Planned | T606 | PG-06D | Unassigned | task/T607-validate-complete-multi-channel-capture | — | — |
+| [T701](./tasks/T701-CHANNEL-HISTORY.md) — Build chronological channel history provider | P07 | Planned | P06 | PG-07A | Unassigned | task/T701-build-channel-history-provider | — | — |
+| [T702](./tasks/T702-OBSERVATIONAL-MEMORY.md) — Enable channel-scoped Observation Memory | P07 | Planned | P06, T605 | PG-07A | Unassigned | task/T702-enable-channel-observation-memory | — | — |
+| [T703](./tasks/T703-SEMANTIC-MEMORY-TOOL.md) — Implement scoped semantic memory tool | P07 | Planned | P06, D017 | PG-07A | Unassigned | task/T703-implement-semantic-memory-tool | — | — |
+| [T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) — Assemble bounded channel context | P07 | Planned | T701, T702, T703 | PG-07B | Unassigned | task/T704-assemble-bounded-channel-context | — | — |
+| [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | Planned | T704, T703 | PG-07C | Unassigned | task/T705-integrate-context-with-gist-agent | — | — |
+| [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md) — Validate channel intelligence end to end | P07 | Planned | T705 | PG-07D | Unassigned | task/T706-validate-channel-intelligence-end-to-end | — | — |
 
 ## Active write locks
 
@@ -108,5 +121,5 @@ offline evidence.
 | B-04 | T401/T104/T405 | RESOLVED 2026-08-30: operator confirmed workspace is a test workspace; tokens usable for dev. Remaining: verify users:read scope via live probe | Operator (saravanan) | done | 2026-08-30 |
 | B-05 | T401/T405 | RESOLVED 2026-08-30: app reinstalled, probe post/edit/delete + users.info pass. Follow-up: add im:read/im:write/im:history scopes + message.im subscription for DM support | Operator (saravanan) | done | 2026-08-30 |
 | B-06 | FR-SLK-002 DMs | RESOLVED 2026-08-30: im scopes added + app reinstalled by operator; probe re-run to confirm | Operator (saravanan) | done | 2026-08-30 |
-| B-07 | T406/PG-04D | **IN PROGRESS 2026-08-30:** the operator posted an `@Gist` mention in the approved channel and the bot replied. pi-coder-14 is verifying recall telemetry. Ambient silent persistence and edit propagation are reported confirmed; delete propagation and the paraphrased-recall assertion are still open. **None of this is yet in `logs/T406.md` or `docs/reports/live-ingestion-validation.md`**, which both still end at the 15:43 UTC provider entry | pi-coder-14 | T406 live matrix completed and its report updated | 2026-08-30 |
+| B-07 | T406/PG-04D | RESOLVED 2026-08-30: live human ambient capture, edit, delete, addressed recall/reply, and boundary isolation passed; report merged GO at `f9e20de` | pi-coder-14 / Operator | done | 2026-08-30 |
 | B-08 | T505/T506 build gate | RESOLVED 2026-08-30: Mastra CLI-required named `mastra` export restored without reintroducing import-time configured storage | Integration | `92aa6a3`; `npm run build`, typecheck, and full tests pass | 2026-08-30 |

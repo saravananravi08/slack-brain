@@ -25,6 +25,11 @@
 | `docs/implementation/STATUS.md` | Coordinator/phase integrator only |
 | `docs/implementation/EXECUTION_LOG.md` | Phase integrator only |
 | `docs/implementation/DECISIONS.md` | Coordinator only |
+| `src/ingestion/events/**` | T603 during P06 |
+| `src/ingestion/persistence/**` | T604 during P06 |
+| `src/ingestion/mutations/**` | T605 during P06 |
+| `src/config.ts`, `src/security/**`, `src/mastra/channels/**`, `src/mastra/index.ts` | T606 during P06; T705 for P07 agent/context integration |
+| `src/mastra/memory/gist-memory.ts` | T702 during P07 |
 
 ## Source ownership by area
 
@@ -52,6 +57,18 @@
 | Live integration | shared Slack/runtime files | T405 |
 | Release validation | `tests/e2e/**`, reports under `artifacts/` ignored from Git | T501–T503 |
 | Deployment docs/config | deployment files and runbooks | T504 |
+| Channel enrollment | `src/channel-memory/registry/**` | T602 |
+| All-sender normalization | `src/ingestion/events/**` | T603 |
+| All-message persistence | `src/ingestion/persistence/**` | T604 |
+| Channel edit policy | `src/ingestion/mutations/**` | T605 |
+| Multi-channel capture integration | shared config/security/channel/runtime paths | T606 |
+| Channel capture validation | `tests/e2e/channel-memory-capture/**`, capture report | T607 |
+| Chronological channel history | `src/channel-memory/history/**` | T701 |
+| Channel observations | `src/channel-memory/observations/**`, Gist memory config | T702 |
+| Semantic memory tool | `src/mastra/tools/channel-memory-search.ts` | T703 |
+| Channel context assembly | `src/channel-memory/context/**` | T704 |
+| Gist context integration | shared agent/channel/runtime paths | T705 |
+| Channel intelligence validation | `tests/e2e/channel-context/**`, context report | T706 |
 
 ## Conflict check before handoff
 

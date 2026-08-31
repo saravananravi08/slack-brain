@@ -1,6 +1,6 @@
 # P04 — Live Silent Channel Ingestion
 
-- **Status:** Planned
+- **Status:** Completed
 - **Depends on:** P02; may develop alongside P03 after contracts stabilize
 - **Phase integrator:** Unassigned
 - **PRD coverage:** UJ4, FR-MEM-008, FR-SLK-008–010, FR-PRV-001–007
@@ -20,14 +20,7 @@ New human messages, replies, and accepted mutations from approved Slack channels
 1. **PG-04A:** T401 runs first and commits a tested adapter event contract.
 2. **PG-04B:** T402, T403, and T404 run concurrently against that contract.
 3. **PG-04C:** T405 owns Slack/runtime integration files.
-4. **PG-04D:** T406 validates end to end. **In progress (2026-08-30).** A
-   human-authored Slack event has now traversed the system: the operator posted
-   an `@Gist` mention in the approved channel and the bot replied. Ambient
-   silent persistence is confirmed and edit propagation passes; paraphrased
-   recall is being verified and delete propagation is still open. The gate
-   closes when the full live matrix is recorded in
-   [`live-ingestion-validation.md`](../../reports/live-ingestion-validation.md)
-   — which does not yet carry any of it.
+4. **PG-04D:** T406 validated the full live matrix and merged GO at `f9e20de`: human ambient capture, silence, edit/delete propagation, addressed recall/reply, attribution, and boundary isolation passed.
 
 P04 component work may run in parallel with P03 component/import work because source paths differ. T501 waits for both phases.
 
@@ -40,7 +33,7 @@ P04 component work may run in parallel with P03 component/import work because so
 | [T403](../tasks/T403-SILENT-PERSISTENCE.md) | Completed | T201, T202, T401 | PG-04B | pi-coder-10 | c3365cd |
 | [T404](../tasks/T404-MUTATION-POLICY.md) | Completed | T001, T203, T401 | PG-04B | pi-coder-11 | 21f5d72 |
 | [T405](../tasks/T405-LIVE-INTEGRATION.md) | Completed | T402–T404, T204 | PG-04C | pi-coder-12 | f64b2dc |
-| [T406](../tasks/T406-LIVE-VALIDATION.md) | In Progress (live transport reached) | T405, T205 | PG-04D | pi-coder-14 | — (scaffold `347ec14`) |
+| [T406](../tasks/T406-LIVE-VALIDATION.md) | Completed | T405, T205 | PG-04D | pi-coder-14 | f9e20de |
 
 ## Integration procedure
 
@@ -51,12 +44,12 @@ P04 component work may run in parallel with P03 component/import work because so
 
 ## Exit criteria
 
-- [ ] Approved human messages persist silently.
-- [ ] Bot/system/unapproved events do not pollute memory.
-- [ ] Retries are idempotent.
-- [ ] Thread identity and speaker metadata are preserved.
-- [ ] Edit/delete behavior matches D005.
-- [ ] No ambient event triggers a Gist response or model generation.
+- [x] Approved human messages persist silently.
+- [x] Bot/system/unapproved events do not pollute memory.
+- [x] Retries are idempotent.
+- [x] Thread identity and speaker metadata are preserved.
+- [x] Edit/delete behavior matches D005.
+- [x] No ambient event triggers a Gist response or model generation.
 
 ## Phase verification
 
@@ -70,6 +63,6 @@ git diff --check
 
 ## Completion record
 
-- Gate approved by: —
-- Gate date: —
-- Commit: —
+- Gate approved by: Integration coordinator
+- Gate date: 2026-08-30
+- Commit: f9e20de
