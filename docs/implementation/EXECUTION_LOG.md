@@ -308,3 +308,8 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Verification: mutations 24/24; contracts 358 passed; typecheck OK; ingestion 135 passed; build OK.
 - Post-merge note: 4 D005-era tests fail on delete-ignore semantics; fix-up assigned to pi-coder-19 on fix/p06-d015-test-alignment before Wave 3.
 - Result: merged GO with recorded follow-up. Blockers: none.
+
+### 2026-08-31 — P06 Wave 2 closed (T602–T605)
+
+- D005/D013 test alignment merged at `33b75e3`; full regression 981 passed / 5 skipped / 0 failed; typecheck OK; build OK.
+- All four Wave-2 tasks (T602, T603, T604, T605) are Completed; Wave 3 (T606) may begin.
