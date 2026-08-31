@@ -326,3 +326,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - T607 merged at `1a63d5e` (offline GO: CM-AC-01…07, CM-AC-12 pass offline; restart-retry defect found by T607 and fixed via 45d2cac before re-verification).
 - Gates: typecheck OK; ingestion 135/135; full 999 passed / 5 skipped; build OK.
 - P06 remains OPEN: live two-channel validation requires the operator 16-step checklist in docs/reports/channel-memory-capture-validation.md. P07 Wave 5 starts in parallel (T701/T702/T703) — code work does not depend on the live run.
+
+### 2026-08-31 — T702 completed (P07 Wave 5)
+
+- Task: T702 enable channel-scoped Observation Memory; worker: pi-coder-22; branch: task/T702-enable-channel-observation-memory.
+- Implementation `f691ddd`; handoff `9b4f4bf`; merge `3fdc67f`. Mastra API proofs recorded in the log (scope/outbound/isolation/edit-refresh all supported).
+- Verification: memory suite 36 passed pre-handoff; post-merge full 1005 passed / 5 skipped; typecheck OK; build OK.
+- Result: merged GO. Blockers: none.

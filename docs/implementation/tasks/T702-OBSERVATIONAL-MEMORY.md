@@ -1,6 +1,6 @@
 # T702 — Enable channel-scoped Observation Memory
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** pi coding agent
 - **Branch:** `task/T702-enable-channel-observation-memory`
@@ -62,6 +62,6 @@ git diff --check
 
 - Implementation commit: `f691ddd`
 - Handoff commit: this commit (`docs(T702): hand off channel observation memory`)
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `3fdc67f`
+- Integration metadata commit: docs(P07) complete T702 metadata commit
+- Completed at: 2026-08-31
