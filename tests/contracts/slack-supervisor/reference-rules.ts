@@ -449,6 +449,20 @@ export type SupervisorEventSource = 'slack' | 'continuation';
 /** events.md §1 — `SourceEventKey = MessageKey | ContinuationKey`. */
 export type SourceEventKey = string;
 
+const MESSAGE_KEY_SHAPE = /^T[A-Z0-9]{8,}\/[CDG][A-Z0-9]{8,}\/(?:0|[1-9]\d*)\.\d+$/;
+const CONTINUATION_KEY_SHAPE = /^cont:[^:/\s]+:[1-9]\d*$/;
+
+/** slack-event.md §3 and events.md §1 — canonical content identity. */
+export function isMessageKey(value: unknown): value is string {
+  return typeof value === 'string' && MESSAGE_KEY_SHAPE.test(value);
+}
+
+/** events.md §1 — either canonical persisted Slack identity or continuation identity. */
+export function isSourceEventKey(value: unknown): value is SourceEventKey {
+  return isMessageKey(value) ||
+    (typeof value === 'string' && CONTINUATION_KEY_SHAPE.test(value));
+}
+
 /**
  * events.md §1 — a discriminated union on `source`, not one record with
  * optional halves. A nullable `actor_class` is exactly the field a later
@@ -1476,6 +1490,17 @@ function validTimestamp(value: unknown): value is string {
   return typeof value === 'string' && value !== '' && Number.isFinite(Date.parse(value));
 }
 
+const DESTINATION_REF_SHAPE = /^dest_[a-z0-9]+(?:_[a-z0-9]+)*$/;
+
+/** dispatch.md §1 — bounded, content-free audit handle; never a Slack identity or event key. */
+export function isDestinationRef(value: unknown): value is string {
+  return typeof value === 'string' &&
+    value.length <= 64 &&
+    DESTINATION_REF_SHAPE.test(value) &&
+    !looksLikeSlackId(value) &&
+    !isSourceEventKey(value);
+}
+
 /** dispatch.md §1 — full closed schema validation for both command variants. */
 export function checkpointValidationFailure(
   checkpoint: Record<string, unknown>,
@@ -1485,10 +1510,10 @@ export function checkpointValidationFailure(
     if (!(field in checkpoint)) return 'missing_required_field';
   }
 
-  if (!nonEmptyString(checkpoint.action_id) || !nonEmptyString(checkpoint.source_event_key)) {
+  if (!nonEmptyString(checkpoint.action_id) || !isSourceEventKey(checkpoint.source_event_key)) {
     return 'invalid_field_value';
   }
-  if (!nonEmptyString(checkpoint.destination_ref)) return 'invalid_field_value';
+  if (!isDestinationRef(checkpoint.destination_ref)) return 'invalid_field_value';
   if (
     typeof checkpoint.version !== 'number' ||
     typeof checkpoint.attempt_count !== 'number'
@@ -1520,6 +1545,9 @@ export function checkpointValidationFailure(
   ) {
     return 'invalid_field_value';
   }
+  if (checkpoint.slack_message_key !== null && !isMessageKey(checkpoint.slack_message_key)) {
+    return 'invalid_field_value';
+  }
   if (!validTimestamp(checkpoint.created_at) || !validTimestamp(checkpoint.updated_at)) {
     return 'invalid_field_type';
   }
@@ -1529,12 +1557,19 @@ export function checkpointValidationFailure(
 
   const delivered = checkpoint.delivery_state === 'delivered';
   if (
-    (delivered && !nonEmptyString(checkpoint.slack_message_key)) ||
-    (!delivered && checkpoint.slack_message_key !== null) ||
-    (checkpoint.delivery_state === 'failed' && checkpoint.last_failure_class === null)
+    (delivered && !isMessageKey(checkpoint.slack_message_key)) ||
+    (!delivered && checkpoint.slack_message_key !== null)
   ) {
     return 'invalid_state_consistency';
   }
+
+  const failure = checkpoint.last_failure_class as FailureClass | null;
+  const failureStateIsValid = checkpoint.delivery_state === 'failed'
+    ? failure !== null && DEFINITIVE_NON_DELIVERY.includes(failure as SlackAttemptFailureClass)
+    : checkpoint.delivery_state === 'in_flight'
+      ? failure === null || failure === 'slack_transport_error'
+      : failure === null;
+  if (!failureStateIsValid) return 'invalid_state_consistency';
 
   const targeted =
     checkpoint.action_class === 'dispatch_bot' || checkpoint.action_class === 'follow_up_bot';

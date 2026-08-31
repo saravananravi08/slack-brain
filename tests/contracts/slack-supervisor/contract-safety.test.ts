@@ -214,6 +214,7 @@ describe('no retired vocabulary survives a rename', () => {
     ['late success', 'attempts are strictly serial (dispatch.md §3.3)'],
     ['before every dispatch', 'limits are checked before durable command creation'],
     ['reconcile any action left in a non-terminal delivery state', 'dispatch pending; reconcile only in-flight'],
+    ['approve, cancel, or materially redirect', 'approvers may approve/cancel; only owners redirect'],
   ];
 
   it.each(CONTRACT_DOCS)('%s uses no superseded wording', (doc) => {

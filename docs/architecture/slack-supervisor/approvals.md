@@ -121,12 +121,17 @@ cannot approve it (§4).
 
 One `owner_user_id` per workflow, set at creation to the requesting authorized human.
 
-| Actor | May discuss in the thread | May approve, cancel, or materially redirect |
-|---|---|---|
-| owner | yes | yes |
-| configured approver | yes | yes |
-| other authorized human | yes | **no**, unless a recorded ownership transfer exists |
-| unauthorized human, any bot, Gist | no supervisor evaluation at all | no |
+| Actor | May discuss in the thread | May approve or cancel | May materially redirect |
+|---|---|---|---|
+| owner | yes | yes | yes |
+| configured approver | yes | yes | **no** |
+| other authorized human | yes | **no**, unless they become owner through a recorded ownership transfer | **no**, unless they become owner through that transfer |
+| unauthorized human, any bot, Gist | no supervisor evaluation at all | no | no |
+
+A configured approver may approve or cancel but can never materially redirect the current workflow.
+Only the owner may change its objective, logical target, or scope. An ownership transfer is a
+separate gated policy action; after it commits, the new owner acts as owner rather than inheriting
+redirect authority merely from approver status.
 
 **Ownership transfer** is itself a `GatedActionClass` member. It requires an approval from the
 current owner or a configured approver, is recorded on the workflow record, and invalidates every

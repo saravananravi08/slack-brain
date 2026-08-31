@@ -6,7 +6,15 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
+import {
+  asArray,
+  asRecord,
+  asStrings,
+  byName,
+  loadContractDoc,
+  loadFixture,
+  names,
+} from './helpers.js';
 import {
   GATED_ACTION_CLASSES,
   approvalFailure,
@@ -209,6 +217,18 @@ describe('invalidation is structural (approvals.md §3.2)', () => {
 });
 
 describe('ownership (approvals.md §4, GS-FR-016)', () => {
+  it('keeps configured-approver control aligned with owner-only redirect across contracts', () => {
+    const approvalsDoc = loadContractDoc('approvals.md');
+    const workflowDoc = loadContractDoc('workflow-state.md');
+
+    expect(approvalsDoc).toContain('| configured approver | yes | yes | **no** |');
+    expect(approvalsDoc).toContain('A configured approver may approve or cancel but can never materially redirect');
+    expect(workflowDoc).toContain(
+      '| material redirect (new objective, new logical target, widened scope) | the owner only;',
+    );
+    expect(approvalsDoc).not.toContain('| configured approver | yes | yes | yes |');
+  });
+
   it.each(names(ownership))('%s', (name) => {
     const testCase = byName(ownership, name);
     const permissions = ownershipPermissions({

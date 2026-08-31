@@ -12,6 +12,7 @@ import {
   CHECKPOINT_FIELDS,
   DEFINITIVE_NON_DELIVERY,
   DELIVERY_TRANSITIONS,
+  FAILURE_CLASSES,
   actionClaimAllowed,
   actionClaimKey,
   applyDeliveryOutcome,
@@ -23,7 +24,10 @@ import {
   dispatchBlockedBy,
   dispatchClaimKey,
   failureBehavior,
+  isDestinationRef,
   isLegalDeliveryTransition,
+  isMessageKey,
+  isSourceEventKey,
   looksLikeSlackId,
   mayAbandonInFlight,
   outboxRecoveryAction,
@@ -65,6 +69,27 @@ describe('ActionCheckpoint full schemas (dispatch.md §1)', () => {
   const bound = asRecord(fixture.bound_checkpoint, 'bound_checkpoint');
   const unboundCheckpoint = asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint');
   const matrix = asRecord(fixture.checkpoint_schema_matrix, 'checkpoint_schema_matrix');
+  const semantics = asRecord(fixture.checkpoint_semantic_matrix, 'checkpoint_semantic_matrix');
+  const validSourceKeys = asStrings(semantics.valid_source_event_keys, 'valid_source_event_keys');
+  const malformedSourceKeys = asStrings(
+    semantics.malformed_source_event_keys,
+    'malformed_source_event_keys',
+  );
+  const malformedMessageKeys = asStrings(
+    semantics.malformed_message_keys,
+    'malformed_message_keys',
+  );
+  const malformedDestinationRefs = asStrings(
+    semantics.malformed_destination_refs,
+    'malformed_destination_refs',
+  );
+  const definitiveFailedClasses = asStrings(
+    semantics.definitive_failed_classes,
+    'definitive_failed_classes',
+  );
+  const nonDefinitiveFailureClasses = FAILURE_CLASSES.filter(
+    (value) => !definitiveFailedClasses.includes(value),
+  );
   const variants = [bound, unboundCheckpoint];
 
   it('pins every required and allowed key exactly', () => {
@@ -147,6 +172,38 @@ describe('ActionCheckpoint full schemas (dispatch.md §1)', () => {
     }
   });
 
+  it.each(validSourceKeys)('accepts canonical SourceEventKey %s', (key) => {
+    expect(isSourceEventKey(key)).toBe(true);
+    expect(checkpointValidationFailure({ ...bound, source_event_key: key })).toBeNull();
+  });
+
+  it.each(malformedSourceKeys)('rejects malformed SourceEventKey %s', (key) => {
+    expect(isSourceEventKey(key)).toBe(false);
+    expect(checkpointValidationFailure({ ...bound, source_event_key: key }))
+      .toBe('invalid_field_value');
+  });
+
+  it('accepts a canonical MessageKey for confirmed delivery', () => {
+    expect(isMessageKey(bound.slack_message_key)).toBe(true);
+  });
+
+  it.each(malformedMessageKeys)('rejects malformed MessageKey %s', (key) => {
+    expect(isMessageKey(key)).toBe(false);
+    expect(checkpointValidationFailure({ ...bound, slack_message_key: key }))
+      .toBe('invalid_field_value');
+  });
+
+  it('accepts a safe opaque destination ref', () => {
+    expect(isDestinationRef(bound.destination_ref)).toBe(true);
+    expect(looksLikeSlackId(malformedDestinationRefs[0]!)).toBe(true);
+  });
+
+  it.each(malformedDestinationRefs)('rejects malformed destination ref %s', (ref) => {
+    expect(isDestinationRef(ref)).toBe(false);
+    expect(checkpointValidationFailure({ ...bound, destination_ref: ref }))
+      .toBe('invalid_field_value');
+  });
+
   it('enforces delivery-state and message-key consistency', () => {
     expect(checkpointValidationFailure({ ...bound, slack_message_key: null }))
       .toBe('invalid_state_consistency');
@@ -154,13 +211,72 @@ describe('ActionCheckpoint full schemas (dispatch.md §1)', () => {
       ...unboundCheckpoint,
       slack_message_key: 'T0SUPVTEST/C0SUPVTESTA/1756684990.000410',
     })).toBe('invalid_state_consistency');
+    expect(checkpointValidationFailure({ ...unboundCheckpoint, delivery_state: 'toString' }))
+      .toBe('invalid_field_value');
+  });
+
+  it('pins the definitive failed-class set', () => {
+    expect(definitiveFailedClasses).toEqual([...DEFINITIVE_NON_DELIVERY]);
+  });
+
+  it.each(definitiveFailedClasses)('permits failed for definitive rejection %s', (failure) => {
+    expect(checkpointValidationFailure({
+      ...unboundCheckpoint,
+      delivery_state: 'failed',
+      last_failure_class: failure,
+    })).toBeNull();
+  });
+
+  it('rejects failed without a failure class', () => {
     expect(checkpointValidationFailure({
       ...unboundCheckpoint,
       delivery_state: 'failed',
       last_failure_class: null,
     })).toBe('invalid_state_consistency');
-    expect(checkpointValidationFailure({ ...unboundCheckpoint, delivery_state: 'toString' }))
-      .toBe('invalid_field_value');
+  });
+
+  it.each(nonDefinitiveFailureClasses)('rejects failed for non-definitive class %s', (failure) => {
+    expect(checkpointValidationFailure({
+      ...unboundCheckpoint,
+      delivery_state: 'failed',
+      last_failure_class: failure,
+    })).toBe('invalid_state_consistency');
+  });
+
+  it('keeps timeout and transport ambiguity in_flight and all other state/failure pairs exact', () => {
+    const inFlightFailures = asArray(semantics.in_flight_failure_classes, 'in_flight_failure_classes');
+    for (const failure of inFlightFailures) {
+      expect(checkpointValidationFailure({
+        ...unboundCheckpoint,
+        delivery_state: 'in_flight',
+        last_failure_class: failure,
+      }), String(failure)).toBeNull();
+    }
+    for (const failure of FAILURE_CLASSES.filter((value) => value !== 'slack_transport_error')) {
+      expect(checkpointValidationFailure({
+        ...unboundCheckpoint,
+        delivery_state: 'in_flight',
+        last_failure_class: failure,
+      }), failure).toBe('invalid_state_consistency');
+    }
+    for (const deliveryState of ['pending', 'abandoned']) {
+      for (const failure of FAILURE_CLASSES) {
+        expect(checkpointValidationFailure({
+          ...unboundCheckpoint,
+          delivery_state: deliveryState,
+          last_failure_class: failure,
+        }), `${deliveryState}/${failure}`).toBe('invalid_state_consistency');
+      }
+    }
+    for (const failure of FAILURE_CLASSES) {
+      expect(checkpointValidationFailure({ ...bound, last_failure_class: failure }), failure)
+        .toBe('invalid_state_consistency');
+    }
+  });
+
+  it('keeps destination_unresolved before command creation', () => {
+    expect(semantics.destination_unresolved_expect_command_created).toBe(false);
+    expect(DEFINITIVE_NON_DELIVERY).not.toContain('destination_unresolved');
   });
 
   it('enforces the bound discriminator completely', () => {

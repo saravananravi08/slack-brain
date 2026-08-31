@@ -81,7 +81,10 @@ external-action claim when one is produced — treats them identically. An inter
 bounded and as replay-safe as a message from the outside.
 
 `SourceEventKey = MessageKey | ContinuationKey` is the union the rest of the set writes against
-(`dispatch.md` §1, §2).
+(`dispatch.md` §1, §2). Canonical `MessageKey` shape is
+`T<workspace>/<C-, D-, or G-prefixed conversation>/<integer-seconds>.<fraction>` with no whitespace or extra
+segments. Canonical `ContinuationKey` shape is `cont:<non-empty-workflow-id>:<integer-seq >= 1>`
+with no whitespace, slash, or colon inside the workflow ID.
 
 ## 2. Admission order (GS-FR-001, GS-FR-017, GS-NFR-003)
 

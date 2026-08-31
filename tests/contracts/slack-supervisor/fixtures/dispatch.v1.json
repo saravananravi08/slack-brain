@@ -929,7 +929,57 @@
       "non_delivered_forbids_message_key",
       "updated_at_not_before_created_at",
       "targeted_requires_logical_target",
-      "untargeted_forbids_logical_target"
+      "untargeted_forbids_logical_target",
+      "failed_requires_definitive_pre_acceptance_rejection",
+      "in_flight_allows_only_null_or_transport_error",
+      "other_states_require_null_failure"
     ]
+  },
+  "checkpoint_semantic_matrix": {
+    "valid_source_event_keys": [
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1"
+    ],
+    "malformed_source_event_keys": [
+      "arbitrary-event-key",
+      "T0SUPVTEST/C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/not-a-timestamp",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200/extra",
+      "X0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "T0SUPVTEST/X0SUPVTESTA/1756684860.000200",
+      "cont::1",
+      "cont:wf_supv_0001:0",
+      "cont:wf supv 0001:1",
+      "cont:wf_supv_0001:1:extra"
+    ],
+    "malformed_message_keys": [
+      "arbitrary-message-key",
+      "T0SUPVTEST/C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/not-a-timestamp",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200/extra",
+      "X0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "T0SUPVTEST/X0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1"
+    ],
+    "malformed_destination_refs": [
+      "C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1",
+      "dest_SUPV_0001",
+      "dest_supv__0001",
+      "dest_supv_0001/extra",
+      "dest_",
+      "dest_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "definitive_failed_classes": [
+      "slack_permission_denied",
+      "slack_rate_limited",
+      "slack_invalid_request"
+    ],
+    "in_flight_failure_classes": [
+      null,
+      "slack_transport_error"
+    ],
+    "destination_unresolved_expect_command_created": false
   }
 }

@@ -23,13 +23,13 @@ ActionCheckpointBase
   action_id             non-empty string
   binding_kind          'workflow' | 'event'
   version               safe integer >= 1       # durable action version
-  source_event_key      non-empty SourceEventKey
+  source_event_key      canonical SourceEventKey
   action_class          ExternallyVisible
   logical_target        LogicalTarget | null
-  destination_ref       non-empty string       # opaque, runtime-derived
+  destination_ref       OpaqueDestinationRef  # opaque, runtime-derived
   destination_source    'workflow_binding' | 'source_event'
   delivery_state        DeliveryState
-  slack_message_key     non-empty MessageKey | null
+  slack_message_key     canonical MessageKey | null
   attempt_count         safe integer >= 1
   last_failure_class    FailureClass | null
   created_at            valid timestamp
@@ -60,11 +60,23 @@ The objects are closed: every shown field is required and no unknown field is ac
 work-class, or target change.
 Only the five `ExternallyVisible` action classes are valid; internal actions such as `no_action`
 never become checkpoints. Targeted actions require `logical_target`; all others require null.
-`delivered` requires a message key and every other delivery state forbids one; `failed` requires a
-failure class. Timestamps must parse
-and cannot move backwards. `destination_ref` is an opaque audit handle, not a model field or Slack
-identifier. Missing, malformed, unsafe-integer, unknown-field, variant, and state-consistency errors
-are rejected before command insertion.
+`source_event_key` must match the key union frozen in `events.md` §1: a canonical
+`workspace_id/channel_id/message_ts` `MessageKey` or
+`cont:<workflow_id>:<positive-continuation-seq>`. A non-null `slack_message_key` must be the canonical
+message form, never a continuation key.
+
+`OpaqueDestinationRef = "dest_" + one or more lowercase alphanumeric segments joined by single
+underscores`, with at most 64 characters total. It is a content-free runtime audit handle, not a
+model field, Slack identifier, `MessageKey`, or `SourceEventKey`; values outside that safe grammar
+reject.
+
+`delivered` requires a canonical message key and every other delivery state forbids one. Failure
+state is exact: `failed` requires one of `slack_permission_denied`, `slack_rate_limited`, or
+`slack_invalid_request`; `in_flight` may carry `slack_transport_error` or null (including timeout);
+`pending`, `delivered`, and `abandoned` require null. Every other state/failure pairing rejects.
+`destination_unresolved` is detected before command creation, so it creates no checkpoint.
+Timestamps must parse and cannot move backwards. Missing, malformed, unsafe-integer, unknown-field,
+variant, and state-consistency errors are rejected before command insertion.
 
 ## 2. Atomic command creation (GS-FR-024)
 

@@ -30,6 +30,8 @@ import {
   continuationOutcome,
   continuationRecoveryAction,
   isLegalContinuationProcessingTransition,
+  isMessageKey,
+  isSourceEventKey,
   mayMarkContinuationCompleted,
   outboxRecoveryAction,
   enqueuesContinuation,
@@ -93,8 +95,8 @@ describe('origin typing (actions.md §2.1)', () => {
 
   it.each(names(chainCases))('%s', (name) => {
     const testCase = byName(chainCases, name);
-    const isMessageKey = /^[^:]+\/[^/]+\/\d+\.\d+$/.test(String(testCase.origin_event_key));
-    expect(isMessageKey).toBe(testCase.expect_origin_is_message_key);
+    expect(isSourceEventKey(testCase.origin_event_key)).toBe(true);
+    expect(isMessageKey(testCase.origin_event_key)).toBe(testCase.expect_origin_is_message_key);
   });
 
   it('lets a later continuation descend from an earlier one', () => {
@@ -113,7 +115,7 @@ describe('origin typing (actions.md §2.1)', () => {
   it('answers provenance with the root, not with the immediate parent', () => {
     const second = byName(chainCases, 'second_continuation_descends_from_the_first');
     expect(second.root_message_key).not.toBe(second.origin_event_key);
-    expect(String(second.root_message_key)).toMatch(/^[^:]+\/[^/]+\/\d+\.\d+$/);
+    expect(isMessageKey(second.root_message_key)).toBe(true);
   });
 });
 
