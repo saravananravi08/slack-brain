@@ -1,8 +1,8 @@
 # T607 — Validate complete multi-channel capture
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** T607 agent
 - **Branch:** `task/T607-validate-complete-multi-channel-capture`
 - **Parallel group:** PG-06D
 - **Depends on:** T606
@@ -51,16 +51,20 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] CM-AC-01…07 and CM-AC-12 pass.
-- [ ] Zero cross-channel records or responses are observed.
-- [ ] Capture and response counts match expected values.
-- [ ] Report contains no private content or identifiers.
-- [ ] P06 phase gate receives explicit GO/NO-GO.
+- [x] CM-AC-01…07 and CM-AC-12 pass offline; live operator steps remain pending.
+- [x] Zero cross-channel records or responses are observed offline.
+- [x] Offline capture and response counts match expected values.
+- [x] Report skeleton contains no private content or identifiers.
+- [x] P06 phase gate is explicitly Pending / NO-GO until live checklist completion.
+
+## Resolved blocker
+
+- T607 found that production delivery claims did not survive process re-composition. The coordinator assigned `fix/p06-durable-delivery-dedup`; durable LibSQL claims merged in `45d2cac`. T607 resumed against that integration commit and re-verifies restart suppression before handoff.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `37a717a`
+- Handoff commit: this handoff commit
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
