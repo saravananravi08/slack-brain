@@ -160,10 +160,18 @@ happens after `events.md` §2 has already decided the sender may act.
 
 ## 6. Interaction with limits
 
-`waiting_human` from an autonomy-limit stop is not an approval request. After ordinary identity and
-owner/approver checks, control intent is admitted even though autonomous evaluation remains blocked:
-cancel terminates, redirect writes a new action version but remains stopped, and status/pause are
-control-only.
+`waiting_human` from an autonomy-limit stop is not an approval request. Limit admission preserves
+§5's authority per verb; it does not collapse people into an `owner_or_approver` role:
+
+- `status`: any authorized human;
+- `pause`: owner or approver;
+- `redirect`: owner only — an approver is explicitly rejected;
+- `cancel`: owner or approver;
+- `continue` (the bounded form of resume): owner or approver.
+
+Authorization, ownership, and approver facts are checked separately. A role bit never substitutes
+for `authorized_human`. Status and pause are control-only; redirect writes a new action version but
+remains stopped; cancel terminates.
 
 `continue` mints at most one durable evaluation/action grant keyed by the human event. It does not
 raise a limit, reset a counter, or extend time. The grant is consumed atomically with one durable
@@ -182,4 +190,4 @@ grant. Normal limit checks apply again immediately afterwards (`workflow-state.m
 | §3.3 no bot, self, or unauthorized approval | `approvals.test.ts`, `identity-routing.test.ts` |
 | §4 ownership, transfer as a gated class | `approvals.test.ts` |
 | §5 control verbs and their authority | `approvals.test.ts` |
-| §6 control survives a limit; continue grants one event-keyed opportunity only | `limits.test.ts` |
+| §6 limit control preserves status/pause/redirect/cancel/continue authority exactly | `limits.test.ts` |

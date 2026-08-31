@@ -5,8 +5,8 @@
   "defines": "docs/architecture/slack-supervisor/dispatch.md",
   "checkpoint_required_fields": [
     "action_id",
-    "workflow_id",
     "binding_kind",
+    "workflow_id",
     "version",
     "source_event_key",
     "action_class",
@@ -33,19 +33,19 @@
   "sample_checkpoint": {
     "action_id": "act_supv_0001",
     "workflow_id": "wf_supv_0001",
-    "version": 1,
     "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
     "action_class": "dispatch_bot",
     "logical_target": "kilo",
     "destination_ref": "dest_supv_0001",
     "delivery_state": "delivered",
     "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
-    "attempt_count": 1,
     "last_failure_class": null,
     "created_at": "2026-09-01T00:01:00.000Z",
     "updated_at": "2026-09-01T00:01:05.000Z",
     "binding_kind": "workflow",
-    "destination_source": "workflow_binding"
+    "destination_source": "workflow_binding",
+    "version": 1,
+    "attempt_count": 1
   },
   "claim_keys": [
     {
@@ -797,16 +797,38 @@
   },
   "failure_behavior_note": "dispatch.md §6 — `expect_workflow_state` is where the workflow lands when the failure is not resolved into a delivery by §5.",
   "bound_checkpoint": {
-    "binding_kind": "workflow",
+    "action_id": "act_supv_0001",
     "workflow_id": "wf_supv_0001",
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
     "action_class": "dispatch_bot",
-    "destination_source": "workflow_binding"
+    "logical_target": "kilo",
+    "destination_ref": "dest_supv_0001",
+    "delivery_state": "delivered",
+    "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:01:00.000Z",
+    "updated_at": "2026-09-01T00:01:05.000Z",
+    "binding_kind": "workflow",
+    "destination_source": "workflow_binding",
+    "version": 1,
+    "attempt_count": 1
   },
   "unbound_checkpoint": {
+    "action_id": "act_supv_0002",
     "binding_kind": "event",
     "workflow_id": null,
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
     "action_class": "reply_user",
-    "destination_source": "source_event"
+    "logical_target": null,
+    "destination_ref": "dest_supv_0002",
+    "destination_source": "source_event",
+    "delivery_state": "pending",
+    "slack_message_key": null,
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:03:00.000Z",
+    "updated_at": "2026-09-01T00:03:00.000Z",
+    "version": 1,
+    "attempt_count": 1
   },
   "crash_matrix": [
     {
@@ -854,5 +876,60 @@
       "expect_max_effects": 1,
       "expect_blind_retry": false
     }
-  ]
+  ],
+  "checkpoint_schema_matrix": {
+    "required_fields": [
+      "action_id",
+      "binding_kind",
+      "workflow_id",
+      "version",
+      "source_event_key",
+      "action_class",
+      "logical_target",
+      "destination_ref",
+      "destination_source",
+      "delivery_state",
+      "slack_message_key",
+      "attempt_count",
+      "last_failure_class",
+      "created_at",
+      "updated_at"
+    ],
+    "variants": [
+      "workflow",
+      "event"
+    ],
+    "malformed_fields": [
+      "action_id",
+      "binding_kind",
+      "workflow_id",
+      "version",
+      "source_event_key",
+      "action_class",
+      "logical_target",
+      "destination_ref",
+      "destination_source",
+      "delivery_state",
+      "slack_message_key",
+      "attempt_count",
+      "last_failure_class",
+      "created_at",
+      "updated_at"
+    ],
+    "unknown_field": "unexpected_checkpoint_field",
+    "forbidden_action_classes": [
+      "no_action",
+      "wait",
+      "complete",
+      "fail",
+      "cancel"
+    ],
+    "state_consistency": [
+      "delivered_requires_message_key",
+      "non_delivered_forbids_message_key",
+      "updated_at_not_before_created_at",
+      "targeted_requires_logical_target",
+      "untargeted_forbids_logical_target"
+    ]
+  }
 }

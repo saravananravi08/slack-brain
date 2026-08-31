@@ -20,20 +20,20 @@ Common fields:
 
 ```text
 ActionCheckpointBase
-  action_id
+  action_id             non-empty string
   binding_kind          'workflow' | 'event'
-  version               integer >= 1
-  source_event_key      SourceEventKey
+  version               safe integer >= 1       # durable action version
+  source_event_key      non-empty SourceEventKey
   action_class          ExternallyVisible
   logical_target        LogicalTarget | null
-  destination_ref       string                 # opaque, runtime-derived
+  destination_ref       non-empty string       # opaque, runtime-derived
   destination_source    'workflow_binding' | 'source_event'
   delivery_state        DeliveryState
-  slack_message_key     MessageKey | null
-  attempt_count         integer >= 1
+  slack_message_key     non-empty MessageKey | null
+  attempt_count         safe integer >= 1
   last_failure_class    FailureClass | null
-  created_at
-  updated_at
+  created_at            valid timestamp
+  updated_at            valid timestamp >= created_at
 ```
 
 The binding is a closed discriminated union:
@@ -55,8 +55,16 @@ derived from the persisted source Slack event's workspace/channel/thread. Neithe
 model-controlled. An unmatched-bot notice and ordinary assistance use the unbound variant; they do
 not fabricate a workflow ID.
 
-`version` changes on any material objective, scope, acceptance, work-class, or target change.
-`destination_ref` is an opaque audit handle, not a model field or a Slack identifier.
+The objects are closed: every shown field is required and no unknown field is accepted.
+`version` is the durable action version and changes on any material objective, scope, acceptance,
+work-class, or target change.
+Only the five `ExternallyVisible` action classes are valid; internal actions such as `no_action`
+never become checkpoints. Targeted actions require `logical_target`; all others require null.
+`delivered` requires a message key and every other delivery state forbids one; `failed` requires a
+failure class. Timestamps must parse
+and cannot move backwards. `destination_ref` is an opaque audit handle, not a model field or Slack
+identifier. Missing, malformed, unsafe-integer, unknown-field, variant, and state-consistency errors
+are rejected before command insertion.
 
 ## 2. Atomic command creation (GS-FR-024)
 
@@ -229,7 +237,7 @@ All classes are content-free. Exact message capture continues under every superv
 
 | Rule | Pinned by |
 |---|---|
-| bound/unbound checkpoint schemas and runtime destination source | `dispatch.test.ts` |
+| complete closed bound/unbound schemas, field types, safe integers, and state/time consistency | `dispatch.test.ts` |
 | event-global claim and unbound dedup/restart | `dispatch.test.ts` |
 | atomic continuation completion + pending intent | `continuation.test.ts`, `dispatch.test.ts` |
 | pending resumes before new evaluation | `dispatch.test.ts` |

@@ -11,11 +11,11 @@ import {
   admissionAtAutonomyLimit,
   applyCounters,
   consumeLimitGrant,
+  controlIntentAuthorized,
   deriveResponseDeadlineMs,
   limitGrantKey,
   limitStop,
   mayMintLimitGrant,
-  type ActorClass,
   type CountingInput,
   type LimitCheckRecord,
   type WorkflowLimits,
@@ -256,17 +256,20 @@ describe('human control remains admissible at an autonomy limit (§7.3)', () => 
   it.each(names(cases))('%s', (name) => {
     const testCase = byName(cases, name);
     const input = {
-      actor_class: testCase.actor_class as ActorClass,
-      is_owner_or_approver: Boolean(testCase.is_owner_or_approver),
+      is_authorized_human: Boolean(testCase.is_authorized_human),
+      is_owner: Boolean(testCase.is_owner),
+      is_approver: Boolean(testCase.is_approver),
       intent: (testCase.intent as 'status' | 'pause' | 'continue' | 'redirect' | 'cancel' | null) ?? null,
       limit_reached: true,
       grant_exists: Boolean(testCase.grant_exists),
       grant_consumed: Boolean(testCase.grant_consumed),
     };
+    expect(controlIntentAuthorized(input.intent, input)).toBe(testCase.expect_intent_authorized);
     expect(admissionAtAutonomyLimit(input)).toBe(testCase.expect_admission);
     expect(mayMintLimitGrant({
-      actor_class: input.actor_class,
-      is_owner_or_approver: input.is_owner_or_approver,
+      is_authorized_human: input.is_authorized_human,
+      is_owner: input.is_owner,
+      is_approver: input.is_approver,
       intent: input.intent,
       existing_event_grant: input.grant_exists,
     })).toBe(testCase.expect_may_mint);
@@ -292,9 +295,12 @@ describe('human control remains admissible at an autonomy limit (§7.3)', () => 
     expect(grant.expect_limit_applies_after_consumption).toBe(true);
   });
 
-  it('processes redirect and cancel on the control plane despite the limit', () => {
-    expect(byName(cases, 'redirect_is_control_only').expect_admission).toBe('control_only');
-    expect(byName(cases, 'cancel_is_control_only').expect_admission).toBe('control_only');
+  it('preserves intent-specific authority instead of flattening human roles', () => {
+    expect(byName(cases, 'authorized_non_owner_status_passes').expect_admission).toBe('control_only');
+    expect(byName(cases, 'owner_redirect_passes').expect_admission).toBe('control_only');
+    expect(byName(cases, 'approver_redirect_rejects').expect_admission).toBe('blocked');
+    expect(byName(cases, 'approver_pause_passes').expect_admission).toBe('control_only');
+    expect(byName(cases, 'approver_cancel_passes').expect_admission).toBe('control_only');
   });
 
   it('cannot mint a second grant from a duplicate human event after restart', () => {
@@ -302,34 +308,35 @@ describe('human control remains admissible at an autonomy limit (§7.3)', () => 
     expect(duplicate.grant_exists).toBe(true);
     expect(duplicate.grant_consumed).toBe(true);
     expect(duplicate.expect_admission).toBe('blocked');
-    const restart = byName(cases, 'restart_resumes_unconsumed_grant');
+    const restart = byName(cases, 'restart_resumes_owner_unconsumed_grant');
     expect(restart.grant_exists).toBe(true);
     expect(restart.grant_consumed).toBe(false);
+    expect(restart.is_owner).toBe(true);
     expect(restart.expect_admission).toBe('one_granted_opportunity');
     expect(restart.expect_may_mint).toBe(false);
   });
 
-  it('keeps autonomous bot and continuation events blocked at the limit', () => {
-    for (const name of ['bot_event_at_limit_is_blocked', 'continuation_at_limit_is_blocked']) {
+  it('keeps autonomous and unauthorized events blocked at the limit', () => {
+    for (const name of [
+      'autonomous_event_at_limit_is_blocked',
+      'unauthorized_status_rejects',
+      'role_without_authorization_rejects',
+    ]) {
       expect(byName(cases, name).expect_admission).toBe('blocked');
     }
   });
 
-  it('is mutation-sensitive to granting a duplicate or autonomous event', () => {
-    expect(mayMintLimitGrant({
-      actor_class: 'authorized_human',
-      is_owner_or_approver: true,
-      intent: 'continue',
-      existing_event_grant: true,
+  it('is mutation-sensitive to approver redirect and non-owner status', () => {
+    expect(controlIntentAuthorized('redirect', {
+      is_authorized_human: true,
+      is_owner: false,
+      is_approver: true,
     })).toBe(false);
-    expect(admissionAtAutonomyLimit({
-      actor_class: 'kilo',
-      is_owner_or_approver: false,
-      intent: null,
-      limit_reached: true,
-      grant_exists: false,
-      grant_consumed: false,
-    })).toBe('blocked');
+    expect(controlIntentAuthorized('status', {
+      is_authorized_human: true,
+      is_owner: false,
+      is_approver: false,
+    })).toBe(true);
   });
 });
 

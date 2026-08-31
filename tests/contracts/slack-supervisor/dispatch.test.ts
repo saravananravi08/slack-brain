@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
+  CHECKPOINT_FIELDS,
   DEFINITIVE_NON_DELIVERY,
   DELIVERY_TRANSITIONS,
   actionClaimAllowed,
@@ -17,6 +18,7 @@ import {
   applyFailedDispatch,
   attemptsAreSerial,
   checkpointBindingFailure,
+  checkpointValidationFailure,
   deliveryOutcome,
   dispatchBlockedBy,
   dispatchClaimKey,
@@ -33,7 +35,6 @@ import {
   type DeliveryState,
   type ActorClass,
   type AttemptSequenceEntry,
-  type CheckpointBindingShape,
   type FailureClass,
   type ReconciliationInput,
   type SlackAttemptFailureClass,
@@ -58,51 +59,124 @@ const failedDispatch = asArray(fixture.failed_dispatch, 'failed_dispatch');
 const reconciliation = asArray(fixture.reconciliation, 'reconciliation');
 const failureCases = asArray(fixture.failure_behavior, 'failure_behavior');
 
-describe('ActionCheckpoint (dispatch.md §1)', () => {
+describe('ActionCheckpoint full schemas (dispatch.md §1)', () => {
   const required = asStrings(fixture.checkpoint_required_fields, 'checkpoint_required_fields');
   const forbidden = asStrings(fixture.checkpoint_forbidden_fields, 'checkpoint_forbidden_fields');
+  const bound = asRecord(fixture.bound_checkpoint, 'bound_checkpoint');
+  const unboundCheckpoint = asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint');
+  const matrix = asRecord(fixture.checkpoint_schema_matrix, 'checkpoint_schema_matrix');
+  const variants = [bound, unboundCheckpoint];
 
-  it.each(required)('carries %s', (field) => {
-    expect(sample).toHaveProperty(field);
+  it('pins every required and allowed key exactly', () => {
+    expect(required).toEqual([...CHECKPOINT_FIELDS]);
+    expect(asStrings(matrix.required_fields, 'matrix.required_fields')).toEqual([...CHECKPOINT_FIELDS]);
+    for (const checkpoint of variants) {
+      expect(Object.keys(checkpoint).sort()).toEqual([...CHECKPOINT_FIELDS].sort());
+      expect(checkpointValidationFailure(checkpoint)).toBeNull();
+      expect(checkpointBindingFailure(checkpoint)).toBeNull();
+    }
   });
 
   it.each(forbidden)('does not carry %s', (field) => {
     expect(sample).not.toHaveProperty(field);
   });
 
-  it('records the destination as an opaque handle, not as an input', () => {
-    // destination_ref is resolved from the binding, so recording it makes the
-    // audit complete without making the record a place to inject one.
+  it('records runtime destination and confirmed outgoing identity consistently', () => {
     expect(looksLikeSlackId(String(sample.destination_ref))).toBe(false);
-  });
-
-  it('records the outgoing message identity only on a delivered action', () => {
     expect(sample.delivery_state).toBe('delivered');
     expect(typeof sample.slack_message_key).toBe('string');
   });
 
-  it('uses a closed bound variant for workflow actions', () => {
-    expect(checkpointBindingFailure(
-      asRecord(fixture.bound_checkpoint, 'bound_checkpoint') as unknown as CheckpointBindingShape,
-    )).toBeNull();
-    expect(checkpointBindingFailure({
-      binding_kind: 'workflow',
-      workflow_id: null,
-      action_class: 'dispatch_bot',
-      destination_source: 'workflow_binding',
-    })).toBe('invalid_bound_checkpoint');
+  it.each(['workflow', 'event'])('%s rejects every missing required field', (kind) => {
+    const source = kind === 'workflow' ? bound : unboundCheckpoint;
+    for (const field of CHECKPOINT_FIELDS) {
+      const candidate = { ...source };
+      delete candidate[field];
+      expect(checkpointValidationFailure(candidate), `${kind} accepted without ${field}`)
+        .toBe('missing_required_field');
+    }
   });
 
-  it('uses a closed unbound variant without fabricating a workflow ID', () => {
-    const checkpoint = asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint');
-    expect(checkpoint.workflow_id).toBeNull();
-    expect(checkpointBindingFailure(checkpoint as unknown as CheckpointBindingShape)).toBeNull();
-    expect(checkpointBindingFailure({
-      binding_kind: 'event',
-      workflow_id: 'wf_supv_0001',
-      action_class: 'reply_user',
-      destination_source: 'source_event',
-    })).toBe('invalid_unbound_checkpoint');
+  it.each(['workflow', 'event'])('%s rejects every malformed field type', (kind) => {
+    const source = kind === 'workflow' ? bound : unboundCheckpoint;
+    for (const field of CHECKPOINT_FIELDS) {
+      const malformed = field === 'version' || field === 'attempt_count' ? '1' : 7;
+      const candidate = { ...source, [field]: malformed };
+      expect(checkpointValidationFailure(candidate), `${kind} accepted malformed ${field}`)
+        .not.toBeNull();
+    }
+  });
+
+  it.each(['workflow', 'event'])('%s rejects unknown fields', (kind) => {
+    const source = kind === 'workflow' ? bound : unboundCheckpoint;
+    expect(checkpointValidationFailure({ ...source, unexpected_checkpoint_field: true }))
+      .toBe('unknown_field');
+  });
+
+  it('rejects empty IDs, unsafe versions, invalid attempts, and bad timestamps', () => {
+    for (const field of ['action_id', 'source_event_key', 'destination_ref']) {
+      expect(checkpointValidationFailure({ ...bound, [field]: '' }), field).toBe('invalid_field_value');
+    }
+    for (const [field, value] of [
+      ['version', 0],
+      ['version', Number.MAX_SAFE_INTEGER + 1],
+      ['attempt_count', -1],
+      ['attempt_count', 1.5],
+    ] as const) {
+      expect(checkpointValidationFailure({ ...bound, [field]: value }), field).toBe('invalid_field_value');
+    }
+    expect(checkpointValidationFailure({ ...bound, created_at: 'not-a-time' })).toBe('invalid_field_type');
+    expect(checkpointValidationFailure({
+      ...bound,
+      updated_at: '2026-08-31T23:59:59.000Z',
+    })).toBe('invalid_state_consistency');
+  });
+
+  it('accepts only externally visible action classes with target consistency', () => {
+    for (const actionClass of ['reply_user', 'ask_user', 'dispatch_bot', 'follow_up_bot', 'request_approval'] as ActionClass[]) {
+      const targeted = actionClass === 'dispatch_bot' || actionClass === 'follow_up_bot';
+      expect(checkpointValidationFailure({
+        ...bound,
+        action_class: actionClass,
+        logical_target: targeted ? 'kilo' : null,
+      }), actionClass).toBeNull();
+    }
+    for (const actionClass of ['no_action', 'wait', 'complete', 'fail', 'cancel'] as ActionClass[]) {
+      expect(checkpointValidationFailure({ ...bound, action_class: actionClass }), actionClass)
+        .toBe('invalid_field_value');
+    }
+  });
+
+  it('enforces delivery-state and message-key consistency', () => {
+    expect(checkpointValidationFailure({ ...bound, slack_message_key: null }))
+      .toBe('invalid_state_consistency');
+    expect(checkpointValidationFailure({
+      ...unboundCheckpoint,
+      slack_message_key: 'T0SUPVTEST/C0SUPVTESTA/1756684990.000410',
+    })).toBe('invalid_state_consistency');
+    expect(checkpointValidationFailure({
+      ...unboundCheckpoint,
+      delivery_state: 'failed',
+      last_failure_class: null,
+    })).toBe('invalid_state_consistency');
+    expect(checkpointValidationFailure({ ...unboundCheckpoint, delivery_state: 'toString' }))
+      .toBe('invalid_field_value');
+  });
+
+  it('enforces the bound discriminator completely', () => {
+    expect(checkpointValidationFailure({ ...bound, workflow_id: null })).toBe('invalid_bound_checkpoint');
+    expect(checkpointValidationFailure({ ...bound, destination_source: 'source_event' }))
+      .toBe('invalid_bound_checkpoint');
+  });
+
+  it('enforces the unbound discriminator without a fabricated workflow', () => {
+    expect(unboundCheckpoint.workflow_id).toBeNull();
+    expect(checkpointValidationFailure({ ...unboundCheckpoint, workflow_id: 'wf_supv_0001' }))
+      .toBe('invalid_unbound_checkpoint');
+    expect(checkpointValidationFailure({ ...unboundCheckpoint, action_class: 'ask_user' }))
+      .toBe('invalid_unbound_checkpoint');
+    expect(checkpointValidationFailure({ ...unboundCheckpoint, destination_source: 'workflow_binding' }))
+      .toBe('invalid_unbound_checkpoint');
   });
 });
 
@@ -402,7 +476,9 @@ describe('the unbound visible-action claim (dispatch.md §2, GS-FR-024)', () => 
     const retry = byName(cases, 'retried_delivery_of_that_notice_is_refused');
     expect(first.workflow_id).toBeNull();
     expect(first.destination_source).toBe('source_event');
-    expect(checkpointBindingFailure(first as unknown as CheckpointBindingShape)).toBeNull();
+    expect(checkpointValidationFailure(
+      asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint'),
+    )).toBeNull();
     expect(retry.expect_failure_class).toBe('claim_conflict');
   });
 

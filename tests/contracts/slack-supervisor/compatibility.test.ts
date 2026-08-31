@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
   STABLE_TEXT_MIN_SAMPLES,
+  compatibilityCountFailure,
   compatibilityDecision,
   correlationStrategyFor,
   dispatchAllowedByCompatibility,
@@ -27,6 +28,7 @@ const fixture = loadFixture('compatibility.v1.json');
 const enums = asRecord(fixture.enums, 'enums');
 const template = asRecord(fixture.unmeasured_template, 'unmeasured_template');
 const strategyCases = asArray(fixture.strategy_cases, 'strategy_cases');
+const countCases = asArray(fixture.count_validation_cases, 'count_validation_cases');
 const decisionCases = asArray(fixture.decision_cases, 'decision_cases');
 const phaseCases = asArray(fixture.phase_recommendation_cases, 'phase_recommendation_cases');
 const blocked = asRecord(fixture.blocked_path, 'blocked_path');
@@ -76,6 +78,45 @@ describe('the measurement record (compatibility.md §2)', () => {
     expect(hasUnmeasuredField(template as unknown as BotCompatibilityMeasurement)).toBe(true);
     expect(template.decision).toBe('NO_GO');
     expect(template.blocking_reason_class).toBe('unmeasured');
+  });
+});
+
+describe('compatibility count schema (compatibility.md §2)', () => {
+  it.each(names(countCases))('%s', (name) => {
+    const testCase = byName(countCases, name);
+    expect(compatibilityCountFailure({
+      sample_count: Number(testCase.sample_count),
+      observed_success_count: Number(testCase.observed_success_count),
+      observed_failure_count: Number(testCase.observed_failure_count),
+    })).toBe(testCase.expect_failure);
+  });
+
+  it('rejects malformed counts before compatibility policy', () => {
+    const source = byName(decisionCases, 'fully_measured_and_compatible_is_go')
+      .measurement as unknown as BotCompatibilityMeasurement;
+    for (const testCase of countCases.filter((entry) => entry.expect_failure !== null)) {
+      const decision = compatibilityDecision({
+        ...source,
+        sample_count: Number(testCase.sample_count),
+        observed_success_count: Number(testCase.observed_success_count),
+        observed_failure_count: Number(testCase.observed_failure_count),
+      });
+      expect(decision, String(testCase.name)).toEqual({
+        decision: 'NO_GO',
+        blocking_reason_class: 'invalid_sample_counts',
+      });
+    }
+  });
+
+  it('is mutation-sensitive to fractional, unsafe, overflow, and inconsistent totals', () => {
+    for (const name of [
+      'sample_count_fractional',
+      'sample_count_unsafe',
+      'outcome_count_overflow',
+      'counts_exceed_total',
+    ]) {
+      expect(byName(countCases, name).expect_failure, name).not.toBeNull();
+    }
   });
 });
 

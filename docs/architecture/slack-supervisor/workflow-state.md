@@ -37,7 +37,6 @@ WorkflowRecord
   timeout_at             timestamp | null
   completed_at           timestamp | null
   outcome_class          OutcomeClass | null           # §6.2
-  reopened_from          string | null                 # §2.4
 ```
 
 Every field is an ID, a class, a count, or a time. The objective, the clarifications, the
@@ -116,18 +115,19 @@ An ambiguous attempt is not a failure, and treating it as one is what would lice
 Only a definitive pre-acceptance rejection establishes that the instruction was never published;
 reconciliation can evidence delivery but never its absence (`dispatch.md` §5.1).
 
-### 2.4 Terminal states are final; reopen creates a new workflow
+### 2.4 Terminal states are final; reopen is unsupported pending decision
 
-Once terminal, a record is immutable except for append-only audit rows. PRD §5.1 gives an authorized
-human the power to *reopen* work; this set implements that as a **new** `WorkflowRecord` whose
-`reopened_from` names the terminal one, not as a transition out of a terminal state.
+Once terminal, a record is immutable except for append-only audit rows. That safety rule is frozen.
 
-> **Assumption recorded by T801.** The PRD names reopen as a human power (§5.1) but GS-FR-013 lists
-> no `reopened` state and GS-FR-014 requires transitions to be compare-and-set. Making terminal
-> states re-enterable would mean a replayed completion event could resurrect finished work, which
-> GS-FR-020 forbids. A new linked record is the reading that satisfies both, and it is the safer one
-> if the product owner later intends something else — a linked record can be collapsed into a
-> transition, but a resurrection cannot be un-shipped. Flagged for T803 and the product owner.
+> **Unsupported pending product-owner decision.** PRD §5.1 names reopen as a human power, but
+> GS-FR-013 defines no reopened state and GS-FR-014 supplies no compare-and-set transition. This
+> contract therefore defines **no reopen behavior**. It does not reactivate a terminal record and it
+> does not create a linked replacement record. No `reopened_from` field exists.
+
+T901/T904 must not implement or infer reopen until the product owner chooses semantics and the
+contract is amended. Candidate choices, including terminal reactivation or a new linked record, are
+non-normative and unsupported. Recording both as forbidden until decision keeps the question truly
+open rather than labelling one implemented behavior an assumption.
 
 ## 3. Transitions
 
@@ -360,12 +360,14 @@ extension.
 Turn and failure limits stop autonomy and ask a human because work may still be salvageable;
 timeouts terminate. The control plane remains open after an autonomy stop:
 
-- after authorization and workflow binding, an owner/approver `status`, `pause`, `redirect`, or
-  `cancel` intent is processed despite `max_turns` or `max_consecutive_failures`; it cannot dispatch
-  autonomous work. Redirect writes a new action version and remains stopped unless separately
-  continued; cancel terminates;
-- `continue` creates at most one durable `LimitGrantRecord`, keyed by `(workflow_id,
-  source_event_key)`, with exactly one evaluation/action opportunity;
+- authority remains intent-specific exactly as `approvals.md` §5: status is available to any
+  authorized human; pause, cancel, and continue require owner or approver; redirect requires owner;
+  an approver redirect and an unauthorized role-holder are rejected;
+- these separate authorization/owner/approver facts are checked after binding and before the limit
+  bypass. Status/pause are control-only, redirect writes a new action version and remains stopped,
+  and cancel terminates;
+- authorized owner/approver `continue` creates at most one durable `LimitGrantRecord`, keyed by
+  `(workflow_id, source_event_key)`, with exactly one evaluation/action opportunity;
 - the grant does not reset a counter, raise a limit, or extend time. Its consumption commits with
   the resulting transition, pending outbox command, or no-effect outcome;
 - replay/restart finds the same grant. An unconsumed grant resumes; a consumed grant cannot be
@@ -396,7 +398,7 @@ extension arriving through a field that looked like part of the work rather than
 |---|---|
 | §1 record shape; no content fields | `workflow-state.test.ts` |
 | §2.1 all thirteen states; four terminal | `workflow-state.test.ts` |
-| §2.4 terminal immutability; reopen is a new record | `workflow-state.test.ts` |
+| §2.4 terminal immutability; reopen unsupported pending product decision | `workflow-state.test.ts`, `requirements-map.test.ts` |
 | §3.1 the full transition table, legal and illegal | `workflow-state.test.ts` |
 | §3.2 compare-and-set, all five rejection modes, duplicate-source idempotence | `workflow-state.test.ts` |
 | §3.3 requester authority | `workflow-state.test.ts`, `approvals.test.ts` |

@@ -93,6 +93,10 @@ The set stayed at **1.0.0** through T801's integration review. Five defects were
 | Human control at autonomy limits | `workflow-state.md` §7.3 — control remains open; continue has one durable event-keyed opportunity without resetting counters |
 | Bound/unbound commands and target identity | `dispatch.md` §1 and `actions.md` §3 — no fabricated workflow IDs; source-derived unbound destination; bot/app/both target identity; `destination_unresolved` standardized |
 | Serial retries and outcome evidence | `dispatch.md` §3.3 and `compatibility.md` §2.1 — no overlapping attempt model; every GO observes success and failure, structured ≥2, stable text ≥3 |
+| Intent-specific limit authority | `approvals.md` §6 and `workflow-state.md` §7.3 — status remains any authorized human; redirect remains owner-only; pause/cancel/continue remain owner-or-approver |
+| Full checkpoint validation | `dispatch.md` §1 — complete closed bound/unbound schemas, external actions only, safe version/attempt counts, and state/time consistency |
+| Compatibility count shape | `compatibility.md` §2.1 — safe integers, nonnegative outcome counts, safe sum bounded by total samples |
+| Reopen decision made genuinely open | `workflow-state.md` §2.4 and `requirements-map.md` — no linked-record or reactivation behavior; T901/T904 blocked pending product-owner choice |
 
 The first merge of this branch is the freeze. After it, the change control above applies without exception.
 

@@ -154,9 +154,11 @@ describe('scope boundaries T801 does not cross', () => {
     expect(map).toContain('src/orchestration');
   });
 
-  it('records the reopen ambiguity rather than resolving it silently', () => {
-    expect(map).toContain('Open item recorded against the PRD');
-    expect(loadContractDoc('workflow-state.md')).toContain('Assumption recorded by T801');
+  it('blocks reopen consumers without selecting either product behavior', () => {
+    expect(map).toContain('Reopen consumer block');
+    expect(map).toContain('unsupported until the product owner chooses');
+    expect(loadContractDoc('workflow-state.md')).toContain('Unsupported pending product-owner decision');
+    expect(loadContractDoc('workflow-state.md')).not.toContain('reopen creates a new workflow');
   });
 
   it('does not claim the threat model', () => {

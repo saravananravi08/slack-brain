@@ -767,33 +767,43 @@ export function limitGrantKey(workflowId: string, sourceEventKey: string): strin
  * A continue event owns one durable opportunity; its event key cannot mint a
  * second grant after replay or restart.
  */
-export function admissionAtAutonomyLimit(input: {
-  readonly actor_class: ActorClass;
-  readonly is_owner_or_approver: boolean;
+export interface HumanControlAuthority {
+  readonly is_authorized_human: boolean;
+  readonly is_owner: boolean;
+  readonly is_approver: boolean;
+}
+
+/** approvals.md §5 — limit handling must preserve, never flatten, verb authority. */
+export function controlIntentAuthorized(
+  intent: HumanControlIntent | null,
+  authority: HumanControlAuthority,
+): boolean {
+  if (!authority.is_authorized_human || intent === null) return false;
+  if (intent === 'status') return true;
+  if (intent === 'redirect') return authority.is_owner;
+  return authority.is_owner || authority.is_approver;
+}
+
+export function admissionAtAutonomyLimit(input: HumanControlAuthority & {
   readonly intent: HumanControlIntent | null;
   readonly limit_reached: boolean;
   readonly grant_exists: boolean;
   readonly grant_consumed: boolean;
 }): LimitAdmission {
   if (!input.limit_reached) return 'normal_evaluation';
-  if (input.actor_class !== 'authorized_human' || !input.is_owner_or_approver || input.intent === null) {
-    return 'blocked';
-  }
+  if (!controlIntentAuthorized(input.intent, input)) return 'blocked';
   if (input.intent !== 'continue') return 'control_only';
   if (input.grant_exists && input.grant_consumed) return 'blocked';
   return 'one_granted_opportunity';
 }
 
-export function mayMintLimitGrant(input: {
-  readonly actor_class: ActorClass;
-  readonly is_owner_or_approver: boolean;
+export function mayMintLimitGrant(input: HumanControlAuthority & {
   readonly intent: HumanControlIntent | null;
   readonly existing_event_grant: boolean;
 }): boolean {
   return (
-    input.actor_class === 'authorized_human' &&
-    input.is_owner_or_approver &&
     input.intent === 'continue' &&
+    controlIntentAuthorized(input.intent, input) &&
     !input.existing_event_grant
   );
 }
@@ -1435,27 +1445,127 @@ export function ownershipPermissions(context: RequesterContext): {
 
 export type CheckpointBindingKind = 'workflow' | 'event';
 
-export interface CheckpointBindingShape {
-  readonly binding_kind: CheckpointBindingKind;
-  readonly workflow_id: string | null;
-  readonly action_class: ActionClass;
-  readonly destination_source: 'workflow_binding' | 'source_event';
+export const CHECKPOINT_FIELDS = Object.freeze([
+  'action_id',
+  'binding_kind',
+  'workflow_id',
+  'version',
+  'source_event_key',
+  'action_class',
+  'logical_target',
+  'destination_ref',
+  'destination_source',
+  'delivery_state',
+  'slack_message_key',
+  'attempt_count',
+  'last_failure_class',
+  'created_at',
+  'updated_at',
+] as const);
+
+export type CheckpointValidationFailure =
+  | 'missing_required_field'
+  | 'unknown_field'
+  | 'invalid_field_type'
+  | 'invalid_field_value'
+  | 'invalid_bound_checkpoint'
+  | 'invalid_unbound_checkpoint'
+  | 'invalid_state_consistency';
+
+function validTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && value !== '' && Number.isFinite(Date.parse(value));
 }
 
-/** dispatch.md §1 — bound and unbound are closed, non-fabricated variants. */
-export function checkpointBindingFailure(
-  checkpoint: CheckpointBindingShape,
-): 'invalid_bound_checkpoint' | 'invalid_unbound_checkpoint' | null {
+/** dispatch.md §1 — full closed schema validation for both command variants. */
+export function checkpointValidationFailure(
+  checkpoint: Record<string, unknown>,
+): CheckpointValidationFailure | null {
+  if (!exactFields(checkpoint, CHECKPOINT_FIELDS)) return 'unknown_field';
+  for (const field of CHECKPOINT_FIELDS) {
+    if (!(field in checkpoint)) return 'missing_required_field';
+  }
+
+  if (!nonEmptyString(checkpoint.action_id) || !nonEmptyString(checkpoint.source_event_key)) {
+    return 'invalid_field_value';
+  }
+  if (!nonEmptyString(checkpoint.destination_ref)) return 'invalid_field_value';
+  if (
+    typeof checkpoint.version !== 'number' ||
+    typeof checkpoint.attempt_count !== 'number'
+  ) {
+    return 'invalid_field_type';
+  }
+  if (
+    !Number.isSafeInteger(checkpoint.version) || checkpoint.version <= 0 ||
+    !Number.isSafeInteger(checkpoint.attempt_count) || checkpoint.attempt_count <= 0
+  ) {
+    return 'invalid_field_value';
+  }
+  if (
+    typeof checkpoint.action_class !== 'string' ||
+    !EXTERNALLY_VISIBLE_ACTIONS.includes(checkpoint.action_class as ActionClass)
+  ) {
+    return 'invalid_field_value';
+  }
+  if (
+    typeof checkpoint.delivery_state !== 'string' ||
+    !Object.prototype.hasOwnProperty.call(DELIVERY_TRANSITIONS, checkpoint.delivery_state)
+  ) {
+    return 'invalid_field_value';
+  }
+  if (
+    checkpoint.last_failure_class !== null &&
+    (typeof checkpoint.last_failure_class !== 'string' ||
+      !FAILURE_CLASSES.includes(checkpoint.last_failure_class as FailureClass))
+  ) {
+    return 'invalid_field_value';
+  }
+  if (!validTimestamp(checkpoint.created_at) || !validTimestamp(checkpoint.updated_at)) {
+    return 'invalid_field_type';
+  }
+  if (Date.parse(checkpoint.updated_at) < Date.parse(checkpoint.created_at)) {
+    return 'invalid_state_consistency';
+  }
+
+  const delivered = checkpoint.delivery_state === 'delivered';
+  if (
+    (delivered && !nonEmptyString(checkpoint.slack_message_key)) ||
+    (!delivered && checkpoint.slack_message_key !== null) ||
+    (checkpoint.delivery_state === 'failed' && checkpoint.last_failure_class === null)
+  ) {
+    return 'invalid_state_consistency';
+  }
+
+  const targeted =
+    checkpoint.action_class === 'dispatch_bot' || checkpoint.action_class === 'follow_up_bot';
+  if (
+    (targeted && !isLogicalTarget(checkpoint.logical_target)) ||
+    (!targeted && checkpoint.logical_target !== null)
+  ) {
+    return 'invalid_state_consistency';
+  }
+
   if (checkpoint.binding_kind === 'workflow') {
-    return nonEmptyString(checkpoint.workflow_id) && checkpoint.destination_source === 'workflow_binding'
+    return nonEmptyString(checkpoint.workflow_id) &&
+      checkpoint.destination_source === 'workflow_binding'
       ? null
       : 'invalid_bound_checkpoint';
   }
-  return checkpoint.workflow_id === null &&
-    checkpoint.action_class === 'reply_user' &&
-    checkpoint.destination_source === 'source_event'
-    ? null
-    : 'invalid_unbound_checkpoint';
+  if (checkpoint.binding_kind === 'event') {
+    return checkpoint.workflow_id === null &&
+      checkpoint.action_class === 'reply_user' &&
+      checkpoint.destination_source === 'source_event'
+      ? null
+      : 'invalid_unbound_checkpoint';
+  }
+  return 'invalid_field_value';
+}
+
+/** Compatibility name retained for downstream contract consumers. */
+export function checkpointBindingFailure(
+  checkpoint: Record<string, unknown>,
+): CheckpointValidationFailure | null {
+  return checkpointValidationFailure(checkpoint);
 }
 
 /**
@@ -1712,28 +1822,31 @@ export function applyFailedDispatch(input: FailedDispatchInput): FailedDispatchR
   };
 }
 
-export type FailureClass =
-  | 'slack_rate_limited'
-  | 'slack_transport_error'
-  | 'slack_permission_denied'
-  | 'slack_invalid_request'
-  | 'destination_unresolved'
-  | 'in_flight_conflict'
-  | 'claim_conflict'
-  | 'state_mismatch'
-  | 'version_mismatch'
-  | 'illegal_transition'
-  | 'terminal_workflow'
-  | 'approval_missing'
-  | 'approval_expired'
-  | 'approval_scope_changed'
-  | 'compatibility_blocked'
-  | 'schema_invalid'
-  | 'runtime_controlled_field_present'
-  | 'model_unavailable'
-  | 'storage_unavailable'
-  | 'dispatch_unreconciled'
-  | 'internal_error';
+export const FAILURE_CLASSES = Object.freeze([
+  'slack_rate_limited',
+  'slack_transport_error',
+  'slack_permission_denied',
+  'slack_invalid_request',
+  'destination_unresolved',
+  'in_flight_conflict',
+  'claim_conflict',
+  'state_mismatch',
+  'version_mismatch',
+  'illegal_transition',
+  'terminal_workflow',
+  'approval_missing',
+  'approval_expired',
+  'approval_scope_changed',
+  'compatibility_blocked',
+  'schema_invalid',
+  'runtime_controlled_field_present',
+  'model_unavailable',
+  'storage_unavailable',
+  'dispatch_unreconciled',
+  'internal_error',
+] as const);
+
+export type FailureClass = (typeof FAILURE_CLASSES)[number];
 
 /**
  * dispatch.md §6 — retryable means "we know it was not delivered".
@@ -1805,6 +1918,7 @@ export type BlockingReason =
   | 'unstable_identity'
   | 'duplicate_side_effects'
   | 'no_outcome_signal'
+  | 'invalid_sample_counts'
   | 'insufficient_samples'
   | 'unmeasured';
 
@@ -1868,6 +1982,41 @@ export function hasUnmeasuredField(measurement: BotCompatibilityMeasurement): bo
   return MEASURED_FIELDS.some((field) => measurement[field] === 'unknown');
 }
 
+export type CompatibilityCountFailure =
+  | 'sample_count_invalid'
+  | 'observed_success_count_invalid'
+  | 'observed_failure_count_invalid'
+  | 'outcome_count_overflow'
+  | 'outcome_counts_exceed_sample_count';
+
+export function compatibilityCountFailure(
+  measurement: Pick<
+    BotCompatibilityMeasurement,
+    'sample_count' | 'observed_success_count' | 'observed_failure_count'
+  >,
+): CompatibilityCountFailure | null {
+  if (!Number.isSafeInteger(measurement.sample_count) || measurement.sample_count < 1) {
+    return 'sample_count_invalid';
+  }
+  if (
+    !Number.isSafeInteger(measurement.observed_success_count) ||
+    measurement.observed_success_count < 0
+  ) {
+    return 'observed_success_count_invalid';
+  }
+  if (
+    !Number.isSafeInteger(measurement.observed_failure_count) ||
+    measurement.observed_failure_count < 0
+  ) {
+    return 'observed_failure_count_invalid';
+  }
+  const outcomeCount =
+    measurement.observed_success_count + measurement.observed_failure_count;
+  if (!Number.isSafeInteger(outcomeCount)) return 'outcome_count_overflow';
+  if (outcomeCount > measurement.sample_count) return 'outcome_counts_exceed_sample_count';
+  return null;
+}
+
 export interface CompatibilityDecision {
   readonly decision: 'GO' | 'NO_GO';
   readonly blocking_reason_class: BlockingReason | null;
@@ -1891,6 +2040,9 @@ export interface CompatibilityDecision {
 export function compatibilityDecision(
   measurement: BotCompatibilityMeasurement,
 ): CompatibilityDecision {
+  if (compatibilityCountFailure(measurement) !== null) {
+    return { decision: 'NO_GO', blocking_reason_class: 'invalid_sample_counts' };
+  }
   if (measurement.accepts_bot_authored !== 'yes') {
     return { decision: 'NO_GO', blocking_reason_class: 'ignores_bot_authored' };
   }
@@ -1907,12 +2059,7 @@ export function compatibilityDecision(
     return { decision: 'NO_GO', blocking_reason_class: 'no_outcome_signal' };
   }
   const completeOutcomeEvidence =
-    Number.isSafeInteger(measurement.observed_success_count) &&
-    Number.isSafeInteger(measurement.observed_failure_count) &&
-    measurement.observed_success_count >= 1 &&
-    measurement.observed_failure_count >= 1 &&
-    measurement.sample_count >=
-      measurement.observed_success_count + measurement.observed_failure_count;
+    measurement.observed_success_count >= 1 && measurement.observed_failure_count >= 1;
   if (!completeOutcomeEvidence) {
     return { decision: 'NO_GO', blocking_reason_class: 'insufficient_samples' };
   }

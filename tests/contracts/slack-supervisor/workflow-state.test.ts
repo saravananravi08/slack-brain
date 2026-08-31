@@ -348,28 +348,31 @@ describe('a Gist-expected state schedules its own next turn (§3.4)', () => {
   });
 });
 
-describe('terminal immutability and reopen (workflow-state.md §2.4)', () => {
+describe('terminal immutability and pending reopen decision (workflow-state.md §2.4)', () => {
   const reopen = asRecord(fixture.reopen, 'reopen');
   const terminal = asRecord(reopen.terminal_record, 'terminal_record');
-  const reopened = asRecord(reopen.reopened_record, 'reopened_record');
 
-  it('creates a new linked record rather than transitioning out of a terminal state', () => {
-    expect(reopened.reopened_from).toBe(terminal.workflow_id);
-    expect(reopened.workflow_id).not.toBe(terminal.workflow_id);
-    expect(reopened.state).toBe('draft');
-  });
-
-  it('leaves the terminal record untouched', () => {
+  it('leaves every terminal record immutable', () => {
     expect(terminal.state).toBe(reopen.expect_terminal_state_unchanged);
     expect(isTerminal(terminal.state as WorkflowState)).toBe(true);
+    expect(WORKFLOW_TRANSITIONS[terminal.state as WorkflowState]).toEqual([]);
   });
 
-  it('records the assumption rather than resolving it silently', () => {
-    // The PRD names reopen as a human power (§5.1) but lists no `reopened`
-    // state. T801 took the reading that a later decision can still change
-    // safely, and said so where a reviewer will find it.
-    expect(loadContractDoc('workflow-state.md')).toContain('Assumption recorded by T801');
-    expect(loadContractDoc('requirements-map.md')).toContain('Open item recorded against the PRD');
+  it('supports neither linked-new-record nor terminal reactivation', () => {
+    expect(reopen.decision_state).toBe('pending_product_owner');
+    expect(reopen.supported).toBe(false);
+    expect(asStrings(reopen.forbidden_until_decision, 'forbidden_until_decision')).toEqual([
+      'linked_new_record',
+      'terminal_reactivation',
+    ]);
+    expect(reopen).not.toHaveProperty('reopened_record');
+    expect(sample).not.toHaveProperty('reopened_from');
+  });
+
+  it('blocks consumers instead of selecting a behavior', () => {
+    expect(asStrings(reopen.blocked_consumers, 'blocked_consumers')).toEqual(['T901', 'T904']);
+    expect(loadContractDoc('workflow-state.md')).toContain('Unsupported pending product-owner decision');
+    expect(loadContractDoc('requirements-map.md')).toContain('Reopen consumer block');
   });
 });
 

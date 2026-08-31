@@ -109,10 +109,10 @@ evaluation and before dispatch, are re-derived from durable timestamps after res
 raised by channel content **or by model output**. The response deadline Gist states to a bot is
 derived from those limits rather than chosen (`actions.md` §5.2), so it can never exceed the
 inactivity timeout or outlive the workflow. Runtime-generated continuations consume turns and cannot form a cycle. At an autonomy limit,
-authorized owner/approver status, pause, redirect, and cancel controls remain admissible. Continue
-may consume exactly one durable grant keyed by its event; duplicate/restart cannot mint another,
-counters are not reset, limits are not raised, and autonomous events remain blocked afterwards
-(`workflow-state.md` §7).
+authority remains verb-specific: any authorized human may request status; owner/approver may pause,
+cancel, or continue; only owner may redirect. Continue may consume exactly one durable grant keyed
+by its event; duplicate/restart cannot mint another, counters are not reset, limits are not raised,
+and autonomous events remain blocked afterwards (`workflow-state.md` §7).
 
 ## Privacy and provenance
 

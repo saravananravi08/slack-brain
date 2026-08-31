@@ -26,8 +26,7 @@
     "last_activity_at",
     "timeout_at",
     "completed_at",
-    "outcome_class",
-    "reopened_from"
+    "outcome_class"
   ],
   "record_forbidden_fields": [
     "objective_text",
@@ -71,8 +70,7 @@
     "last_activity_at": "2026-09-01T00:03:00.000Z",
     "timeout_at": "2026-09-01T01:03:00.000Z",
     "completed_at": null,
-    "outcome_class": null,
-    "reopened_from": null
+    "outcome_class": null
   },
   "states": [
     "draft",
@@ -89,12 +87,43 @@
     "cancelled",
     "timed_out"
   ],
-  "terminal_states": ["completed", "failed", "cancelled", "timed_out"],
-  "expected_actors": ["gist", "human", "kilo", "linear", "none"],
+  "terminal_states": [
+    "completed",
+    "failed",
+    "cancelled",
+    "timed_out"
+  ],
+  "expected_actors": [
+    "gist",
+    "human",
+    "kilo",
+    "linear",
+    "none"
+  ],
   "transitions": {
-    "draft": ["clarifying", "ready", "waiting_human", "cancelled", "failed", "timed_out"],
-    "clarifying": ["clarifying", "ready", "waiting_human", "cancelled", "failed", "timed_out"],
-    "ready": ["dispatched", "waiting_human", "cancelled", "failed", "timed_out"],
+    "draft": [
+      "clarifying",
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "clarifying": [
+      "clarifying",
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "ready": [
+      "dispatched",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
     "dispatched": [
       "running",
       "waiting_bot",
@@ -134,7 +163,13 @@
       "cancelled",
       "timed_out"
     ],
-    "changes_requested": ["ready", "waiting_human", "cancelled", "failed", "timed_out"],
+    "changes_requested": [
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
     "waiting_human": [
       "ready",
       "clarifying",
@@ -207,15 +242,41 @@
     }
   ],
   "state_accepts_actor": {
-    "draft": ["human"],
-    "clarifying": ["human"],
-    "ready": ["human"],
-    "dispatched": ["human", "kilo", "linear"],
-    "running": ["human", "kilo", "linear"],
-    "waiting_bot": ["human", "kilo", "linear"],
-    "reviewing": ["human", "kilo", "linear"],
-    "changes_requested": ["human"],
-    "waiting_human": ["human"],
+    "draft": [
+      "human"
+    ],
+    "clarifying": [
+      "human"
+    ],
+    "ready": [
+      "human"
+    ],
+    "dispatched": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "running": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "waiting_bot": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "reviewing": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "changes_requested": [
+      "human"
+    ],
+    "waiting_human": [
+      "human"
+    ],
     "completed": [],
     "failed": [],
     "cancelled": [],
@@ -224,7 +285,11 @@
   "compare_and_set": [
     {
       "name": "clean_transition_commits",
-      "stored": { "state": "ready", "pending_action_version": 1, "committed_source_events": [] },
+      "stored": {
+        "state": "ready",
+        "pending_action_version": 1,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "ready",
         "expected_action_version": 1,
@@ -236,7 +301,11 @@
     },
     {
       "name": "state_mismatch_rejects",
-      "stored": { "state": "waiting_bot", "pending_action_version": 1, "committed_source_events": [] },
+      "stored": {
+        "state": "waiting_bot",
+        "pending_action_version": 1,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "ready",
         "expected_action_version": 1,
@@ -248,7 +317,11 @@
     },
     {
       "name": "version_mismatch_rejects_a_stale_decision",
-      "stored": { "state": "ready", "pending_action_version": 2, "committed_source_events": [] },
+      "stored": {
+        "state": "ready",
+        "pending_action_version": 2,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "ready",
         "expected_action_version": 1,
@@ -260,7 +333,11 @@
     },
     {
       "name": "illegal_transition_rejects",
-      "stored": { "state": "draft", "pending_action_version": null, "committed_source_events": [] },
+      "stored": {
+        "state": "draft",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "draft",
         "expected_action_version": null,
@@ -272,7 +349,11 @@
     },
     {
       "name": "terminal_workflow_rejects",
-      "stored": { "state": "completed", "pending_action_version": null, "committed_source_events": [] },
+      "stored": {
+        "state": "completed",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "completed",
         "expected_action_version": null,
@@ -288,7 +369,9 @@
       "stored": {
         "state": "dispatched",
         "pending_action_version": 1,
-        "committed_source_events": ["T0SUPVTEST/C0SUPVTESTA/1756684860.000200"]
+        "committed_source_events": [
+          "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+        ]
       },
       "request": {
         "expected_state": "ready",
@@ -301,7 +384,11 @@
     },
     {
       "name": "null_version_expectation_matches_null_stored",
-      "stored": { "state": "draft", "pending_action_version": null, "committed_source_events": [] },
+      "stored": {
+        "state": "draft",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
       "request": {
         "expected_state": "draft",
         "expected_action_version": null,
@@ -479,17 +566,22 @@
     }
   ],
   "reopen": {
-    "note": "workflow-state.md §2.4 — reopen creates a new linked record; it is never a transition out of a terminal state.",
+    "note": "workflow-state.md §2.4 — product-owner decision pending; no reopen behavior is supported.",
+    "decision_state": "pending_product_owner",
+    "supported": false,
     "terminal_record": {
       "workflow_id": "wf_supv_0003",
       "state": "cancelled",
       "outcome_class": "cancelled_by_human"
     },
-    "reopened_record": {
-      "workflow_id": "wf_supv_0002",
-      "state": "draft",
-      "reopened_from": "wf_supv_0003"
-    },
+    "forbidden_until_decision": [
+      "linked_new_record",
+      "terminal_reactivation"
+    ],
+    "blocked_consumers": [
+      "T901",
+      "T904"
+    ],
     "expect_terminal_state_unchanged": "cancelled"
   }
 }

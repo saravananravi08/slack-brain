@@ -37,9 +37,10 @@ BotCompatibilityMeasurement
   logical_target             'kilo' | 'linear'
   bot_alias                  string          # synthetic alias, never a real ID
   observed_on                date            # day precision
-  sample_count               integer >= 1
-  observed_success_count     integer >= 0
-  observed_failure_count     integer >= 0
+  sample_count               safe integer >= 1
+  observed_success_count     safe integer >= 0
+  observed_failure_count     safe integer >= 0
+                              # count sum must be safe and <= sample_count
 
   accepts_bot_authored       Tri             # does it act on a message authored by Gist?
   requires_mention           Tri             # must the instruction @-mention it?
@@ -66,7 +67,8 @@ DuplicateBehavior          = 'ignored' | 'second_action' | 'error' | 'unknown'
 LatencyBucket              = 'lt_5s' | 'lt_30s' | 'lt_5m' | 'gte_5m' | 'none' | 'unknown'
 BlockingReason             =
   'ignores_bot_authored' | 'uncorrelatable_replies' | 'unstable_identity' |
-  'duplicate_side_effects' | 'no_outcome_signal' | 'insufficient_samples' | 'unmeasured'
+  'duplicate_side_effects' | 'no_outcome_signal' | 'invalid_sample_counts' |
+  'insufficient_samples' | 'unmeasured'
 ```
 
 Every field is a measurement of behavior, so each has a named observation T802 must actually make:
@@ -104,11 +106,14 @@ GS-FR-028 says exactly that — and D024/GS-FR-017 route trusted replies into su
 for precisely that purpose. A bot that reports "done" in a sentence, consistently, is a bot Gist can
 supervise. Blocking it would have failed the Slack-only path over a formatting preference.
 
-Every GO requires `observed_success_count >= 1`, `observed_failure_count >= 1`, and
-`sample_count >= observed_success_count + observed_failure_count`. Structured evidence therefore
+Count schema validation runs before GO policy. `sample_count` must be a safe integer ≥1; both
+outcome counts must be safe nonnegative integers; their sum must remain a safe integer and must not
+exceed `sample_count`. Fractional, negative, unsafe, overflowing, or inconsistent counts reject the
+measurement with `invalid_sample_counts`.
+
+After shape validation, every GO requires both outcome counts ≥1. Structured evidence therefore
 needs at least two outcome samples, one of each. `stable_text` additionally requires at least three
-total samples and a repeatable form across them (§4 rules 4–5). A single outcome cannot establish
-distinguishability, even when its structure looks promising.
+total samples and a repeatable form across them (§4 rules 4–5).
 
 ### 2.2 Distinguishable is not authoritative
 
@@ -152,10 +157,10 @@ A bot is **GO** only when all of the following hold:
 2. §3 yields a permitted strategy other than "none".
 3. `reply_identity_stable === 'yes'` — an unstable identity means exact-ID trust
    (`identity.md` §2) cannot be relied on. Blocking reason `unstable_identity`.
-4. `outcome_distinguishability` is `structured` **or** `stable_text`,
-   `completion_signal !== 'none'`, `observed_success_count >= 1`,
-   `observed_failure_count >= 1`, and the two counts fit within `sample_count`. Missing either
-   outcome blocks with `insufficient_samples`; otherwise an indistinguishable signal blocks with
+4. Count shape is valid per §2.1 before any policy rule. Invalid integer/range/sum evidence blocks
+   with `invalid_sample_counts`. Then `outcome_distinguishability` must be `structured` or
+   `stable_text`, `completion_signal !== 'none'`, and each outcome count must be ≥1. Missing either
+   observed outcome blocks with `insufficient_samples`; an indistinguishable signal blocks with
    `no_outcome_signal`.
 5. If `outcome_distinguishability === 'stable_text'`, then `sample_count >= 3` and the observed form
    is repeatable across those samples. Structured therefore has a minimum of two outcome samples;
@@ -225,7 +230,7 @@ the set version per `README.md` §2, and records which rows moved:
 | §2.2 prose distinguishability grants no authority | `compatibility.test.ts`, `approvals.test.ts` |
 | §3 strategy table, every row | `compatibility.test.ts` |
 | §4 all seven GO rules, each failing independently | `compatibility.test.ts` |
-| §4 both observed outcomes; structured ≥2; stable text ≥3 and repeatable | `compatibility.test.ts` |
+| §2/§4 safe count schema, bounded sum, both outcomes; structured ≥2; stable text ≥3 | `compatibility.test.ts` |
 | §4 NO-GO blocks only the failing target; no fallback | `compatibility.test.ts`, `actions.test.ts` |
 | §4 `PARTIAL` does not by itself unblock P09 | `compatibility.test.ts` |
 | §1 the record carries no content | `contract-safety.test.ts` |

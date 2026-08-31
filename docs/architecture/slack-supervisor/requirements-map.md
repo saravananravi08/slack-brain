@@ -125,7 +125,7 @@ description.
 
 ## Deliberately not decided by T801
 
-Three things are named here so they are not mistaken for omissions:
+Four things are named here so they are not mistaken for omissions:
 
 1. **Live bot behavior.** `compatibility.md` §5 lists the seven clauses whose final wording depends
    on T802's measurements. T801 froze the shape of the answer, not the answer.
@@ -134,12 +134,13 @@ Three things are named here so they are not mistaken for omissions:
    enumerate abuse cases, severities, or residual-risk acceptance.
 3. **Runtime implementation.** No file in `src/` is written or modified by T801. P09 owns
    `src/orchestration/**` per `FILE_OWNERSHIP.md`.
+4. **Reopen semantics.** See the consumer block below. No implementation behavior is frozen.
 
-## Open item recorded against the PRD
+## Reopen consumer block — pending product-owner decision
 
-**Reopen (PRD §5.1).** The PRD gives an authorized human the power to reopen a workflow, but
-GS-FR-013 lists no `reopened` state and GS-FR-014 requires compare-and-set transitions.
-`workflow-state.md` §2.4 resolves this as a **new linked workflow record** (`reopened_from`) rather
-than a transition out of a terminal state, and records the reasoning. Flagged for T803 and the
-product owner; if the intended behavior is a true reopen transition, that is a major bump to this
-set and a change to the GS-FR-013 state list.
+PRD §5.1 names reopen as an authorized-human power, but GS-FR-013 defines no reopened state and
+GS-FR-014 defines no transition. Reopen is therefore **unsupported until the product owner chooses**.
+Terminal immutability remains normative. Neither a linked new record nor terminal reactivation is
+permitted by this contract, and no `reopened_from` field exists. T901 and T904 are blocked from
+implementing or inferring reopen behavior. A product choice requires a contract amendment and the
+corresponding state/action/test changes.

@@ -87,6 +87,7 @@
       "unstable_identity",
       "duplicate_side_effects",
       "no_outcome_signal",
+      "invalid_sample_counts",
       "insufficient_samples",
       "unmeasured"
     ],
@@ -536,6 +537,31 @@
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "insufficient_samples"
+    },
+    {
+      "name": "invalid_sample_counts_block_before_policy",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 1.5,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes",
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "invalid_sample_counts"
     }
   ],
   "phase_recommendation_cases": [
@@ -647,5 +673,98 @@
       "version_bound_human_approval_for_gated_actions"
     ]
   },
-  "stable_text_min_samples": 3
+  "stable_text_min_samples": 3,
+  "count_validation_cases": [
+    {
+      "name": "valid_minimum",
+      "sample_count": 2,
+      "observed_success_count": 1,
+      "observed_failure_count": 1,
+      "expect_failure": null
+    },
+    {
+      "name": "sample_count_zero",
+      "sample_count": 0,
+      "observed_success_count": 0,
+      "observed_failure_count": 0,
+      "expect_failure": "sample_count_invalid"
+    },
+    {
+      "name": "sample_count_fractional",
+      "sample_count": 2.5,
+      "observed_success_count": 1,
+      "observed_failure_count": 1,
+      "expect_failure": "sample_count_invalid"
+    },
+    {
+      "name": "sample_count_unsafe",
+      "sample_count": 9007199254740992,
+      "observed_success_count": 1,
+      "observed_failure_count": 1,
+      "expect_failure": "sample_count_invalid"
+    },
+    {
+      "name": "success_count_negative",
+      "sample_count": 2,
+      "observed_success_count": -1,
+      "observed_failure_count": 1,
+      "expect_failure": "observed_success_count_invalid"
+    },
+    {
+      "name": "success_count_fractional",
+      "sample_count": 2,
+      "observed_success_count": 0.5,
+      "observed_failure_count": 1,
+      "expect_failure": "observed_success_count_invalid"
+    },
+    {
+      "name": "failure_count_negative",
+      "sample_count": 2,
+      "observed_success_count": 1,
+      "observed_failure_count": -1,
+      "expect_failure": "observed_failure_count_invalid"
+    },
+    {
+      "name": "failure_count_unsafe",
+      "sample_count": 2,
+      "observed_success_count": 1,
+      "observed_failure_count": 9007199254740992,
+      "expect_failure": "observed_failure_count_invalid"
+    },
+    {
+      "name": "outcome_count_overflow",
+      "sample_count": 9007199254740991,
+      "observed_success_count": 9007199254740991,
+      "observed_failure_count": 1,
+      "expect_failure": "outcome_count_overflow"
+    },
+    {
+      "name": "counts_exceed_total",
+      "sample_count": 2,
+      "observed_success_count": 2,
+      "observed_failure_count": 1,
+      "expect_failure": "outcome_counts_exceed_sample_count"
+    },
+    {
+      "name": "sample_count_negative",
+      "sample_count": -1,
+      "observed_success_count": 0,
+      "observed_failure_count": 0,
+      "expect_failure": "sample_count_invalid"
+    },
+    {
+      "name": "success_count_unsafe",
+      "sample_count": 2,
+      "observed_success_count": 9007199254740992,
+      "observed_failure_count": 1,
+      "expect_failure": "observed_success_count_invalid"
+    },
+    {
+      "name": "failure_count_fractional",
+      "sample_count": 2,
+      "observed_success_count": 1,
+      "observed_failure_count": 0.5,
+      "expect_failure": "observed_failure_count_invalid"
+    }
+  ]
 }
