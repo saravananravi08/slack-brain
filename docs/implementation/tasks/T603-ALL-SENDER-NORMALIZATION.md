@@ -1,8 +1,8 @@
 # T603 — Normalize all message senders
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** pi-agent
 - **Branch:** `task/T603-normalize-all-message-senders`
 - **Parallel group:** PG-06B
 - **Depends on:** T601
@@ -47,15 +47,15 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Every sender class produces a capture event.
-- [ ] Bot/app/Gist/Kilo traffic never becomes a response trigger.
-- [ ] Root/reply identities remain deterministic.
-- [ ] Retries preserve delivery and message dedupe keys.
-- [ ] Existing human-message behavior remains covered.
+- [x] Every sender class produces a capture event.
+- [x] Bot/app/Gist/Kilo traffic never becomes a response trigger.
+- [x] Root/reply identities remain deterministic.
+- [x] Retries preserve delivery and message dedupe keys.
+- [x] Existing human-message behavior remains covered.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `e0832fa72c2955a7e6489936fa8645f44dfe84ef`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
