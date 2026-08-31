@@ -75,7 +75,8 @@ ApprovalState = 'none' | 'required' | 'pending' | 'granted' | 'denied' | 'expire
 
 ### 3.1 Validity
 
-An approval authorizes a dispatch only when **all** hold at dispatch time:
+An approval authorizes creation of a durable Slack command only when **all** hold at the command
+transaction:
 
 1. `state === 'granted'`.
 2. `workflow_id` equals the workflow being dispatched.
@@ -85,8 +86,12 @@ An approval authorizes a dispatch only when **all** hold at dispatch time:
    `authorized_human` **at the moment the approval event was evaluated**.
 6. `granted_at ≤ now < expires_at`.
 
-Checked at dispatch time against durable state, not at grant time and cached. A restart between
-grant and dispatch changes nothing: all six are re-read (GS-NFR-007).
+All six are checked against durable state in the transaction that creates the event-global claim and
+`pending` outbox row (`dispatch.md` §2). After that commit the command is the authorized effect; the
+outbox does not re-check an approval between intent and first send, because expiry during a crash
+must not strand an already committed command. A restart before command creation re-reads all six; a
+restart after it resumes the pending command. Explicit cancellation/supersession may abandon it
+before the Slack attempt.
 
 ### 3.2 Invalidation (GS-FR-036)
 
@@ -155,11 +160,15 @@ happens after `events.md` §2 has already decided the sender may act.
 
 ## 6. Interaction with limits
 
-`waiting_human` from a limit stop (`workflow-state.md` §7.3) is not an approval request. It carries
-no `Approval` record and is answered by a human decision to continue, redirect, or cancel. A human
-telling Gist to continue does **not** raise the limit; it produces a new action under the same
-limits, and a workflow that keeps hitting `max_turns` keeps stopping (GS-NFR-007, §7.4 of
-`workflow-state.md`).
+`waiting_human` from an autonomy-limit stop is not an approval request. After ordinary identity and
+owner/approver checks, control intent is admitted even though autonomous evaluation remains blocked:
+cancel terminates, redirect writes a new action version but remains stopped, and status/pause are
+control-only.
+
+`continue` mints at most one durable evaluation/action grant keyed by the human event. It does not
+raise a limit, reset a counter, or extend time. The grant is consumed atomically with one durable
+outcome; duplicate delivery cannot mint another, and restart resumes only an existing unconsumed
+grant. Normal limit checks apply again immediately afterwards (`workflow-state.md` §7.3).
 
 ## 7. Where each rule is pinned
 
@@ -168,9 +177,9 @@ limits, and a workflow that keeps hitting `max_turns` keeps stopping (GS-NFR-007
 | §1 reversible work runs without confirmation | `approvals.test.ts` |
 | §2.1 closed `GatedActionClass` | `approvals.test.ts` |
 | §2.3 no approval request for non-gated actions | `approvals.test.ts` |
-| §3.1 all six validity checks, each failing independently | `approvals.test.ts` |
+| §3.1 all six validity checks at durable command creation | `approvals.test.ts`, `dispatch.test.ts` |
 | §3.2 version-bump invalidation, including scope change | `approvals.test.ts` |
 | §3.3 no bot, self, or unauthorized approval | `approvals.test.ts`, `identity-routing.test.ts` |
 | §4 ownership, transfer as a gated class | `approvals.test.ts` |
 | §5 control verbs and their authority | `approvals.test.ts` |
-| §6 a limit stop is not an approval and does not raise the limit | `limits.test.ts` |
+| §6 control survives a limit; continue grants one event-keyed opportunity only | `limits.test.ts` |

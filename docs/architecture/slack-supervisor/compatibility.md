@@ -38,6 +38,8 @@ BotCompatibilityMeasurement
   bot_alias                  string          # synthetic alias, never a real ID
   observed_on                date            # day precision
   sample_count               integer >= 1
+  observed_success_count     integer >= 0
+  observed_failure_count     integer >= 0
 
   accepts_bot_authored       Tri             # does it act on a message authored by Gist?
   requires_mention           Tri             # must the instruction @-mention it?
@@ -76,7 +78,7 @@ Every field is a measurement of behavior, so each has a named observation T802 m
 | `reply_placement` | where the reply lands relative to the instruction's thread |
 | `reply_identity_stable` | the reply's exact bot/app ID equals the configured trusted ID on every sample |
 | `marker_preserved` | the `[gist-wf:…]` marker appears in the reply |
-| `outcome_distinguishability` | at least one success reply and one failure reply, compared for a structural difference and, failing that, for a repeatable textual form across ≥3 samples |
+| `outcome_distinguishability` | observe and count at least one success and one failure; compare them for a structural difference and, failing that, for a repeatable textual form across ≥3 total samples |
 | `completion_signal` | whether "done" is stated or must be inferred |
 | `duplicate_behavior` | one repeated instruction marker — chosen so no real work is duplicated |
 | `reply_latency_bucket` | coarse time from instruction to first reply |
@@ -102,10 +104,11 @@ GS-FR-028 says exactly that — and D024/GS-FR-017 route trusted replies into su
 for precisely that purpose. A bot that reports "done" in a sentence, consistently, is a bot Gist can
 supervise. Blocking it would have failed the Slack-only path over a formatting preference.
 
-**`stable_text` requires at least three samples** covering both a success and a failure reply
-(§4 rule 5). One observation of one outcome is not evidence of a stable form; it is a sample size of
-one wearing a conclusion. A structural signal is verifiable from fewer samples because the
-distinguishing element is present or absent rather than inferred.
+Every GO requires `observed_success_count >= 1`, `observed_failure_count >= 1`, and
+`sample_count >= observed_success_count + observed_failure_count`. Structured evidence therefore
+needs at least two outcome samples, one of each. `stable_text` additionally requires at least three
+total samples and a repeatable form across them (§4 rules 4–5). A single outcome cannot establish
+distinguishability, even when its structure looks promising.
 
 ### 2.2 Distinguishable is not authoritative
 
@@ -149,13 +152,14 @@ A bot is **GO** only when all of the following hold:
 2. §3 yields a permitted strategy other than "none".
 3. `reply_identity_stable === 'yes'` — an unstable identity means exact-ID trust
    (`identity.md` §2) cannot be relied on. Blocking reason `unstable_identity`.
-4. `outcome_distinguishability` is `structured` **or** `stable_text`, and
-   `completion_signal !== 'none'` — otherwise the workflow cannot tell success from failure or know
-   when to stop. Blocking reason `no_outcome_signal`. A bot that reports outcomes in prose is **not**
-   blocked, provided the prose is consistent enough to classify (§2.1).
-5. If `outcome_distinguishability === 'stable_text'`, then `sample_count >= 3`. Blocking reason
-   `insufficient_samples`. The looser evidential standard gets the tighter sampling requirement:
-   "the wording is stable" is a claim about repetition, and it cannot be made from one reply.
+4. `outcome_distinguishability` is `structured` **or** `stable_text`,
+   `completion_signal !== 'none'`, `observed_success_count >= 1`,
+   `observed_failure_count >= 1`, and the two counts fit within `sample_count`. Missing either
+   outcome blocks with `insufficient_samples`; otherwise an indistinguishable signal blocks with
+   `no_outcome_signal`.
+5. If `outcome_distinguishability === 'stable_text'`, then `sample_count >= 3` and the observed form
+   is repeatable across those samples. Structured therefore has a minimum of two outcome samples;
+   stable text retains the stricter three-sample floor.
 6. `duplicate_behavior !== 'second_action'` — a bot that performs a second action on a repeated
    instruction defeats the one-event/one-action invariant at the far end, where Gist cannot enforce
    it. Blocking reason `duplicate_side_effects`.
@@ -221,7 +225,7 @@ the set version per `README.md` §2, and records which rows moved:
 | §2.2 prose distinguishability grants no authority | `compatibility.test.ts`, `approvals.test.ts` |
 | §3 strategy table, every row | `compatibility.test.ts` |
 | §4 all seven GO rules, each failing independently | `compatibility.test.ts` |
-| §4 rule 5 sample floor for `stable_text` | `compatibility.test.ts` |
+| §4 both observed outcomes; structured ≥2; stable text ≥3 and repeatable | `compatibility.test.ts` |
 | §4 NO-GO blocks only the failing target; no fallback | `compatibility.test.ts`, `actions.test.ts` |
 | §4 `PARTIAL` does not by itself unblock P09 | `compatibility.test.ts` |
 | §1 the record carries no content | `contract-safety.test.ts` |

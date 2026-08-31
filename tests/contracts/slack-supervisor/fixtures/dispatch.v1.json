@@ -6,11 +6,13 @@
   "checkpoint_required_fields": [
     "action_id",
     "workflow_id",
+    "binding_kind",
     "version",
     "source_event_key",
     "action_class",
     "logical_target",
     "destination_ref",
+    "destination_source",
     "delivery_state",
     "slack_message_key",
     "attempt_count",
@@ -41,7 +43,9 @@
     "attempt_count": 1,
     "last_failure_class": null,
     "created_at": "2026-09-01T00:01:00.000Z",
-    "updated_at": "2026-09-01T00:01:05.000Z"
+    "updated_at": "2026-09-01T00:01:05.000Z",
+    "binding_kind": "workflow",
+    "destination_source": "workflow_binding"
   },
   "claim_keys": [
     {
@@ -192,37 +196,36 @@
     }
   ],
   "retry_convergence": {
-    "note": "GS-FR-043 \u2014 retries share one action_id and one version; the first success wins under compare-and-set and later attempts stop.",
+    "note": "GS-FR-043 — attempts are serial. Attempt N+1 is created only after attempt N durably records a definitive pre-acceptance rejection.",
     "action_id": "act_supv_0001",
     "version": 1,
     "attempts": [
       {
         "attempt": 1,
-        "result": "failed",
+        "prior_attempt": null,
+        "prior_outcome": null,
+        "result": "definitive_failure",
         "expect_delivery_state": "failed",
-        "note": "A definitive non-delivery, which is the only kind that permits attempt 2 (\u00a73.3)."
+        "failure_class": "slack_rate_limited"
       },
       {
         "attempt": 2,
+        "prior_attempt": 1,
+        "prior_outcome": "definitive_failure",
         "result": "delivered",
         "expect_delivery_state": "delivered"
-      },
-      {
-        "attempt": 3,
-        "result": "delivered",
-        "note": "A slow original completing after the retry already succeeded.",
-        "expect_delivery_state": "delivered",
-        "expect_additional_dispatch": false
       }
     ],
     "expect_distinct_actions": 1,
     "expect_expected_bot_turns": 1,
-    "first_attempt_failure_class": "slack_rate_limited"
+    "first_attempt_failure_class": "slack_rate_limited",
+    "expect_attempts_serial": true,
+    "expect_overlapping_attempts": false
   },
   "failed_dispatch": [
     {
       "name": "definitive_failure_leaves_the_workflow_ready",
-      "note": "dispatch.md \u00a74 \u2014 only a definitive non-delivery reaches this path at all; an ambiguous attempt goes to reconciliation first (\u00a73.2).",
+      "note": "dispatch.md §4 — only a definitive non-delivery reaches this path at all; an ambiguous attempt goes to reconciliation first (§3.2).",
       "failure_class": "slack_permission_denied",
       "workflow_state_before": "ready",
       "consecutive_failures_before": 0,
@@ -264,16 +267,6 @@
     }
   ],
   "reconciliation": [
-    {
-      "name": "pending_with_no_claim_consumed_was_never_sent",
-      "delivery_state": "pending",
-      "own_outgoing_record": false,
-      "marker_found_in_thread": false,
-      "thread_readable": true,
-      "expect_delivery_state": "abandoned",
-      "expect_workflow_state": "ready",
-      "expect_reason_class": null
-    },
     {
       "name": "in_flight_with_our_own_outgoing_record_was_delivered",
       "note": "The send path persists outgoing messages directly, so the local record is authoritative and does not depend on Slack echo behavior.",
@@ -318,7 +311,7 @@
     },
     {
       "name": "inline_reconciliation_after_a_timeout_uses_the_same_rules",
-      "note": "dispatch.md \u00a75 \u2014 one mechanism, two callers. A timeout mid-run and a crash mid-send leave the same question behind.",
+      "note": "dispatch.md §5 — one mechanism, two callers. A timeout mid-run and a crash mid-send leave the same question behind.",
       "delivery_state": "in_flight",
       "own_outgoing_record": false,
       "marker_found_in_thread": true,
@@ -329,16 +322,19 @@
     }
   ],
   "restart": {
-    "note": "GS-FR-015 \u2014 recovery replays state, not effects.",
+    "note": "GS-FR-015 — recovery replays state, not effects.",
     "expect_resends_confirmed_delivered": false,
     "expect_reapplies_committed_transitions": false,
     "expect_rearms_timers_from_durable_timestamps": true,
-    "expect_reconciles_before_accepting_new_events": true
+    "expect_reconciles_before_accepting_new_events": true,
+    "expect_drains_pending_outbox_before_new_events": true,
+    "expect_pending_first_send_resumed": true
   },
   "ordering": {
-    "note": "dispatch.md \u00a76 \u2014 the checkpoint write precedes the Slack call. A process that sends first and records after cannot survive its own crash.",
+    "note": "dispatch.md §6 — the checkpoint write precedes the Slack call. A process that sends first and records after cannot survive its own crash.",
     "expect_order": [
-      "write_checkpoint",
+      "commit_action_claim_and_pending_outbox",
+      "move_pending_to_in_flight",
       "slack_call",
       "record_result"
     ],
@@ -496,11 +492,11 @@
     }
   ],
   "capture_preserved_under_failure": {
-    "note": "GS-NFR-006 \u2014 supervision degrading never costs the memory layer.",
+    "note": "GS-NFR-006 — supervision degrading never costs the memory layer.",
     "expect_exact_capture_continues": true
   },
   "unbound_visible_actions": {
-    "note": "dispatch.md \u00a72 \u2014 two externally visible actions carry no workflow_id. A workflow-scoped claim would have left them outside GS-FR-024 entirely.",
+    "note": "dispatch.md §2 — two externally visible actions carry no workflow_id. A workflow-scoped claim would have left them outside GS-FR-024 entirely.",
     "cases": [
       {
         "name": "unmatched_trusted_bot_notice_is_claimed",
@@ -509,7 +505,9 @@
         "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
         "already_claimed": false,
         "expect_allowed": true,
-        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684920.000300"
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+        "binding_kind": "event",
+        "destination_source": "source_event"
       },
       {
         "name": "retried_delivery_of_that_notice_is_refused",
@@ -519,7 +517,9 @@
         "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
         "already_claimed": true,
         "expect_allowed": false,
-        "expect_failure_class": "claim_conflict"
+        "expect_failure_class": "claim_conflict",
+        "binding_kind": "event",
+        "destination_source": "source_event"
       },
       {
         "name": "ordinary_assistance_outside_a_workflow_is_claimed",
@@ -528,7 +528,9 @@
         "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
         "already_claimed": false,
         "expect_allowed": true,
-        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684980.000400"
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
+        "binding_kind": "event",
+        "destination_source": "source_event"
       },
       {
         "name": "a_bound_dispatch_uses_the_identical_key_shape",
@@ -537,19 +539,20 @@
         "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
         "already_claimed": false,
         "expect_allowed": true,
-        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+        "binding_kind": "workflow",
+        "destination_source": "workflow_binding"
       }
     ],
     "expect_workflow_in_key": false,
     "expect_workflow_recorded_as_metadata": true
   },
   "delivery_outcomes": {
-    "note": "dispatch.md \u00a73.1 \u2014 three answers, not two. `definitive_failure` means Slack refused the call before accepting it; everything ambiguous is `indeterminate`.",
+    "note": "dispatch.md §3.1 — three answers, not two. `definitive_failure` means Slack refused the call before accepting it; everything ambiguous is `indeterminate`.",
     "definitive_non_delivery": [
       "slack_permission_denied",
       "slack_rate_limited",
-      "slack_invalid_request",
-      "destination_unresolved"
+      "slack_invalid_request"
     ],
     "cases": [
       {
@@ -645,7 +648,7 @@
     ]
   },
   "retry_permission": {
-    "note": "dispatch.md \u00a73.3 \u2014 the only route to `failed` is a definitive pre-acceptance rejection from Slack, so there is no route from an ambiguous attempt to a second send at all.",
+    "note": "dispatch.md §3.3 — the only route to `failed` is a definitive pre-acceptance rejection from Slack, so there is no route from an ambiguous attempt to a second send at all.",
     "cases": [
       {
         "name": "definitive_failure_under_the_limit_may_retry",
@@ -707,12 +710,12 @@
   },
   "reconciliation_callers": [
     "inline_after_indeterminate_outcome",
-    "restart"
+    "restart_in_flight"
   ],
   "reconciliation_is_one_directional": {
-    "note": "dispatch.md \u00a75.1 \u2014 positive evidence advances the workflow; the absence of evidence stops it. The two are not symmetric claims.",
+    "note": "dispatch.md §5.1 — positive evidence advances the workflow; the absence of evidence stops it. The two are not symmetric claims.",
     "expect_reachable_delivery_states": [
-      "abandoned",
+      "pending",
       "delivered",
       "in_flight"
     ],
@@ -727,7 +730,7 @@
     ]
   },
   "abandonment": {
-    "note": "dispatch.md \u00a73.4 \u2014 writing `abandoned` from `in_flight` asserts nothing was published, which \u00a75.1 says cannot be inferred. Only a person who can look at the channel may assert it.",
+    "note": "dispatch.md §3.4 — writing `abandoned` from `in_flight` asserts nothing was published, which §5.1 says cannot be inferred. Only a person who can look at the channel may assert it.",
     "cases": [
       {
         "name": "owner_may_resolve_an_unreconciled_action",
@@ -792,5 +795,64 @@
       "timeout_lifetime"
     ]
   },
-  "failure_behavior_note": "dispatch.md \u00a76 \u2014 `expect_workflow_state` is where the workflow lands when the failure is not resolved into a delivery by \u00a75."
+  "failure_behavior_note": "dispatch.md §6 — `expect_workflow_state` is where the workflow lands when the failure is not resolved into a delivery by §5.",
+  "bound_checkpoint": {
+    "binding_kind": "workflow",
+    "workflow_id": "wf_supv_0001",
+    "action_class": "dispatch_bot",
+    "destination_source": "workflow_binding"
+  },
+  "unbound_checkpoint": {
+    "binding_kind": "event",
+    "workflow_id": null,
+    "action_class": "reply_user",
+    "destination_source": "source_event"
+  },
+  "crash_matrix": [
+    {
+      "name": "before_outbox_commit",
+      "durable_state": "continuation_processing",
+      "slack_call_started": false,
+      "expect_recovery": "resume_continuation",
+      "expect_min_effects": 0,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "pending_checkpoint_committed_call_not_started",
+      "durable_state": "pending",
+      "slack_call_started": false,
+      "expect_recovery": "resume_pending_first_send",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "in_flight_committed_before_call_boundary",
+      "durable_state": "in_flight",
+      "slack_call_started": "unknown_after_restart",
+      "expect_recovery": "reconcile_in_flight",
+      "expect_min_effects": 0,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "slack_accepted_before_result_commit",
+      "durable_state": "in_flight",
+      "slack_call_started": true,
+      "expect_recovery": "reconcile_in_flight",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "delivered_result_committed",
+      "durable_state": "delivered",
+      "slack_call_started": true,
+      "expect_recovery": "skip_terminal",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    }
+  ]
 }

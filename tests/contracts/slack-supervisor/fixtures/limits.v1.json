@@ -2,7 +2,7 @@
   "contract_set": "slack-supervisor",
   "contract_version": "1.0.0",
   "synthetic": true,
-  "defines": "docs/architecture/slack-supervisor/workflow-state.md \u00a77",
+  "defines": "docs/architecture/slack-supervisor/workflow-state.md §7",
   "limit_fields": [
     "max_turns",
     "max_consecutive_failures",
@@ -204,7 +204,7 @@
     }
   ],
   "restart_persistence": {
-    "note": "GS-NFR-007 \u2014 limits live on the record, so neither a config change nor a restart can widen a running workflow's bounds.",
+    "note": "GS-NFR-007 — limits live on the record, so neither a config change nor a restart can widen a running workflow's bounds.",
     "limits_at_creation": {
       "max_turns": 40,
       "max_consecutive_failures": 3,
@@ -226,7 +226,7 @@
     ]
   },
   "content_cannot_raise_limits": {
-    "note": "workflow-state.md \u00a77.4 \u2014 no actor's message content may widen a bound.",
+    "note": "workflow-state.md §7.4 — no actor's message content may widen a bound.",
     "attempts": [
       {
         "actor_class": "authorized_human",
@@ -262,20 +262,22 @@
         "actor_class": "model_output",
         "claim": "set a longer response deadline in the instruction",
         "expect_effect": "none",
-        "note": "actions.md \u00a75.2 \u2014 the deadline is derived from these limits, and the field is not reachable from a model action at all."
+        "note": "actions.md §5.2 — the deadline is derived from these limits, and the field is not reachable from a model action at all."
       }
     ]
   },
   "continue_after_a_limit_stop": {
-    "note": "approvals.md \u00a76 \u2014 continuing produces a new action under the same limits, so a workflow that keeps hitting max_turns keeps stopping.",
+    "note": "One event-keyed grant permits one evaluation/action opportunity without resetting counters or raising limits; the limit applies again after consumption.",
     "turn_count": 40,
     "max_turns": 40,
     "human_says_continue": true,
     "expect_limits_changed": false,
-    "expect_stops_again": true
+    "expect_stops_again": true,
+    "expect_granted_opportunities": 1,
+    "expect_counters_reset": false
   },
   "response_deadline": {
-    "note": "workflow-state.md \u00a77.1 \u2014 the deadline Gist states to a bot is a projection of the stored limits, not a second softer bound living in the instruction.",
+    "note": "workflow-state.md §7.1 — the deadline Gist states to a bot is a projection of the stored limits, not a second softer bound living in the instruction.",
     "limits": {
       "max_turns": 40,
       "max_consecutive_failures": 3,
@@ -304,5 +306,90 @@
     "expect_model_supplied": false,
     "expect_can_exceed_inactivity_timeout": false,
     "expect_can_outlive_the_workflow": false
+  },
+  "human_control_at_limit": {
+    "note": "workflow-state.md §7.3 — the human control plane remains open while autonomous events remain blocked.",
+    "workflow_id": "wf_supv_0001",
+    "limit_reached": true,
+    "cases": [
+      {
+        "name": "continue_mints_one_opportunity",
+        "actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "intent": "continue",
+        "grant_exists": false,
+        "grant_consumed": false,
+        "expect_admission": "one_granted_opportunity",
+        "expect_may_mint": true
+      },
+      {
+        "name": "redirect_is_control_only",
+        "actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "intent": "redirect",
+        "grant_exists": false,
+        "grant_consumed": false,
+        "expect_admission": "control_only",
+        "expect_may_mint": false
+      },
+      {
+        "name": "cancel_is_control_only",
+        "actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "intent": "cancel",
+        "grant_exists": false,
+        "grant_consumed": false,
+        "expect_admission": "control_only",
+        "expect_may_mint": false
+      },
+      {
+        "name": "duplicate_continue_cannot_mint_again",
+        "actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "intent": "continue",
+        "grant_exists": true,
+        "grant_consumed": true,
+        "expect_admission": "blocked",
+        "expect_may_mint": false
+      },
+      {
+        "name": "restart_resumes_unconsumed_grant",
+        "actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "intent": "continue",
+        "grant_exists": true,
+        "grant_consumed": false,
+        "expect_admission": "one_granted_opportunity",
+        "expect_may_mint": false
+      },
+      {
+        "name": "bot_event_at_limit_is_blocked",
+        "actor_class": "kilo",
+        "is_owner_or_approver": false,
+        "intent": null,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "expect_admission": "blocked",
+        "expect_may_mint": false
+      },
+      {
+        "name": "continuation_at_limit_is_blocked",
+        "actor_class": "gist_self",
+        "is_owner_or_approver": false,
+        "intent": null,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "expect_admission": "blocked",
+        "expect_may_mint": false
+      }
+    ],
+    "grant": {
+      "grant_key": "limit-grant:wf_supv_0001:T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "opportunities": 1,
+      "expect_counters_reset": false,
+      "expect_limits_raised": false,
+      "expect_limit_applies_after_consumption": true
+    }
   }
 }

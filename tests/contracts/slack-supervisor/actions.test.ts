@@ -10,8 +10,13 @@ import { asArray, asRecord, asStrings, byName, loadFixture, names } from './help
 import {
   ACTION_CLASSES,
   EXTERNALLY_VISIBLE_ACTIONS,
+  FAILURE_OUTCOME_CLASSES,
+  MESSAGE_CLASSES,
+  MISSING_FIELDS,
   MODEL_INSTRUCTION_FIELDS,
+  NO_ACTION_REASONS,
   RUNTIME_INSTRUCTION_FIELDS,
+  WAIT_REASON_CLASSES,
   WORK_CLASSES,
   deriveResponseDeadlineMs,
   expectedSignalsFor,
@@ -22,6 +27,7 @@ import {
   isLogicalTarget,
   resolveContextRef,
   resolveDestination,
+  requiredActionFields,
   validateAction,
   workflowMarker,
   type ActionClass,
@@ -79,7 +85,7 @@ describe('schema validation', () => {
     expect(validateAction(asRecord(testCase.action, 'action'))).toBe(testCase.expect_reason);
   });
 
-  it('covers every rejection reason', () => {
+  it('covers every security-specific rejection reason', () => {
     const reasons = invalid.map((testCase) => testCase.expect_reason);
     for (const reason of [
       'unknown_action_class',
@@ -94,13 +100,90 @@ describe('schema validation', () => {
     }
   });
 
+  it('pins every closed action enum to the fixture', () => {
+    const schema = asRecord(fixture.action_schema, 'action_schema');
+    expect(asStrings(schema.no_action_reasons, 'no_action_reasons')).toEqual([...NO_ACTION_REASONS]);
+    expect(asStrings(schema.message_classes, 'message_classes')).toEqual([...MESSAGE_CLASSES]);
+    expect(asStrings(schema.missing_fields, 'missing_fields')).toEqual([...MISSING_FIELDS]);
+    expect(asStrings(schema.wait_reason_classes, 'wait_reason_classes')).toEqual([...WAIT_REASON_CLASSES]);
+    expect(asStrings(schema.failure_outcome_classes, 'failure_outcome_classes')).toEqual([
+      ...FAILURE_OUTCOME_CLASSES,
+    ]);
+  });
+
+  it.each(valid.map((entry) => String(entry.name)))('%s rejects every missing required field', (name) => {
+    const source = asRecord(byName(valid, name).action, 'action');
+    const actionClass = source.action_class as ActionClass;
+    const required = requiredActionFields(actionClass, actionClass === 'reply_user' && 'workflow_id' in source);
+    for (const field of required) {
+      const candidate = { ...source };
+      delete candidate[field];
+      expect(validateAction(candidate), `${name} accepted without ${field}`).not.toBeNull();
+    }
+  });
+
+  it.each(valid.map((entry) => String(entry.name)))('%s rejects malformed required fields', (name) => {
+    const source = asRecord(byName(valid, name).action, 'action');
+    const actionClass = source.action_class as ActionClass;
+    const required = requiredActionFields(actionClass, actionClass === 'reply_user' && 'workflow_id' in source);
+    for (const field of required) {
+      const malformed: unknown =
+        field === 'action_class' ? 'unknown_variant' :
+        field === 'workflow_id' ? '' :
+        field === 'expected_version' ? 0 :
+        field === 'logical_target' ? 'unknown_target' :
+        field === 'instruction' ? null : 7;
+      expect(validateAction({ ...source, [field]: malformed }), `${name} accepted malformed ${field}`)
+        .not.toBeNull();
+    }
+  });
+
+  it.each(valid.map((entry) => String(entry.name)))('%s rejects unknown top-level fields', (name) => {
+    const source = asRecord(byName(valid, name).action, 'action');
+    expect(validateAction({ ...source, invented_field: 'synthetic' })).toBe('unknown_field');
+  });
+
+  it.each(['dispatch_bot_to_kilo', 'follow_up_bot_to_linear'])(
+    '%s requires a complete, closed ModelInstruction',
+    (name) => {
+      const source = asRecord(byName(valid, name).action, 'action');
+      const instruction = asRecord(source.instruction, 'instruction');
+      for (const field of MODEL_INSTRUCTION_FIELDS) {
+        const candidateInstruction = { ...instruction };
+        delete candidateInstruction[field];
+        expect(validateAction({ ...source, instruction: candidateInstruction }), `missing ${field}`)
+          .toBe('missing_required_field');
+
+        const malformed = field === 'context_refs' ? 'ctx_1' : 7;
+        expect(
+          validateAction({ ...source, instruction: { ...instruction, [field]: malformed } }),
+          `malformed ${field}`,
+        ).not.toBeNull();
+      }
+      expect(validateAction({ ...source, instruction: { ...instruction, invented_field: true } }))
+        .toBe('unknown_field');
+    },
+  );
+
+  it('requires non-empty IDs/strings and positive expected_version', () => {
+    const source = asRecord(byName(valid, 'dispatch_bot_to_kilo').action, 'action');
+    const instruction = asRecord(source.instruction, 'instruction');
+    expect(validateAction({ ...source, workflow_id: ' ' })).toBe('invalid_field_value');
+    expect(validateAction({ ...source, expected_version: 0 })).toBe('invalid_field_value');
+    expect(validateAction({ ...source, expected_version: 1.5 })).toBe('invalid_field_value');
+    for (const field of ['objective', 'scope', 'acceptance']) {
+      expect(validateAction({ ...source, instruction: { ...instruction, [field]: ' ' } }))
+        .toBe('invalid_field_value');
+    }
+  });
+
   it('requires a workflow only where a workflow exists to require', () => {
-    // `no_action` and an unmatched-bot `reply_user` legitimately carry none
-    // (events.md §4.3).
     expect(validateAction({ action_class: 'no_action', reason_class: 'not_relevant' })).toBeNull();
-    expect(validateAction({ action_class: 'wait', wait_reason_class: 'bot_turn_outstanding' })).toBe(
-      'missing_workflow_id',
-    );
+    expect(validateAction({
+      action_class: 'wait',
+      expected_version: 1,
+      wait_reason_class: 'bot_turn_outstanding',
+    })).toBe('missing_workflow_id');
   });
 });
 
@@ -189,33 +272,29 @@ describe('destination mapping (actions.md §3)', () => {
     const testCase = byName(cases, name);
     const resolved = resolveDestination(
       testCase.logical_target as LogicalTarget,
-      config,
+      testCase.config as unknown as DestinationConfig,
       binding,
     );
-    expect(resolved.bot_id).toBe(testCase.expect_bot_id);
-    expect(resolved.channel_id).toBe(testCase.expect_channel_id);
-    expect(resolved.thread_root_ts).toBe(testCase.expect_thread_root_ts);
-  });
-
-  it('derives the destination from the binding, never from the action', () => {
-    // This is why a prompt-injected instruction cannot move work: the
-    // destination is not an input to the decision at all.
-    for (const target of ['kilo', 'linear'] as LogicalTarget[]) {
-      const resolved = resolveDestination(target, config, binding);
-      expect(resolved.channel_id).toBe(binding.channel_id);
-      expect(resolved.thread_root_ts).toBe(binding.thread_root_ts);
+    expect(resolved?.target_identity ?? null).toEqual(testCase.expect_identity);
+    if (resolved !== null) {
+      expect(resolved.channel_id).toBe(testCase.expect_channel_id);
+      expect(resolved.thread_root_ts).toBe(testCase.expect_thread_root_ts);
+    } else {
+      expect(testCase.expect_failure_class).toBe('destination_unresolved');
     }
   });
 
-  it('resolves an unconfigured target to no destination rather than a fallback', () => {
-    const unconfigured = asRecord(destination.unconfigured, 'unconfigured');
-    const resolved = resolveDestination(
-      unconfigured.logical_target as LogicalTarget,
-      unconfigured.config as unknown as DestinationConfig,
-      binding,
-    );
-    expect(resolved.bot_id).toBeNull();
-    expect(unconfigured.expect_failure_class).toBe('destination_unresolved');
+  it('supports bot-only, app-only, both, and neither without identity substitution', () => {
+    expect(cases.map((entry) => entry.expect_identity === null ? 'neither' : asRecord(entry.expect_identity, 'identity').identity_kind))
+      .toEqual(['bot', 'app', 'bot_and_app', 'neither']);
+  });
+
+  it('derives the destination from the binding, never from the action', () => {
+    for (const target of ['kilo', 'linear'] as LogicalTarget[]) {
+      const resolved = resolveDestination(target, config, binding);
+      expect(resolved?.channel_id).toBe(binding.channel_id);
+      expect(resolved?.thread_root_ts).toBe(binding.thread_root_ts);
+    }
   });
 
   it('checks authorization, state, approval, and compatibility before it maps', () => {

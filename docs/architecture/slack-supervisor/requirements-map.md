@@ -50,7 +50,7 @@ description.
 | GS-FR-012 | Collision-resistant ID and durable record | contract | `workflow-state.md` §1 | T901 |
 | GS-FR-013 | Thirteen explicit states | contract | `workflow-state.md` §2.1 | T901 |
 | GS-FR-014 | Compare-and-set, idempotent transitions | contract | `workflow-state.md` §3.2 | T901 |
-| GS-FR-015 | Restart restores without replaying completed actions | contract | `workflow-state.md` §4 (incl. pending continuations); `dispatch.md` §5 | T901, T905 |
+| GS-FR-015 | Restart restores without losing pending commands or replaying completed effects | contract | `workflow-state.md` §4; `dispatch.md` §2, §5 crash matrix | T901, T903, T905 |
 | GS-FR-016 | One owner; others discuss but cannot approve or redirect | contract | `approvals.md` §4 | T901, T904 |
 
 ## 7.4 Event routing and correlation
@@ -60,16 +60,16 @@ description.
 | GS-FR-017 | Trusted bots persisted first, then a dedicated automation path | contract | `events.md` §2, §3; `identity.md` §3.3 | T902 |
 | GS-FR-018 | Advance only on a full binding and state match | contract | `events.md` §4.2 | T902 |
 | GS-FR-019 | Unmatched trusted event may notify but cannot mutate | contract | `events.md` §4.3 | T902 |
-| GS-FR-020 | Echoes, retries, duplicates, and replays produce no second action | contract | `events.md` §6; `dispatch.md` §2 | T902, T903 |
+| GS-FR-020 | Echoes, duplicates, restart, and replay converge on one durable command/effect | contract | `events.md` §6; `dispatch.md` §2–§5 | T902, T903 |
 | GS-FR-021 | Per-workflow serialization; cooldown never drops a workflow event | contract | `events.md` §5 rules 1–4 | T902, T905 |
 
 ## 7.5 Structured supervisor decisions
 
 | Req | Summary | Kind | Where | Owner |
 |---|---|---|---|---|
-| GS-FR-022 | Schema-validated ten-member action union | contract | `actions.md` §1 | T904 |
+| GS-FR-022 | Strict ten-member action union with exact fields/enums/version | contract | `actions.md` §1, §5 | T904 |
 | GS-FR-023 | Model selects a logical target, never a Slack ID | contract | `actions.md` §3; `invariants.md` GS-INV-10 | T904, T903 |
-| GS-FR-024 | One event, at most one action before its checkpoint | contract | `dispatch.md` §2 (event-global claim, bound and unbound alike); `actions.md` §1.1, §2.1 | T903 |
+| GS-FR-024 | One event creates at most one claimed bound/unbound outbox command | contract | `dispatch.md` §1–§2; `actions.md` §1.1, §2.4 | T903 |
 | GS-FR-025 | Instruction envelope contents and exclusions | contract | `actions.md` §5 (model/runtime split), §5.1, §5.2 (derived deadline), §5.3 | T903, T904 |
 | GS-FR-026 | Instructions and replies are untrusted content | contract | `identity.md` §4; `actions.md` §6 | T904, T803 |
 
@@ -94,7 +94,7 @@ description.
 
 | Req | Summary | Kind | Where | Owner |
 |---|---|---|---|---|
-| GS-FR-034 | Status, pause, resume, correct, cancel, supply details | contract | `approvals.md` §5 | T1001 |
+| GS-FR-034 | Status, pause, resume/continue, redirect, cancel, including at autonomy limits | contract | `approvals.md` §5–§6; `workflow-state.md` §7.3 | T1001 |
 | GS-FR-035 | Irreversible actions require explicit approval | contract | `approvals.md` §2.1 | T904 |
 | GS-FR-036 | Approval binds one workflow, one action, one version | contract | `approvals.md` §3.1, §3.2 | T904 |
 | GS-FR-037 | Concise progress at meaningful transitions only | contract | `actions.md` §7 | T904, T1001 |
@@ -104,18 +104,18 @@ description.
 | Req | Summary | Kind | Where | Owner |
 |---|---|---|---|---|
 | GS-FR-038 | Configurable turns, failures, inactivity, lifetime | contract | `workflow-state.md` §7.1 | T901 |
-| GS-FR-039 | A limit stops the workflow; it never continues silently | contract | `workflow-state.md` §7.3 | T901 |
+| GS-FR-039 | A limit stops autonomy; bounded authorized human control remains possible | contract | `workflow-state.md` §7.3; `approvals.md` §6 | T901, T1001 |
 | GS-FR-040 | Never self-evaluate; bots cannot create, approve, or redirect | contract | `identity.md` §3, §3.1; `invariants.md` GS-INV-05 | T902 |
 | GS-FR-041 | Concurrent replies are serialized and rechecked | contract | `events.md` §5 rules 1–2 | T902 |
 | GS-FR-042 | Failed dispatch does not advance to a delivered-assuming state | contract | `dispatch.md` §4; `workflow-state.md` §2.3 | T903 |
-| GS-FR-043 | Retry converges to one action and one expected bot turn | contract | `dispatch.md` §3, §3.1–§3.3 (retry only after a definitive non-delivery result) | T903 |
+| GS-FR-043 | Serial retry converges to one action and expected bot turn | contract | `dispatch.md` §3.2–§3.3 (new attempt only after prior definitive Slack pre-acceptance rejection) | T903 |
 
 ## 8. Non-functional requirements
 
 | Req | Summary | Kind | Where | Owner |
 |---|---|---|---|---|
 | GS-NFR-001 | Isolation across workspace, channel, thread | contract | `invariants.md` GS-INV-01, GS-INV-02; `events.md` §4.4 | T902, T906 |
-| GS-NFR-002 | Durable state survives restart without duplicate actions | contract | `workflow-state.md` §4; `dispatch.md` §5; `invariants.md` GS-INV-12 | T901, T906 |
+| GS-NFR-002 | Durable state resumes pending first sends without duplicate effects | contract | `workflow-state.md` §4; `dispatch.md` §2, §5; `invariants.md` GS-INV-12 | T901, T903, T906 |
 | GS-NFR-003 | Authorization precedes creation and material action | contract | `events.md` §2 steps 2–4; `approvals.md` §3.1 | T902, T905 |
 | GS-NFR-004 | Logs and records are content-free | contract | `events.md` §7; `invariants.md` GS-INV-14 | T901, T906 |
 | GS-NFR-005 | Every transition and dispatch is auditable without content | contract | `workflow-state.md` §6.1; `dispatch.md` §1 | T901 |

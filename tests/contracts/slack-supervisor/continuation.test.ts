@@ -31,6 +31,7 @@ import {
   continuationRecoveryAction,
   isLegalContinuationProcessingTransition,
   mayMarkContinuationCompleted,
+  outboxRecoveryAction,
   enqueuesContinuation,
   isTerminal,
   longestContinuationChain,
@@ -272,13 +273,22 @@ describe('at-least-once processing with a recoverable lease (actions.md §2.4)',
     });
 
     it('completes a silent continuation on its committed transition', () => {
-      // No visible action means no action claim, so the transition is what
-      // records that the turn happened.
       expect(silent.visible_actions).toBe(0);
       expect(silent.expect_action_claim_taken).toBe(false);
       expect(
         mayMarkContinuationCompleted(silent.expect_completed_with as ContinuationCompletionEvidence),
       ).toBe(true);
+    });
+
+    it('hands a visible action to a durable pending outbox before completion', () => {
+      const outbox = asRecord(processing.outbox_completion, 'outbox_completion');
+      expect(mayMarkContinuationCompleted('durable_outbox_intent')).toBe(true);
+      expect(outbox.continuation_state).toBe('completed');
+      expect(outbox.delivery_state).toBe('pending');
+      expect(outbox.slack_call_started).toBe(false);
+      expect(outboxRecoveryAction('pending')).toBe('resume_pending_first_send');
+      expect(outbox.expect_eventual_slack_effects).toBe(1);
+      expect(outbox.expect_duplicate_send).toBe(false);
     });
   });
 
@@ -420,42 +430,51 @@ describe('a clear assignment reaches dispatch on its own (GS-FR-006)', () => {
     }
   });
 
-  it('walks draft → ready → dispatched through legal transitions', () => {
-    expect(steps.map((step) => step.to_state)).toEqual(['draft', 'ready', 'dispatched']);
-    for (const step of steps) {
+  it('walks draft → ready, then command pending → delivered → dispatched', () => {
+    const transitions = steps.filter((step) => step.to_state !== null);
+    expect(transitions.map((step) => step.to_state)).toEqual(['draft', 'ready', 'dispatched']);
+    for (const step of transitions) {
       if (step.from_state === null) continue;
       expect(
         WORKFLOW_TRANSITIONS[step.from_state as WorkflowState],
         `${String(step.from_state)} → ${String(step.to_state)}`,
       ).toContain(step.to_state);
     }
+    expect(steps.map((step) => step.command_state).filter(Boolean)).toEqual(['pending', 'delivered']);
     expect(walk.expect_final_state).toBe('dispatched');
   });
 
-  it('enqueues a continuation at each Gist-expected step and stops at dispatched', () => {
+  it('enqueues only on committed Gist-expected transitions, never on command delivery', () => {
     for (const step of steps) {
+      const committedTransition = step.to_state !== null;
       expect(
-        enqueuesContinuation({
-          committed: true,
-          next_state: step.to_state as WorkflowState,
-          continuation_pending: false,
-        }),
+        committedTransition
+          ? enqueuesContinuation({
+              committed: true,
+              next_state: step.to_state as WorkflowState,
+              continuation_pending: false,
+            })
+          : false,
         `step ${String(step.step)}`,
       ).toBe(step.expect_enqueues_continuation);
     }
   });
 
-  it('produces exactly one externally visible action across the whole walk', () => {
-    // Creation and the intermediate turn are silent; the instruction is the
-    // one visible action, and it belongs to its own source event.
-    const total = steps.reduce((sum, step) => sum + Number(step.expect_visible_actions), 0);
-    expect(total).toBe(walk.expect_total_visible_actions);
-    expect(total).toBe(1);
+  it('creates one visible command and produces one Slack effect', () => {
+    const commands = steps.reduce((sum, step) => sum + Number(step.expect_visible_actions), 0);
+    const effects = steps.reduce((sum, step) => sum + Number(step.expect_slack_effects), 0);
+    expect(commands).toBe(walk.expect_total_visible_actions);
+    expect(effects).toBe(walk.expect_total_slack_effects);
+    expect(commands).toBe(1);
+    expect(effects).toBe(1);
   });
 
-  it('gives every step its own claim, so no step can double up', () => {
-    const claims = steps.map((step) => actionClaimKey(String(step.event_key)));
-    expect(new Set(claims).size).toBe(claims.length);
+  it('claims the source continuation once; outbox delivery reuses that command', () => {
+    const commandStep = steps.find((step) => Number(step.expect_visible_actions) === 1);
+    const outboxStep = steps.find((step) => step.source === 'outbox');
+    expect(commandStep).toBeDefined();
+    expect(outboxStep?.event_key).toBe(commandStep?.event_key);
+    expect(actionClaimKey(String(commandStep?.event_key))).toBe('ev:cont:wf_supv_0001:2');
   });
 });
 

@@ -62,15 +62,14 @@ GS-FR-016, GS-FR-035, GS-NFR-003).
 
 ## Action integrity
 
-**GS-INV-09 — one event, at most one durable external action.**
-`ActionClaimKey = ev:<source_event_key>` is claimed durably before the action becomes externally
-visible. A second externally visible action for the same event is refused (GS-FR-024,
-`dispatch.md` §2).
+**GS-INV-09 — one event, at most one durable external command.**
+`ActionClaimKey = ev:<source_event_key>` and a `pending` outbox row commit atomically before anything
+becomes visible. A second command for the event is refused. The outbox, not event re-evaluation,
+owns send liveness (`dispatch.md` §2).
 
-The key is the **event alone**. It covers actions bound to a workflow and actions with no workflow
-at all — an unmatched trusted-bot notification and ordinary assistance — because a workflow-scoped
-key would have left the unbound half of the traffic outside the invariant. `source_event_key` covers
-Slack messages and continuations alike.
+The key is the event alone. Bound checkpoints derive destinations from workflow binding; unbound
+`reply_user` checkpoints carry `workflow_id: null` and derive destination from the source event.
+Both use the same claim and restart protocol; no fabricated ID or dedup gap exists.
 
 **GS-INV-10 — the model never controls a Slack identifier.**
 A validated `SupervisorAction` contains no channel ID, thread timestamp, user ID, bot ID, app ID,
@@ -83,11 +82,13 @@ An approval authorizes one workflow, one action, one action version, granted by 
 configured approver, within its expiry. Any material change increments the version and invalidates
 the approval structurally (GS-FR-036, `approvals.md` §3).
 
-**GS-INV-12 — restart and retry cannot duplicate a dispatch.**
-The checkpoint write precedes the Slack call; `delivered` is set only from a confirmed outgoing
-message identity; retries share one action and one version; an unreconcilable in-flight action asks
-a human rather than re-sending, and only that human may abandon it (GS-FR-015, GS-FR-020,
-GS-FR-043, GS-NFR-002, `dispatch.md` §2, §3.4, §5).
+**GS-INV-12 — restart and retry cannot lose a pending first send or duplicate a dispatch.**
+Command creation atomically writes the event-global claim and `pending` outbox intent. Restart
+resumes pending before new evaluation. The worker durably moves `pending → in_flight` before the
+Slack call; after that boundary ambiguity reconciles and never blindly retries. A new attempt exists
+only after the prior attempt durably records a definitive Slack pre-acceptance rejection, so
+attempts are serial. `delivered` is never resent, and only a human may abandon unresolved
+`in_flight` (GS-FR-015, GS-FR-020, GS-FR-043, `dispatch.md` §2–§5).
 
 The guarantee is about **effects, not evaluations**. Continuation processing is at-least-once: a
 crash between acquiring a lease and committing anything durable is resumed, so the same continuation
@@ -96,13 +97,10 @@ compare-and-set and the external-action claim are both keyed on its `event_key`.
 exactly-once evaluation would be claiming something this design does not provide, and the honest
 version is the one an implementer can actually build against.
 
-**A retry requires a definitive pre-acceptance rejection from Slack.** A timeout, a transport error,
-or any response that neither confirms nor disproves publication is `indeterminate`: the checkpoint
-stays `in_flight` and reconciliation decides. Reconciliation is one-directional — it can promote an
-action to `delivered` on positive evidence, and it can never demote one to `failed`, because the
-absence of a message proves nothing when capture, history, and our own writes can all lag
-(`dispatch.md` §5.1). Everything unresolved stops at `waiting_human` with no further send. Retrying
-an ambiguous attempt is a duplicate dispatch wearing a retry's clothes.
+A retry requires a definitive Slack pre-acceptance rejection. Timeout, transport error, and silence
+stay `in_flight`; reconciliation may prove delivery but never non-delivery. `destination_unresolved`
+is a pre-command capability failure, not a Slack attempt. Attempts cannot overlap: each successor
+requires its predecessor's durable definitive rejection.
 
 **GS-INV-13 — autonomy is bounded and survives restart.**
 Every workflow carries `max_turns`, `max_consecutive_failures`, `inactivity_timeout_ms`,
@@ -110,10 +108,11 @@ Every workflow carries `max_turns`, `max_consecutive_failures`, `inactivity_time
 evaluation and before dispatch, are re-derived from durable timestamps after restart, and cannot be
 raised by channel content **or by model output**. The response deadline Gist states to a bot is
 derived from those limits rather than chosen (`actions.md` §5.2), so it can never exceed the
-inactivity timeout or outlive the workflow. Runtime-generated continuations consume turns like any
-other event and cannot form a cycle (`actions.md` §2.2). Reaching a limit moves the workflow to
-`waiting_human`, `failed`, or `timed_out` — never silent continuation (GS-FR-038, GS-FR-039,
-GS-NFR-007, `workflow-state.md` §7).
+inactivity timeout or outlive the workflow. Runtime-generated continuations consume turns and cannot form a cycle. At an autonomy limit,
+authorized owner/approver status, pause, redirect, and cancel controls remain admissible. Continue
+may consume exactly one durable grant keyed by its event; duplicate/restart cannot mint another,
+counters are not reset, limits are not raised, and autonomous events remain blocked afterwards
+(`workflow-state.md` §7).
 
 ## Privacy and provenance
 

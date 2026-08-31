@@ -15,24 +15,33 @@ trusted bot may contain.
 Exactly ten members. A model output that does not validate against this union is **rejected**, not
 repaired, and the workflow records an internal failure rather than acting on a guess.
 
+Every member is a closed object. Fields shown are exact: none may be omitted and no unknown field is
+accepted. Every workflow-bound variant carries a non-empty `workflow_id` and positive integer
+`expected_version`, checked against durable state before any effect.
+
 ```text
 SupervisorAction =
-  | { action_class: 'no_action';        reason_class }
-  | { action_class: 'reply_user';       workflow_id?; message_class }
-  | { action_class: 'ask_user';         workflow_id;  missing_field: MissingField }
-  | { action_class: 'dispatch_bot';     workflow_id;  logical_target; instruction: InstructionEnvelope }
-  | { action_class: 'follow_up_bot';    workflow_id;  logical_target; instruction: InstructionEnvelope }
-  | { action_class: 'request_approval'; workflow_id;  gated_class: GatedActionClass; action_version }
-  | { action_class: 'wait';             workflow_id;  wait_reason_class }
-  | { action_class: 'complete';         workflow_id;  outcome_class: 'accepted' }
-  | { action_class: 'fail';             workflow_id;  outcome_class }
-  | { action_class: 'cancel';           workflow_id;  outcome_class: 'cancelled_by_human' }
+  | { action_class: 'no_action';        reason_class: NoActionReason }
+  | { action_class: 'reply_user';       message_class: MessageClass }
+  | { action_class: 'reply_user';       workflow_id; expected_version; message_class: MessageClass }
+  | { action_class: 'ask_user';         workflow_id; expected_version; missing_field: MissingField }
+  | { action_class: 'dispatch_bot';     workflow_id; expected_version; logical_target; instruction: ModelInstruction }
+  | { action_class: 'follow_up_bot';    workflow_id; expected_version; logical_target; instruction: ModelInstruction }
+  | { action_class: 'request_approval'; workflow_id; expected_version; gated_class: GatedActionClass }
+  | { action_class: 'wait';             workflow_id; expected_version; wait_reason_class: WaitReasonClass }
+  | { action_class: 'complete';         workflow_id; expected_version; outcome_class: 'accepted' }
+  | { action_class: 'fail';             workflow_id; expected_version; outcome_class: FailureOutcomeClass }
+  | { action_class: 'cancel';           workflow_id; expected_version; outcome_class: 'cancelled_by_human' }
 ```
 
-`no_action` is a valid and expected decision for every eligible event class (`events.md` §3), and
-it is the only member with no `workflow_id` requirement at all. `reply_user` carries one only when
-the reply concerns a workflow; an unmatched trusted-bot notification (`events.md` §4.3) uses the
-form without it.
+The discriminator still has exactly ten `action_class` values; `reply_user` has bound and unbound
+schema variants. All enums are closed in `reference-rules.ts`. IDs and required strings must be
+non-empty. `ModelInstruction` requires every field in §5, rejects unknown fields, and validates its
+work class against the selected logical target. Malformed output is rejected, never defaulted,
+repaired, merged, or silently stripped.
+
+`no_action` is valid for every eligible event class and carries no workflow. An unmatched trusted-
+bot notification uses the unbound `reply_user`; a workflow report uses its bound variant.
 
 ### 1.1 Externally visible actions
 
@@ -129,13 +138,14 @@ a Slack-sourced event.
 Consequently a clear assignment progresses as:
 
 ```text
-human Slack event → create workflow (draft)   [1 visible action: none or an acknowledgement]
-continuation #1   → draft → ready             [0 visible actions]
-continuation #2   → ready → dispatched        [1 visible action: the instruction]
+human Slack event → create workflow (draft)                  [0 visible commands]
+continuation #1   → draft → ready                            [0 visible commands]
+continuation #2   → commit claim + pending command; complete [1 visible command, 0 Slack calls yet]
+outbox worker     → pending → in_flight → delivered          [1 Slack effect; ready → dispatched]
 ```
 
-No further human message is required, no confirmation is asked, and each step is one committed
-transition with at most one visible action.
+No further human message or confirmation is required. Command creation and continuation completion
+are one transaction; delivery and the workflow transition are the outbox's durable responsibility.
 
 ### 2.2 What bounds continuations
 
@@ -214,8 +224,8 @@ case, and it expires so that a crashed run's work is picked up rather than aband
 `processing → completed` may only be written in the same commit as **exactly one** of:
 
 1. the committed transition the continuation produced (`workflow-state.md` §3.2);
-2. the durable action checkpoint, when the continuation produced an externally visible action
-   (`dispatch.md` §1); or
+2. the event-global action claim plus a durable **`pending` outbox intent**, when the continuation
+   produced an externally visible action (`dispatch.md` §1–§2); or
 3. a durable `superseded` outcome, when the recheck found the workflow had moved on and no
    transition applies (§2.1).
 
@@ -240,16 +250,19 @@ both keyed on the continuation's own `event_key`:
 - **The transition compare-and-set.** A continuation's `event_key` is the `source_event_key` of any
   transition it commits, and `workflow-state.md` §3.2 treats a repeated `source_event_key` as an
   **idempotent success**. The second evaluation observes the already-committed result.
-- **The external-action claim** (`dispatch.md` §2), `ev:<event_key>`. If the first pass posted
-  anything, the second finds the claim held and posts nothing.
+- **The external-action claim plus outbox intent** (`dispatch.md` §2), `ev:<event_key>`. They commit
+  together. A second evaluation cannot create another command, while the independent outbox resumes
+  a `pending` first send even though continuation processing is already `completed`.
 
-So a resumed continuation either re-derives the same decision and finds it already applied, or finds
-the workflow moved on and completes as `superseded`. The cost of the crash is a repeated evaluation;
-the guarantee is that Slack sees no second instruction and the workflow takes no second transition.
+So a resumed continuation either finds its transition, finds its durable command, or completes as
+`superseded`. The cost of a pre-commit crash may be repeated evaluation. The durable effect occurs
+once: transitions converge under CAS, and Slack commands converge under the event-global claim and
+outbox protocol.
 
-**Restart.** Pending continuations are durable and reloaded with the active workflows
-(`workflow-state.md` §4). A continuation in `processing` whose lease has lapsed is **resumed**, not
-skipped — whether its interrupted run was silent or had already posted.
+**Restart.** A lapsed `processing` continuation resumes. A `completed` continuation is skipped only
+because its atomic outcome is independently durable. In particular, a completed continuation with
+a `pending` outbox row does not need to run again: startup drains that row before new evaluation
+(`dispatch.md` §5).
 
 ## 3. Logical targets and destination mapping (GS-FR-023, D027)
 
@@ -272,17 +285,19 @@ Mapping happens in the runtime, after the checks, in this order:
    (`workflow-state.md` §3.2).
 4. Confirm the approval, if the action is gated (`approvals.md` §3).
 5. Confirm the target's compatibility decision is GO (`compatibility.md` §4).
-6. Map `LogicalTarget` → the exact configured bot/app identity from `TrustedAutomationConfig`.
+6. Map `LogicalTarget` → a `ResolvedTargetIdentity` from exact configured IDs:
+   `bot` (`bot_id` only), `app` (`app_id` only), or `bot_and_app` (both).
 7. Derive the destination **from the workflow binding**, never from the action: channel is the
    binding's channel, thread is the binding's thread root.
-8. Claim the dispatch checkpoint (`dispatch.md` §2), then send.
+8. Atomically commit the event-global claim and pending outbox command (`dispatch.md` §2).
 
 Step 7 is the reason a prompt-injected instruction cannot move work to another channel: the
 destination is not an input to the decision at all. It is read out of the immutable binding
 established when an authorized human created the workflow.
 
-A `LogicalTarget` with no configured identity resolves to **no destination** and fails the action
-with `internal_error`. It never falls back to a name match, a "closest" bot, or the channel default.
+A target with neither configured ID resolves to no destination and fails with
+`destination_unresolved`. Bot-only, app-only, and both-ID configurations are valid. It never falls
+back to a name match, a closest bot, another identity, or the channel default.
 
 ## 4. Target capabilities (GS-FR-027, GS-FR-031)
 
@@ -447,7 +462,7 @@ matter of prompt discipline.
 
 | Rule | Pinned by |
 |---|---|
-| §1 exactly ten action classes; schema rejection | `actions.test.ts` |
+| §1 strict discriminated schemas, exact fields, closed enums, positive expected version | `actions.test.ts` |
 | §1.1 externally visible split | `actions.test.ts`, `dispatch.test.ts` |
 | §1.2 state and actor authority per action | `actions.test.ts` |
 | §1.2 no approval request for non-gated actions (GS-FR-006) | `approvals.test.ts` |
@@ -455,7 +470,7 @@ matter of prompt discipline.
 | §2.2 all five bounds, including the no-cycle argument | `continuation.test.ts` |
 | §2.3 a continuation is not self-evaluation | `continuation.test.ts` |
 | §2.4 the processing-state machine, and that a lapsed `processing` resumes rather than drops | `continuation.test.ts` |
-| §2.4 `completed` only atomically with a transition, a checkpoint, or a `superseded` outcome | `continuation.test.ts` |
+| §2.4 `completed` only atomically with a transition, pending outbox intent, or `superseded` | `continuation.test.ts`, `dispatch.test.ts` |
 | §2.4 duplicate effects prevented by the transition CAS and the action claim | `continuation.test.ts`, `workflow-state.test.ts` |
 | §3 no Slack ID anywhere in a validated action | `actions.test.ts`, `contract-safety.test.ts` |
 | §3 destination derives from the binding, never the action | `actions.test.ts` |

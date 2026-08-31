@@ -101,8 +101,10 @@ Fixed, and every step fails closed:
    already processed by the supervisor, stops here (§6).
 6. **Correlate** to a workflow binding (§4).
 7. **Serialize** on the correlated workflow, or on the channel when there is none (§5).
-8. **Evaluate**, producing exactly one action from the `actions.md` §1 union, which may be
-   `no_action`.
+8. **Apply limits and evaluate.** Autonomous events stop at a reached limit. An authorized
+   owner/approver control intent uses the bounded control path in `workflow-state.md` §7.3; a
+   `continue` event may consume one durable event-keyed opportunity. Output is exactly one strict
+   action from `actions.md` §1, which may be `no_action`.
 
 Steps 1–5 are pure policy over the record and the durable ledger. No model call happens before
 step 8, so an unauthorized, unknown, duplicate, or uncorrelated event costs no model call and can
@@ -252,7 +254,9 @@ orderly.
 | Replayed bot completion message | `event_key` already supervised | dropped; the workflow does not re-complete |
 | Bot repeats an equivalent status in a **new** message | new `event_key`; state check in §4.2 rule 5 | correlates, but the transition is a no-op if it does not change state; no second dispatch |
 | Gist's own echo of an instruction it sent | `actor_class === 'gist_self'` | never evaluated (GS-FR-040) |
-| Restart mid-processing | durable claim already held | not re-evaluated; `dispatch.md` §5 reconciles the action |
+| Restart with pending command | durable event-global claim + `pending` outbox row | resume the first send before new evaluation |
+| Restart with in-flight attempt | durable `in_flight` row | reconcile; never blindly retry |
+| Restart mid-continuation evaluation | lapsed continuation lease | resume evaluation; transition/command effects remain idempotent |
 
 The last two rows are the loop-prevention core. Gist's outgoing instruction is persisted directly
 by the send path and also arrives as a Slack echo; both are `gist_self` and neither is ever
@@ -274,8 +278,9 @@ continuation_superseded | continuation_already_processed
 ```
 
 The last two are continuation outcomes: `continuation_superseded` when the workflow left the state
-the continuation was enqueued for, and `continuation_already_processed` when a replay after restart
-finds the claim already held.
+the continuation was enqueued for, and `continuation_already_processed` when its durable processing
+state is `completed`. A completed continuation may still have a `pending` outbox command; the outbox
+resumes that send independently.
 
 Every one of these strings is safe to log. A supervisor log line may carry `workflow_id`,
 `action_id`, prior and new state, event class, action class, outcome, reason class, and a coarse
@@ -294,5 +299,5 @@ model output, a raw payload, or a credential.
 | §4.2 all five correlation checks, each failing independently | `events.test.ts` |
 | §4.3 unmatched trusted event outcome set | `events.test.ts` |
 | §5 serialization, recheck-after-queue, cooldown separation | `events.test.ts`, `dispatch.test.ts` |
-| §6 duplicate/retry/echo/restart table | `events.test.ts`, `dispatch.test.ts` |
+| §6 duplicate/echo and pending/in-flight restart table | `events.test.ts`, `dispatch.test.ts` |
 | §7 reason classes are content-free | `contract-safety.test.ts` |

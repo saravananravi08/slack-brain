@@ -198,19 +198,48 @@ describe('GO / NO-GO rules (compatibility.md §4, GS-FR-010)', () => {
     });
   });
 
-  it('holds stable_text to a sample floor', () => {
-    const testCase = byName(decisionCases, 'stable_text_claimed_from_too_few_samples');
-    const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
-    expect(measurement.sample_count).toBeLessThan(STABLE_TEXT_MIN_SAMPLES);
-    expect(compatibilityDecision(measurement).blocking_reason_class).toBe('insufficient_samples');
+  it('requires at least one observed success and one observed failure for every GO', () => {
+    for (const testCase of decisionCases.filter((entry) => entry.expect_decision === 'GO')) {
+      const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
+      expect(measurement.observed_success_count, String(testCase.name)).toBeGreaterThanOrEqual(1);
+      expect(measurement.observed_failure_count, String(testCase.name)).toBeGreaterThanOrEqual(1);
+      expect(measurement.sample_count).toBeGreaterThanOrEqual(
+        measurement.observed_success_count + measurement.observed_failure_count,
+      );
+    }
   });
 
-  it('applies no sample floor to a structural signal', () => {
-    // Present or absent, rather than inferred from repetition.
+  it('blocks structured evidence missing either observed outcome', () => {
+    const testCase = byName(decisionCases, 'structured_missing_failure_sample_is_blocked');
+    expect(compatibilityDecision(testCase.measurement as unknown as BotCompatibilityMeasurement))
+      .toEqual({ decision: 'NO_GO', blocking_reason_class: 'insufficient_samples' });
+  });
+
+  it('holds stable_text to both outcome samples and the repeatable three-sample floor', () => {
+    for (const name of [
+      'stable_text_claimed_from_too_few_samples',
+      'stable_text_missing_success_sample_is_blocked',
+    ]) {
+      const measurement = byName(decisionCases, name).measurement as unknown as BotCompatibilityMeasurement;
+      expect(compatibilityDecision(measurement).blocking_reason_class).toBe('insufficient_samples');
+    }
+    expect(STABLE_TEXT_MIN_SAMPLES).toBe(3);
+  });
+
+  it('requires exactly the two outcome samples as the structured minimum', () => {
     const testCase = byName(decisionCases, 'structured_outcomes_need_no_sample_floor');
     const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
-    expect(measurement.sample_count).toBe(1);
+    expect(measurement.sample_count).toBe(2);
+    expect(measurement.observed_success_count).toBe(1);
+    expect(measurement.observed_failure_count).toBe(1);
     expect(compatibilityDecision(measurement).decision).toBe('GO');
+  });
+
+  it('is mutation-sensitive to either outcome count dropping to zero', () => {
+    const source = byName(decisionCases, 'fully_measured_and_compatible_is_go')
+      .measurement as unknown as BotCompatibilityMeasurement;
+    expect(compatibilityDecision({ ...source, observed_success_count: 0 }).decision).toBe('NO_GO');
+    expect(compatibilityDecision({ ...source, observed_failure_count: 0 }).decision).toBe('NO_GO');
   });
 
   it('still blocks when outcomes cannot be told apart at all', () => {

@@ -34,9 +34,11 @@ TrustedAutomationConfig
   linear_app_id           optional
 ```
 
-An absent trusted ID does not degrade to a name match; it means that bot has **no** trusted
-identity in this deployment and its messages resolve to `unknown_automation`. Configuring nothing
-is a safe configuration, not a broken one.
+A target may be configured by bot ID only, app ID only, or both. Runtime destination resolution
+preserves that alternative as `ResolvedTargetIdentity = bot | app | bot_and_app` (`actions.md` §3).
+Only when both target IDs are absent is identity unresolved; that fails with
+`destination_unresolved`, never `internal_error` or a name fallback. Configuring nothing remains a
+safe capture-only configuration.
 
 ### 1.1 Resolution order (first match wins)
 
@@ -156,7 +158,7 @@ against durable state. `actions.md` §6 states the same rule from the model's si
 
 | Rule | Pinned by |
 |---|---|
-| §1.1 resolution order, including the misconfiguration fallback | `identity-routing.test.ts` |
+| §1.1 resolution order, including bot-only/app-only/both/neither | `identity-routing.test.ts`, `actions.test.ts` |
 | §2 no display name, text, or model output as identity | `identity-routing.test.ts`, `contract-safety.test.ts` |
 | §3 the full routing matrix, every cell | `identity-routing.test.ts` |
 | §3.1 trusted bots cannot create, own, approve, or redirect | `identity-routing.test.ts`, `approvals.test.ts` |

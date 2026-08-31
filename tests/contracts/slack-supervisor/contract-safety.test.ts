@@ -208,6 +208,12 @@ describe('no retired vocabulary survives a rename', () => {
     ['proven non-delivery', 'reconciliation evidences delivery only (dispatch.md §5.1)'],
     ['processed exactly once', 'at-least-once processing with idempotent effects (actions.md §2.4)'],
     ['claim held and stops', 'a lapsed processing lease resumes (actions.md §2.4)'],
+    ['pending, no claim consumed', 'pending is a resumable unsent outbox command (dispatch.md §2)'],
+    ['retry that races', 'attempts are strictly serial (dispatch.md §3.3)'],
+    ['slow original', 'attempts are strictly serial (dispatch.md §3.3)'],
+    ['late success', 'attempts are strictly serial (dispatch.md §3.3)'],
+    ['before every dispatch', 'limits are checked before durable command creation'],
+    ['reconcile any action left in a non-terminal delivery state', 'dispatch pending; reconcile only in-flight'],
   ];
 
   it.each(CONTRACT_DOCS)('%s uses no superseded wording', (doc) => {

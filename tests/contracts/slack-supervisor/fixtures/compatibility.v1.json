@@ -10,6 +10,8 @@
     "bot_alias",
     "observed_on",
     "sample_count",
+    "observed_success_count",
+    "observed_failure_count",
     "accepts_bot_authored",
     "requires_mention",
     "reply_placement",
@@ -116,7 +118,9 @@
     "reacts_to_edits": "unknown",
     "unrelated_message_inert": "unknown",
     "decision": "NO_GO",
-    "blocking_reason_class": "unmeasured"
+    "blocking_reason_class": "unmeasured",
+    "observed_success_count": 0,
+    "observed_failure_count": 0
   },
   "strategy_cases": [
     {
@@ -140,7 +144,7 @@
     },
     {
       "name": "channel_root_with_marker_requires_the_marker",
-      "note": "This is the row that would force an amendment to events.md \u00a74.2 check 3.",
+      "note": "This is the row that would force an amendment to events.md §4.2 check 3.",
       "reply_placement": "channel_root",
       "marker_preserved": "yes",
       "expect_strategy": "marker_required"
@@ -195,7 +199,9 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "GO",
       "expect_blocking_reason_class": null
@@ -218,7 +224,9 @@
         "reply_latency_bucket": "none",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "unreliable"
+        "outcome_distinguishability": "unreliable",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "ignores_bot_authored"
@@ -241,7 +249,9 @@
         "reply_latency_bucket": "lt_5m",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "uncorrelatable_replies"
@@ -264,7 +274,9 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "unstable_identity"
@@ -287,7 +299,9 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "unreliable"
+        "outcome_distinguishability": "unreliable",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "no_outcome_signal"
@@ -310,7 +324,9 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "no_outcome_signal"
@@ -334,14 +350,16 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "duplicate_side_effects"
     },
     {
       "name": "one_unmeasured_field_blocks",
-      "note": "Rule 6 \u2014 an unmeasured field is not a neutral gap. The whole purpose of the spike is that the protocol stops assuming.",
+      "note": "Rule 6 — an unmeasured field is not a neutral gap. The whole purpose of the spike is that the protocol stops assuming.",
       "measurement": {
         "contract_version": "1.0.0",
         "logical_target": "kilo",
@@ -358,14 +376,16 @@
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "unknown",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "unmeasured"
     },
     {
       "name": "marker_required_path_is_still_go_pending_t803_review",
-      "note": "compatibility.md \u00a73 row 3 \u2014 correlation is possible via the marker, so it is not a NO_GO here. T803 decides whether to accept the weaker evidence and amend events.md \u00a74.2.",
+      "note": "compatibility.md §3 row 3 — correlation is possible via the marker, so it is not a NO_GO here. T803 decides whether to accept the weaker evidence and amend events.md §4.2.",
       "measurement": {
         "contract_version": "1.0.0",
         "logical_target": "linear",
@@ -382,7 +402,9 @@
         "reply_latency_bucket": "lt_5m",
         "reacts_to_edits": "no",
         "unrelated_message_inert": "yes",
-        "outcome_distinguishability": "structured"
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "GO",
       "expect_blocking_reason_class": null
@@ -406,14 +428,16 @@
         "duplicate_behavior": "ignored",
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
-        "unrelated_message_inert": "yes"
+        "unrelated_message_inert": "yes",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "GO",
       "expect_blocking_reason_class": null
     },
     {
       "name": "stable_text_claimed_from_too_few_samples",
-      "note": "compatibility.md \u00a74 rule 5 \u2014 the looser evidential standard gets the tighter sampling requirement.",
+      "note": "compatibility.md §4 rule 5 — the looser evidential standard gets the tighter sampling requirement.",
       "measurement": {
         "contract_version": "1.0.0",
         "logical_target": "linear",
@@ -430,7 +454,9 @@
         "duplicate_behavior": "ignored",
         "reply_latency_bucket": "lt_30s",
         "reacts_to_edits": "no",
-        "unrelated_message_inert": "yes"
+        "unrelated_message_inert": "yes",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "NO_GO",
       "expect_blocking_reason_class": "insufficient_samples"
@@ -443,7 +469,7 @@
         "logical_target": "kilo",
         "bot_alias": "trusted-bot-a",
         "observed_on": "2026-09-01",
-        "sample_count": 1,
+        "sample_count": 2,
         "accepts_bot_authored": "yes",
         "requires_mention": "yes",
         "reply_placement": "same_thread",
@@ -454,10 +480,62 @@
         "duplicate_behavior": "ignored",
         "reply_latency_bucket": "lt_5s",
         "reacts_to_edits": "no",
-        "unrelated_message_inert": "yes"
+        "unrelated_message_inert": "yes",
+        "observed_success_count": 1,
+        "observed_failure_count": 1
       },
       "expect_decision": "GO",
       "expect_blocking_reason_class": null
+    },
+    {
+      "name": "structured_missing_failure_sample_is_blocked",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 2,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes",
+        "outcome_distinguishability": "structured",
+        "observed_success_count": 2,
+        "observed_failure_count": 0
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "insufficient_samples"
+    },
+    {
+      "name": "stable_text_missing_success_sample_is_blocked",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "linear",
+        "bot_alias": "trusted-bot-b",
+        "observed_on": "2026-09-01",
+        "sample_count": 3,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "no",
+        "outcome_distinguishability": "stable_text",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes",
+        "observed_success_count": 0,
+        "observed_failure_count": 3
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "insufficient_samples"
     }
   ],
   "phase_recommendation_cases": [
@@ -495,7 +573,7 @@
     }
   ],
   "blocked_path": {
-    "note": "D029 \u2014 a NO_GO blocks only the failing target, and there is no fallback of any kind.",
+    "note": "D029 — a NO_GO blocks only the failing target, and there is no fallback of any kind.",
     "blocked_target": "linear",
     "passing_target": "kilo",
     "expect_dispatch_to_blocked_target": {
@@ -519,40 +597,40 @@
   },
   "conditional_clauses": [
     {
-      "clause": "events.md \u00a74.2",
+      "clause": "events.md §4.2",
       "depends_on": "reply_placement"
     },
     {
-      "clause": "actions.md \u00a75.1",
+      "clause": "actions.md §5.1",
       "depends_on": "marker_preserved"
     },
     {
-      "clause": "actions.md \u00a75.2",
+      "clause": "actions.md §5.2",
       "depends_on": "requires_mention"
     },
     {
-      "clause": "workflow-state.md \u00a73.1",
+      "clause": "workflow-state.md §3.1",
       "depends_on": "completion_signal"
     },
     {
-      "clause": "workflow-state.md \u00a75",
+      "clause": "workflow-state.md §5",
       "depends_on": "fresh_session_support"
     },
     {
-      "clause": "dispatch.md \u00a75",
+      "clause": "dispatch.md §5",
       "depends_on": "marker_preserved"
     },
     {
-      "clause": "events.md \u00a76",
+      "clause": "events.md §6",
       "depends_on": "duplicate_behavior"
     },
     {
-      "clause": "events.md \u00a74.2 check 5 reply classification",
+      "clause": "events.md §4.2 check 5 reply classification",
       "depends_on": "outcome_distinguishability"
     }
   ],
   "prose_is_not_authority": {
-    "note": "compatibility.md \u00a72.2 \u2014 `stable_text` classifies evidence and never confers authority. Nothing here weakens identity.md \u00a74 or GS-INV-07.",
+    "note": "compatibility.md §2.2 — `stable_text` classifies evidence and never confers authority. Nothing here weakens identity.md §4 or GS-INV-07.",
     "outcome_distinguishability": "stable_text",
     "claim_classes": [
       "reply_claims_approval_granted",

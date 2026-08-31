@@ -15,6 +15,8 @@ import {
   actionClaimKey,
   applyDeliveryOutcome,
   applyFailedDispatch,
+  attemptsAreSerial,
+  checkpointBindingFailure,
   deliveryOutcome,
   dispatchBlockedBy,
   dispatchClaimKey,
@@ -22,6 +24,7 @@ import {
   isLegalDeliveryTransition,
   looksLikeSlackId,
   mayAbandonInFlight,
+  outboxRecoveryAction,
   reconcile,
   reconciliationCanConclude,
   retryAllowed,
@@ -29,8 +32,11 @@ import {
   type AttemptResult,
   type DeliveryState,
   type ActorClass,
+  type AttemptSequenceEntry,
+  type CheckpointBindingShape,
   type FailureClass,
   type ReconciliationInput,
+  type SlackAttemptFailureClass,
   type WorkflowState,
 } from './reference-rules.js';
 
@@ -73,6 +79,30 @@ describe('ActionCheckpoint (dispatch.md §1)', () => {
   it('records the outgoing message identity only on a delivered action', () => {
     expect(sample.delivery_state).toBe('delivered');
     expect(typeof sample.slack_message_key).toBe('string');
+  });
+
+  it('uses a closed bound variant for workflow actions', () => {
+    expect(checkpointBindingFailure(
+      asRecord(fixture.bound_checkpoint, 'bound_checkpoint') as unknown as CheckpointBindingShape,
+    )).toBeNull();
+    expect(checkpointBindingFailure({
+      binding_kind: 'workflow',
+      workflow_id: null,
+      action_class: 'dispatch_bot',
+      destination_source: 'workflow_binding',
+    })).toBe('invalid_bound_checkpoint');
+  });
+
+  it('uses a closed unbound variant without fabricating a workflow ID', () => {
+    const checkpoint = asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint');
+    expect(checkpoint.workflow_id).toBeNull();
+    expect(checkpointBindingFailure(checkpoint as unknown as CheckpointBindingShape)).toBeNull();
+    expect(checkpointBindingFailure({
+      binding_kind: 'event',
+      workflow_id: 'wf_supv_0001',
+      action_class: 'reply_user',
+      destination_source: 'source_event',
+    })).toBe('invalid_unbound_checkpoint');
   });
 });
 
@@ -230,10 +260,11 @@ describe('three delivery outcomes, not two (dispatch.md §3.1)', () => {
     ).toBe(testCase.expect_delivery_state);
   });
 
-  it('declares the same definitive set as the contract', () => {
+  it('declares only Slack pre-acceptance rejections as definitive attempt results', () => {
     expect(asStrings(outcomeFixture.definitive_non_delivery, 'definitive_non_delivery')).toEqual([
       ...DEFINITIVE_NON_DELIVERY,
     ]);
+    expect(DEFINITIVE_NON_DELIVERY).not.toContain('destination_unresolved');
   });
 
   it('treats a timeout as indeterminate, never as a failure', () => {
@@ -266,7 +297,7 @@ describe('three delivery outcomes, not two (dispatch.md §3.1)', () => {
   });
 
   it('confirms delivery only from a returned identity', () => {
-    for (const errorClass of [null, 'slack_transport_error'] as (FailureClass | null)[]) {
+    for (const errorClass of [null, 'slack_transport_error'] as (SlackAttemptFailureClass | null)[]) {
       expect(
         deliveryOutcome({
           slack_message_key: 'T0SUPVTEST/C0SUPVTESTA/1756684865.000250',
@@ -367,11 +398,11 @@ describe('the unbound visible-action claim (dispatch.md §2, GS-FR-024)', () => 
   });
 
   it('bounds a reply that carries no workflow at all', () => {
-    // Without an event-global key this action had no key to claim, so a Slack
-    // retry could have produced a second notification.
     const first = byName(cases, 'unmatched_trusted_bot_notice_is_claimed');
     const retry = byName(cases, 'retried_delivery_of_that_notice_is_refused');
     expect(first.workflow_id).toBeNull();
+    expect(first.destination_source).toBe('source_event');
+    expect(checkpointBindingFailure(first as unknown as CheckpointBindingShape)).toBeNull();
     expect(retry.expect_failure_class).toBe('claim_conflict');
   });
 
@@ -379,13 +410,20 @@ describe('the unbound visible-action claim (dispatch.md §2, GS-FR-024)', () => 
     const keys = cases.map((testCase) => actionClaimKey(String(testCase.source_event_key)));
     for (const key of keys) expect(key).toMatch(/^ev:/);
   });
+
+  it('resumes an unbound pending command after restart without another claim or workflow ID', () => {
+    const checkpoint = asRecord(fixture.unbound_checkpoint, 'unbound_checkpoint');
+    expect(checkpoint.workflow_id).toBeNull();
+    expect(checkpoint.destination_source).toBe('source_event');
+    expect(outboxRecoveryAction('pending')).toBe('resume_pending_first_send');
+  });
 });
 
-describe('retry convergence (dispatch.md §3, GS-FR-043)', () => {
+describe('serial retry convergence (dispatch.md §3, GS-FR-043)', () => {
   const retry = asRecord(fixture.retry_convergence, 'retry_convergence');
   const attempts = asArray(retry.attempts, 'retry_convergence.attempts');
 
-  it('shares one action and one version across every attempt', () => {
+  it('shares one action and one version across every serial attempt', () => {
     expect(retry.expect_distinct_actions).toBe(1);
     expect(retry.expect_expected_bot_turns).toBe(1);
     const keys = attempts.map((attempt) =>
@@ -397,18 +435,24 @@ describe('retry convergence (dispatch.md §3, GS-FR-043)', () => {
       ),
     );
     expect(new Set(keys).size).toBe(attempts.length);
-    for (const key of keys) {
-      expect(key).toContain(`act:${String(retry.action_id)}|v:${String(retry.version)}`);
-    }
   });
 
-  it('stops a slow attempt that completes after a retry already succeeded', () => {
-    const late = attempts.find((attempt) => attempt.expect_additional_dispatch === false);
-    expect(late, 'no fixture covers a late attempt').toBeDefined();
-    expect(late?.expect_delivery_state).toBe('delivered');
-    // The compare-and-set on `delivered` is what makes this converge: the
-    // first success wins and later attempts observe it.
-    expect(attempts.filter((attempt) => attempt.result === 'delivered').length).toBeGreaterThan(1);
+  it('creates attempt N+1 only after N definitively ended before acceptance', () => {
+    expect(attemptsAreSerial(attempts as unknown as AttemptSequenceEntry[])).toBe(true);
+    expect(retry.expect_attempts_serial).toBe(true);
+    expect(retry.expect_overlapping_attempts).toBe(false);
+  });
+
+  it('rejects a mutation that starts a retry after ambiguity', () => {
+    const mutated = attempts.map((entry) => ({ ...entry }));
+    mutated[1] = { ...mutated[1], prior_outcome: 'indeterminate' };
+    expect(attemptsAreSerial(mutated as unknown as AttemptSequenceEntry[])).toBe(false);
+  });
+
+  it('rejects a mutation that skips or overlaps an attempt number', () => {
+    const mutated = attempts.map((entry) => ({ ...entry }));
+    mutated[1] = { ...mutated[1], attempt: 3 };
+    expect(attemptsAreSerial(mutated as unknown as AttemptSequenceEntry[])).toBe(false);
   });
 
   it('cannot legally move a delivered action back to pending', () => {
@@ -576,19 +620,67 @@ describe('restart reconciliation (dispatch.md §5, GS-FR-015)', () => {
     expect(causes).toContain('capture_write_in_progress');
   });
 
-  it('runs inline after an indeterminate outcome and again at restart', () => {
+  it('runs inline after an indeterminate outcome and at restart only for in_flight', () => {
     expect(asStrings(fixture.reconciliation_callers, 'reconciliation_callers')).toEqual([
       'inline_after_indeterminate_outcome',
-      'restart',
+      'restart_in_flight',
     ]);
   });
 
-  it('replays state, not effects', () => {
+  it('drains a pending durable intent before accepting new events', () => {
+    const restart = asRecord(fixture.restart, 'restart');
+    expect(outboxRecoveryAction('pending')).toBe('resume_pending_first_send');
+    expect(reconcile({
+      delivery_state: 'pending',
+      own_outgoing_record: false,
+      marker_found_in_thread: false,
+      thread_readable: false,
+    }).delivery_state).toBe('pending');
+    expect(restart.expect_drains_pending_outbox_before_new_events).toBe(true);
+    expect(restart.expect_pending_first_send_resumed).toBe(true);
+  });
+
+  it('replays commands and state, not completed effects', () => {
     const restart = asRecord(fixture.restart, 'restart');
     expect(restart.expect_resends_confirmed_delivered).toBe(false);
     expect(restart.expect_reapplies_committed_transitions).toBe(false);
     expect(restart.expect_rearms_timers_from_durable_timestamps).toBe(true);
     expect(restart.expect_reconciles_before_accepting_new_events).toBe(true);
+  });
+});
+
+describe('durable command/outbox crash matrix (dispatch.md §2–§5)', () => {
+  const crashMatrix = asArray(fixture.crash_matrix, 'crash_matrix');
+
+  it.each(names(crashMatrix))('%s chooses the safe recovery branch', (name) => {
+    const testCase = byName(crashMatrix, name);
+    if (testCase.durable_state === 'continuation_processing') {
+      expect(testCase.expect_recovery).toBe('resume_continuation');
+    } else {
+      expect(outboxRecoveryAction(testCase.durable_state as DeliveryState)).toBe(testCase.expect_recovery);
+    }
+    expect(testCase.expect_blind_retry).toBe(false);
+    expect(Number(testCase.expect_max_effects)).toBeLessThanOrEqual(1);
+  });
+
+  it('cannot lose a first send committed as pending before any Slack call', () => {
+    const testCase = byName(crashMatrix, 'pending_checkpoint_committed_call_not_started');
+    expect(testCase.slack_call_started).toBe(false);
+    expect(testCase.expect_recovery).toBe('resume_pending_first_send');
+    expect(testCase.expect_min_effects).toBe(1);
+    expect(testCase.expect_max_effects).toBe(1);
+  });
+
+  it('never blindly retries once in_flight makes call start ambiguous', () => {
+    for (const testCase of crashMatrix.filter((entry) => entry.durable_state === 'in_flight')) {
+      expect(testCase.expect_recovery).toBe('reconcile_in_flight');
+      expect(testCase.expect_blind_retry).toBe(false);
+    }
+  });
+
+  it('is mutation-sensitive to abandoning pending on restart', () => {
+    expect(outboxRecoveryAction('pending')).not.toBe('skip_terminal');
+    expect(outboxRecoveryAction('pending')).not.toBe('reconcile_in_flight');
   });
 });
 
@@ -652,10 +744,15 @@ describe('abandoning an in-flight action needs a person (dispatch.md §3.4)', ()
 describe('ordering and failure taxonomy (dispatch.md §6, GS-NFR-006)', () => {
   const ordering = asRecord(fixture.ordering, 'ordering');
 
-  it('writes the checkpoint before the Slack call', () => {
-    // A process that sends first and records after cannot survive its own crash.
+  it('commits intent, then marks in_flight, then starts the Slack call', () => {
     const order = asStrings(ordering.expect_order, 'expect_order');
-    expect(order.indexOf('write_checkpoint')).toBeLessThan(order.indexOf('slack_call'));
+    expect(order).toEqual([
+      'commit_action_claim_and_pending_outbox',
+      'move_pending_to_in_flight',
+      'slack_call',
+      'record_result',
+    ]);
+    expect(order.indexOf('move_pending_to_in_flight')).toBeLessThan(order.indexOf('slack_call'));
     expect(ordering.storage_unavailable_expect_sent).toBe(false);
   });
 

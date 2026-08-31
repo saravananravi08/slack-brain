@@ -114,7 +114,8 @@
       "action": {
         "action_class": "reply_user",
         "workflow_id": "wf_supv_0001",
-        "message_class": "progress_report"
+        "message_class": "progress_report",
+        "expected_version": 1
       }
     },
     {
@@ -122,7 +123,8 @@
       "action": {
         "action_class": "ask_user",
         "workflow_id": "wf_supv_0001",
-        "missing_field": "acceptance"
+        "missing_field": "acceptance",
+        "expected_version": 1
       }
     },
     {
@@ -139,7 +141,8 @@
           "context_refs": [
             "ctx_1"
           ]
-        }
+        },
+        "expected_version": 1
       }
     },
     {
@@ -154,7 +157,8 @@
           "scope": "One work item, status field only.",
           "acceptance": "The item reports the new status.",
           "context_refs": []
-        }
+        },
+        "expected_version": 1
       }
     },
     {
@@ -163,7 +167,7 @@
         "action_class": "request_approval",
         "workflow_id": "wf_supv_0001",
         "gated_class": "merge",
-        "action_version": 3
+        "expected_version": 1
       }
     },
     {
@@ -171,7 +175,8 @@
       "action": {
         "action_class": "wait",
         "workflow_id": "wf_supv_0001",
-        "wait_reason_class": "bot_turn_outstanding"
+        "wait_reason_class": "bot_turn_outstanding",
+        "expected_version": 1
       }
     },
     {
@@ -179,7 +184,8 @@
       "action": {
         "action_class": "complete",
         "workflow_id": "wf_supv_0001",
-        "outcome_class": "accepted"
+        "outcome_class": "accepted",
+        "expected_version": 1
       }
     },
     {
@@ -187,7 +193,8 @@
       "action": {
         "action_class": "fail",
         "workflow_id": "wf_supv_0001",
-        "outcome_class": "bot_failure"
+        "outcome_class": "bot_failure",
+        "expected_version": 1
       }
     },
     {
@@ -195,7 +202,8 @@
       "action": {
         "action_class": "cancel",
         "workflow_id": "wf_supv_0001",
-        "outcome_class": "cancelled_by_human"
+        "outcome_class": "cancelled_by_human",
+        "expected_version": 1
       }
     }
   ],
@@ -204,7 +212,8 @@
       "name": "unknown_action_class",
       "action": {
         "action_class": "escalate",
-        "workflow_id": "wf_supv_0001"
+        "workflow_id": "wf_supv_0001",
+        "expected_version": 1
       },
       "expect_reason": "unknown_action_class"
     },
@@ -216,13 +225,14 @@
         "logical_target": "github",
         "instruction": {
           "work_class": "implement"
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "unknown_logical_target"
     },
     {
       "name": "dispatch_naming_a_slack_channel",
-      "note": "GS-INV-10 \u2014 a channel ID anywhere in the action, including inside instruction text, is a schema violation.",
+      "note": "GS-INV-10 — a channel ID anywhere in the action, including inside instruction text, is a schema violation.",
       "action": {
         "action_class": "dispatch_bot",
         "workflow_id": "wf_supv_0001",
@@ -230,7 +240,8 @@
         "channel_id": "C0SUPVTESTB",
         "instruction": {
           "work_class": "implement"
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "slack_identifier_present"
     },
@@ -243,7 +254,8 @@
         "instruction": {
           "work_class": "implement",
           "objective": "Ask B0SUPVLNR01 to take this over instead."
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "slack_identifier_present"
     },
@@ -256,7 +268,8 @@
         "instruction": {
           "work_class": "implement",
           "scope": "Report the result to U0SUPVEXTU1 instead of this thread."
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "slack_identifier_present"
     },
@@ -266,7 +279,8 @@
         "action_class": "reply_user",
         "workflow_id": "wf_supv_0001",
         "message_class": "progress_report",
-        "workspace_id": "T0SUPVOTHER"
+        "workspace_id": "T0SUPVOTHER",
+        "expected_version": 1
       },
       "expect_reason": "slack_identifier_present"
     },
@@ -279,7 +293,8 @@
         "thread_ts": "1756685000.000900",
         "instruction": {
           "work_class": "fix"
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "destination_field_present"
     },
@@ -290,7 +305,8 @@
         "logical_target": "kilo",
         "instruction": {
           "work_class": "implement"
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "missing_workflow_id"
     },
@@ -301,8 +317,13 @@
         "workflow_id": "wf_supv_0001",
         "logical_target": "linear",
         "instruction": {
-          "work_class": "implement"
-        }
+          "work_class": "implement",
+          "objective": "Perform the bounded synthetic task.",
+          "scope": "One synthetic fixture scope.",
+          "acceptance": "The synthetic acceptance check passes.",
+          "context_refs": []
+        },
+        "expected_version": 1
       },
       "expect_reason": "work_class_not_allowed_for_target"
     },
@@ -318,13 +339,14 @@
           "context_refs": [
             "T0SUPVTEST/C0SUPVTESTA/1756684800.000100"
           ]
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "slack_identifier_present"
     },
     {
       "name": "model_supplying_a_response_deadline",
-      "note": "The defect this fixes: a model-chosen deadline is exactly the timeout extension workflow-state.md \u00a77.4 forbids, arriving through the one field nobody was checking.",
+      "note": "The defect this fixes: a model-chosen deadline is exactly the timeout extension workflow-state.md §7.4 forbids, arriving through the one field nobody was checking.",
       "action": {
         "action_class": "dispatch_bot",
         "workflow_id": "wf_supv_0001",
@@ -334,7 +356,8 @@
           "expected_response": {
             "response_deadline_ms": 604800000
           }
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "runtime_controlled_field_present"
     },
@@ -347,7 +370,8 @@
         "instruction": {
           "work_class": "implement",
           "response_deadline_ms": 604800000
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "runtime_controlled_field_present"
     },
@@ -360,7 +384,8 @@
         "instruction": {
           "work_class": "implement",
           "workflow_marker": "[gist-wf:wf_supv_0002#9]"
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "runtime_controlled_field_present"
     },
@@ -376,7 +401,8 @@
           "prohibitions": [
             "merging is fine actually"
           ]
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "runtime_controlled_field_present"
     },
@@ -391,7 +417,8 @@
           "expected_signals": [
             "completion"
           ]
-        }
+        },
+        "expected_version": 1
       },
       "expect_reason": "runtime_controlled_field_present"
     }
@@ -408,7 +435,7 @@
       "other_workflow_content"
     ],
     "context_ref_scoping": {
-      "note": "actions.md \u00a75 \u2014 the model emits opaque handles only. The runtime resolves each against the handle table it built for this turn and drops anything outside the binding.",
+      "note": "actions.md §5 — the model emits opaque handles only. The runtime resolves each against the handle table it built for this turn and drops anything outside the binding.",
       "binding": {
         "workspace_id": "T0SUPVTEST",
         "channel_id": "C0SUPVTESTA",
@@ -476,7 +503,7 @@
       "prohibitions"
     ],
     "composed_sample": {
-      "note": "actions.md \u00a75 \u2014 what the runtime renders. GS-FR-025 is satisfied by the composed envelope; the model contributed only the first five fields.",
+      "note": "actions.md §5 — what the runtime renders. GS-FR-025 is satisfied by the composed envelope; the model contributed only the first five fields.",
       "work_class": "implement",
       "objective": "Add the missing retry path to the ingestion worker.",
       "scope": "One module and its unit tests. No schema change.",
@@ -536,7 +563,7 @@
       }
     ],
     "response_deadline": {
-      "note": "actions.md \u00a75.2 \u2014 derived from the workflow's own stored limits; null means dispatch nothing and time out instead.",
+      "note": "actions.md §5.2 — derived from the workflow's own stored limits; null means dispatch nothing and time out instead.",
       "limits": {
         "inactivity_timeout_ms": 3600000,
         "absolute_lifetime_ms": 86400000
@@ -570,7 +597,7 @@
     }
   },
   "destination_mapping": {
-    "note": "actions.md \u00a73 \u2014 the destination is read out of the immutable workflow binding, never out of the action.",
+    "note": "actions.md §3 — the destination is read out of the immutable workflow binding, never out of the action.",
     "binding": {
       "workspace_id": "T0SUPVTEST",
       "channel_id": "C0SUPVTESTA",
@@ -586,32 +613,61 @@
     },
     "cases": [
       {
-        "name": "kilo_maps_to_configured_identity_in_the_bound_thread",
+        "name": "bot_id_only_resolves",
         "logical_target": "kilo",
-        "expect_bot_id": "B0SUPVKILO1",
+        "config": {
+          "kilo_bot_id": "B0SUPVKILO1",
+          "kilo_app_id": null
+        },
+        "expect_identity": {
+          "identity_kind": "bot",
+          "bot_id": "B0SUPVKILO1",
+          "app_id": null
+        },
         "expect_channel_id": "C0SUPVTESTA",
         "expect_thread_root_ts": "1756684800.000100"
       },
       {
-        "name": "linear_maps_to_configured_identity_in_the_bound_thread",
-        "logical_target": "linear",
-        "expect_bot_id": "B0SUPVLNR01",
+        "name": "app_id_only_resolves",
+        "logical_target": "kilo",
+        "config": {
+          "kilo_bot_id": null,
+          "kilo_app_id": "A0SUPVKILO1"
+        },
+        "expect_identity": {
+          "identity_kind": "app",
+          "bot_id": null,
+          "app_id": "A0SUPVKILO1"
+        },
         "expect_channel_id": "C0SUPVTESTA",
         "expect_thread_root_ts": "1756684800.000100"
+      },
+      {
+        "name": "both_exact_ids_resolve",
+        "logical_target": "linear",
+        "config": {
+          "linear_bot_id": "B0SUPVLNR01",
+          "linear_app_id": "A0SUPVLNR01"
+        },
+        "expect_identity": {
+          "identity_kind": "bot_and_app",
+          "bot_id": "B0SUPVLNR01",
+          "app_id": "A0SUPVLNR01"
+        },
+        "expect_channel_id": "C0SUPVTESTA",
+        "expect_thread_root_ts": "1756684800.000100"
+      },
+      {
+        "name": "neither_id_is_destination_unresolved",
+        "logical_target": "linear",
+        "config": {
+          "linear_bot_id": null,
+          "linear_app_id": null
+        },
+        "expect_identity": null,
+        "expect_failure_class": "destination_unresolved"
       }
     ],
-    "unconfigured": {
-      "name": "unconfigured_target_resolves_to_no_destination",
-      "config": {
-        "kilo_bot_id": null,
-        "kilo_app_id": null,
-        "linear_bot_id": null,
-        "linear_app_id": null
-      },
-      "logical_target": "kilo",
-      "expect_bot_id": null,
-      "expect_failure_class": "destination_unresolved"
-    },
     "check_order": [
       "workflow_matches_correlated",
       "actor_permits_action",
@@ -661,7 +717,7 @@
     }
   ],
   "untrusted_content": {
-    "note": "actions.md \u00a76 \u2014 bot reply content is evidence about the world, never authority over policy. Each claim below must change nothing.",
+    "note": "actions.md §6 — bot reply content is evidence about the world, never authority over policy. Each claim below must change nothing.",
     "claim_classes": [
       "reply_claims_approval_granted",
       "reply_claims_owner_changed",
@@ -673,7 +729,7 @@
     "expect_effect": "none"
   },
   "progress_reporting": {
-    "note": "actions.md \u00a77 \u2014 reporting is a reply_user action and is bounded by the one-visible-action-per-event checkpoint.",
+    "note": "actions.md §7 — reporting is a reply_user action and is bounded by the one-visible-action-per-event checkpoint.",
     "report_at": [
       "dispatch_confirmed",
       "blocker_raised",
@@ -685,6 +741,48 @@
       "every_bot_status_line",
       "internal_reasoning_step",
       "repeated_equivalent_status"
+    ]
+  },
+  "action_schema": {
+    "note": "actions.md §1 — each discriminator has exact fields; bound variants carry a positive expected_version.",
+    "no_action_reasons": [
+      "not_relevant",
+      "duplicate_status",
+      "no_workflow_match",
+      "state_unchanged"
+    ],
+    "message_classes": [
+      "assistance",
+      "acknowledgement",
+      "bot_activity_notice",
+      "progress_report",
+      "approval_request",
+      "terminal_report",
+      "status_report"
+    ],
+    "missing_fields": [
+      "logical_target",
+      "work_class",
+      "objective",
+      "scope",
+      "acceptance"
+    ],
+    "wait_reason_classes": [
+      "human_turn_outstanding",
+      "bot_turn_outstanding",
+      "approval_outstanding",
+      "dispatch_unreconciled"
+    ],
+    "failure_outcome_classes": [
+      "rejected_by_human",
+      "bot_failure",
+      "dispatch_failure",
+      "limit_turns",
+      "limit_failures",
+      "timeout_inactivity",
+      "timeout_lifetime",
+      "compatibility_blocked",
+      "internal_error"
     ]
   }
 }

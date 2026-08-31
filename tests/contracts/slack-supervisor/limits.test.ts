@@ -8,9 +8,14 @@ import { describe, expect, it } from 'vitest';
 
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
+  admissionAtAutonomyLimit,
   applyCounters,
+  consumeLimitGrant,
   deriveResponseDeadlineMs,
+  limitGrantKey,
   limitStop,
+  mayMintLimitGrant,
+  type ActorClass,
   type CountingInput,
   type LimitCheckRecord,
   type WorkflowLimits,
@@ -244,6 +249,90 @@ describe('the response deadline is a projection of these limits (§7.1)', () => 
   });
 });
 
+describe('human control remains admissible at an autonomy limit (§7.3)', () => {
+  const control = asRecord(fixture.human_control_at_limit, 'human_control_at_limit');
+  const cases = asArray(control.cases, 'human_control_at_limit.cases');
+
+  it.each(names(cases))('%s', (name) => {
+    const testCase = byName(cases, name);
+    const input = {
+      actor_class: testCase.actor_class as ActorClass,
+      is_owner_or_approver: Boolean(testCase.is_owner_or_approver),
+      intent: (testCase.intent as 'status' | 'pause' | 'continue' | 'redirect' | 'cancel' | null) ?? null,
+      limit_reached: true,
+      grant_exists: Boolean(testCase.grant_exists),
+      grant_consumed: Boolean(testCase.grant_consumed),
+    };
+    expect(admissionAtAutonomyLimit(input)).toBe(testCase.expect_admission);
+    expect(mayMintLimitGrant({
+      actor_class: input.actor_class,
+      is_owner_or_approver: input.is_owner_or_approver,
+      intent: input.intent,
+      existing_event_grant: input.grant_exists,
+    })).toBe(testCase.expect_may_mint);
+  });
+
+  it('admits continue exactly once without resetting or raising counters', () => {
+    const grant = asRecord(control.grant, 'human_control_at_limit.grant');
+    expect(limitGrantKey(String(control.workflow_id), String(grant.source_event_key))).toBe(grant.grant_key);
+    expect(grant.opportunities).toBe(1);
+    const used = consumeLimitGrant('available', limits.max_turns);
+    expect(used).toEqual({
+      state: 'consumed',
+      turn_count: limits.max_turns + 1,
+      opportunity_used: true,
+    });
+    expect(consumeLimitGrant('consumed', used.turn_count)).toEqual({
+      state: 'consumed',
+      turn_count: used.turn_count,
+      opportunity_used: false,
+    });
+    expect(grant.expect_counters_reset).toBe(false);
+    expect(grant.expect_limits_raised).toBe(false);
+    expect(grant.expect_limit_applies_after_consumption).toBe(true);
+  });
+
+  it('processes redirect and cancel on the control plane despite the limit', () => {
+    expect(byName(cases, 'redirect_is_control_only').expect_admission).toBe('control_only');
+    expect(byName(cases, 'cancel_is_control_only').expect_admission).toBe('control_only');
+  });
+
+  it('cannot mint a second grant from a duplicate human event after restart', () => {
+    const duplicate = byName(cases, 'duplicate_continue_cannot_mint_again');
+    expect(duplicate.grant_exists).toBe(true);
+    expect(duplicate.grant_consumed).toBe(true);
+    expect(duplicate.expect_admission).toBe('blocked');
+    const restart = byName(cases, 'restart_resumes_unconsumed_grant');
+    expect(restart.grant_exists).toBe(true);
+    expect(restart.grant_consumed).toBe(false);
+    expect(restart.expect_admission).toBe('one_granted_opportunity');
+    expect(restart.expect_may_mint).toBe(false);
+  });
+
+  it('keeps autonomous bot and continuation events blocked at the limit', () => {
+    for (const name of ['bot_event_at_limit_is_blocked', 'continuation_at_limit_is_blocked']) {
+      expect(byName(cases, name).expect_admission).toBe('blocked');
+    }
+  });
+
+  it('is mutation-sensitive to granting a duplicate or autonomous event', () => {
+    expect(mayMintLimitGrant({
+      actor_class: 'authorized_human',
+      is_owner_or_approver: true,
+      intent: 'continue',
+      existing_event_grant: true,
+    })).toBe(false);
+    expect(admissionAtAutonomyLimit({
+      actor_class: 'kilo',
+      is_owner_or_approver: false,
+      intent: null,
+      limit_reached: true,
+      grant_exists: false,
+      grant_consumed: false,
+    })).toBe('blocked');
+  });
+});
+
 describe('channel content cannot raise a limit (workflow-state.md §7.4)', () => {
   const cases = asArray(attempts.attempts, 'content_cannot_raise_limits.attempts');
 
@@ -271,11 +360,13 @@ describe('channel content cannot raise a limit (workflow-state.md §7.4)', () =>
     }
   });
 
-  it('makes continuing after a limit stop produce a new action under the same limits', () => {
+  it('makes continuing after a limit stop consume one grant under the same limits', () => {
     const continuation = asRecord(
       fixture.continue_after_a_limit_stop,
       'continue_after_a_limit_stop',
     );
+    expect(continuation.expect_granted_opportunities).toBe(1);
+    expect(continuation.expect_counters_reset).toBe(false);
     expect(continuation.expect_limits_changed).toBe(false);
     expect(continuation.expect_stops_again).toBe(true);
   });

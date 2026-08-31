@@ -616,11 +616,11 @@ export function continuationRecoveryAction(
 /** actions.md §2.4 — the durable outcomes `completed` may be written with. */
 export type ContinuationCompletionEvidence =
   | 'committed_transition'
-  | 'action_checkpoint'
+  | 'durable_outbox_intent'
   | 'superseded_outcome';
 
 export const CONTINUATION_COMPLETION_EVIDENCE: readonly ContinuationCompletionEvidence[] =
-  Object.freeze(['committed_transition', 'action_checkpoint', 'superseded_outcome']);
+  Object.freeze(['committed_transition', 'durable_outbox_intent', 'superseded_outcome']);
 
 /**
  * actions.md §2.4 — `completed` is never written before a durable record
@@ -744,6 +744,67 @@ export interface LimitCheckRecord {
   readonly consecutive_failures: number;
   readonly created_at: string;
   readonly last_activity_at: string;
+}
+
+export type HumanControlIntent = 'status' | 'pause' | 'continue' | 'redirect' | 'cancel';
+export type LimitAdmission = 'normal_evaluation' | 'control_only' | 'one_granted_opportunity' | 'blocked';
+
+export interface LimitGrantRecord {
+  readonly grant_key: string;
+  readonly workflow_id: string;
+  readonly source_event_key: string;
+  readonly state: 'available' | 'consumed';
+  readonly opportunities: 1;
+}
+
+export function limitGrantKey(workflowId: string, sourceEventKey: string): string {
+  return `limit-grant:${workflowId}:${sourceEventKey}`;
+}
+
+/**
+ * workflow-state.md §7.3 — autonomy stops do not deadlock the human control
+ * plane. Control is admitted only after exact human authorization and binding.
+ * A continue event owns one durable opportunity; its event key cannot mint a
+ * second grant after replay or restart.
+ */
+export function admissionAtAutonomyLimit(input: {
+  readonly actor_class: ActorClass;
+  readonly is_owner_or_approver: boolean;
+  readonly intent: HumanControlIntent | null;
+  readonly limit_reached: boolean;
+  readonly grant_exists: boolean;
+  readonly grant_consumed: boolean;
+}): LimitAdmission {
+  if (!input.limit_reached) return 'normal_evaluation';
+  if (input.actor_class !== 'authorized_human' || !input.is_owner_or_approver || input.intent === null) {
+    return 'blocked';
+  }
+  if (input.intent !== 'continue') return 'control_only';
+  if (input.grant_exists && input.grant_consumed) return 'blocked';
+  return 'one_granted_opportunity';
+}
+
+export function mayMintLimitGrant(input: {
+  readonly actor_class: ActorClass;
+  readonly is_owner_or_approver: boolean;
+  readonly intent: HumanControlIntent | null;
+  readonly existing_event_grant: boolean;
+}): boolean {
+  return (
+    input.actor_class === 'authorized_human' &&
+    input.is_owner_or_approver &&
+    input.intent === 'continue' &&
+    !input.existing_event_grant
+  );
+}
+
+export function consumeLimitGrant(
+  state: LimitGrantRecord['state'],
+  turnCount: number,
+): { readonly state: 'consumed'; readonly turn_count: number; readonly opportunity_used: boolean } {
+  return state === 'available'
+    ? { state: 'consumed', turn_count: turnCount + 1, opportunity_used: true }
+    : { state: 'consumed', turn_count: turnCount, opportunity_used: false };
 }
 
 export type LimitOutcomeClass = 'timeout_inactivity' | 'timeout_lifetime';
@@ -937,51 +998,164 @@ export type ActionRejection =
   | 'slack_identifier_present'
   | 'destination_field_present'
   | 'missing_workflow_id'
+  | 'missing_required_field'
+  | 'unknown_field'
+  | 'invalid_field_type'
+  | 'invalid_field_value'
   | 'unknown_logical_target'
   | 'work_class_not_allowed_for_target';
 
-const WORKFLOW_OPTIONAL: readonly ActionClass[] = Object.freeze(['no_action', 'reply_user']);
-const TARGETED_ACTIONS: readonly ActionClass[] = Object.freeze(['dispatch_bot', 'follow_up_bot']);
+export const NO_ACTION_REASONS = Object.freeze([
+  'not_relevant',
+  'duplicate_status',
+  'no_workflow_match',
+  'state_unchanged',
+] as const);
+export const MESSAGE_CLASSES = Object.freeze([
+  'assistance',
+  'acknowledgement',
+  'bot_activity_notice',
+  'progress_report',
+  'approval_request',
+  'terminal_report',
+  'status_report',
+] as const);
+export const MISSING_FIELDS = Object.freeze([
+  'logical_target',
+  'work_class',
+  'objective',
+  'scope',
+  'acceptance',
+] as const);
+export const WAIT_REASON_CLASSES = Object.freeze([
+  'human_turn_outstanding',
+  'bot_turn_outstanding',
+  'approval_outstanding',
+  'dispatch_unreconciled',
+] as const);
+export const FAILURE_OUTCOME_CLASSES = Object.freeze([
+  'rejected_by_human',
+  'bot_failure',
+  'dispatch_failure',
+  'limit_turns',
+  'limit_failures',
+  'timeout_inactivity',
+  'timeout_lifetime',
+  'compatibility_blocked',
+  'internal_error',
+] as const);
 
-/**
- * actions.md §1, §3, §4 — the schema gate.
- *
- * Order matters and is fixed: the Slack-identifier scan runs before the
- * destination-field scan, so `channel_id: "C…"` is reported as the identifier
- * it is rather than as a field name, and a destination-shaped field carrying a
- * non-identifier value is still caught.
- */
+const REQUIRED_ACTION_FIELDS: Readonly<Record<ActionClass, readonly string[]>> = Object.freeze({
+  no_action: ['action_class', 'reason_class'],
+  reply_user: ['action_class', 'message_class'],
+  ask_user: ['action_class', 'workflow_id', 'expected_version', 'missing_field'],
+  dispatch_bot: ['action_class', 'workflow_id', 'expected_version', 'logical_target', 'instruction'],
+  follow_up_bot: ['action_class', 'workflow_id', 'expected_version', 'logical_target', 'instruction'],
+  request_approval: ['action_class', 'workflow_id', 'expected_version', 'gated_class'],
+  wait: ['action_class', 'workflow_id', 'expected_version', 'wait_reason_class'],
+  complete: ['action_class', 'workflow_id', 'expected_version', 'outcome_class'],
+  fail: ['action_class', 'workflow_id', 'expected_version', 'outcome_class'],
+  cancel: ['action_class', 'workflow_id', 'expected_version', 'outcome_class'],
+});
+
+export function requiredActionFields(actionClass: ActionClass, boundReply = false): readonly string[] {
+  return actionClass === 'reply_user' && boundReply
+    ? Object.freeze(['action_class', 'workflow_id', 'expected_version', 'message_class'])
+    : REQUIRED_ACTION_FIELDS[actionClass];
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+function exactFields(record: Record<string, unknown>, allowed: readonly string[]): boolean {
+  return Object.keys(record).every((field) => allowed.includes(field));
+}
+
+function enumHas(values: readonly string[], value: unknown): boolean {
+  return typeof value === 'string' && values.includes(value);
+}
+
+function validateModelInstruction(
+  instruction: unknown,
+  target: LogicalTarget,
+): ActionRejection | null {
+  if (typeof instruction !== 'object' || instruction === null || Array.isArray(instruction)) {
+    return 'invalid_field_type';
+  }
+  const record = instruction as Record<string, unknown>;
+  if (!exactFields(record, MODEL_INSTRUCTION_FIELDS)) return 'unknown_field';
+  for (const field of MODEL_INSTRUCTION_FIELDS) {
+    if (!(field in record)) return 'missing_required_field';
+  }
+  if (typeof record.work_class !== 'string') return 'invalid_field_type';
+  if (!isAllowedWorkClass(target, record.work_class)) return 'work_class_not_allowed_for_target';
+  for (const field of ['objective', 'scope', 'acceptance'] as const) {
+    if (typeof record[field] !== 'string') return 'invalid_field_type';
+    if (!nonEmptyString(record[field])) return 'invalid_field_value';
+  }
+  if (!Array.isArray(record.context_refs)) return 'invalid_field_type';
+  if (!record.context_refs.every((ref) => typeof ref === 'string')) return 'invalid_field_type';
+  if (!record.context_refs.every((ref) => /^ctx_[1-9]\d*$/.test(ref as string))) {
+    return 'invalid_field_value';
+  }
+  return null;
+}
+
+/** actions.md §1, §3–§5 — strict, closed discriminated action schemas. */
 export function validateAction(action: Record<string, unknown>): ActionRejection | null {
   const actionClass = action.action_class;
   if (typeof actionClass !== 'string' || !ACTION_CLASSES.includes(actionClass as ActionClass)) {
     return 'unknown_action_class';
   }
-  // Checked before the identifier scan: a model reaching for a policy field is
-  // a more specific and more actionable diagnosis than "there is an ID in here".
+  // Security-specific rejections precede generic closed-schema rejections.
   if (containsRuntimeInstructionField(action)) return 'runtime_controlled_field_present';
   if (containsSlackIdentifier(action)) return 'slack_identifier_present';
   if (containsDestinationField(action)) return 'destination_field_present';
 
-  if (
-    !WORKFLOW_OPTIONAL.includes(actionClass as ActionClass) &&
-    typeof action.workflow_id !== 'string'
-  ) {
-    return 'missing_workflow_id';
-  }
-
-  if (TARGETED_ACTIONS.includes(actionClass as ActionClass)) {
-    const target = action.logical_target;
-    if (!isLogicalTarget(target)) return 'unknown_logical_target';
-
-    const instruction = action.instruction;
-    if (typeof instruction === 'object' && instruction !== null) {
-      const workClass = (instruction as Record<string, unknown>).work_class;
-      if (typeof workClass === 'string' && !isAllowedWorkClass(target, workClass)) {
-        return 'work_class_not_allowed_for_target';
-      }
+  const kind = actionClass as ActionClass;
+  const boundReply = kind === 'reply_user' && 'workflow_id' in action;
+  const fields = requiredActionFields(kind, boundReply);
+  if (!exactFields(action, fields)) return 'unknown_field';
+  for (const field of fields) {
+    if (!(field in action)) {
+      return field === 'workflow_id' ? 'missing_workflow_id' : 'missing_required_field';
     }
   }
-  return null;
+
+  if ('workflow_id' in action && !nonEmptyString(action.workflow_id)) {
+    return typeof action.workflow_id === 'string' ? 'invalid_field_value' : 'invalid_field_type';
+  }
+  if ('expected_version' in action) {
+    if (typeof action.expected_version !== 'number') return 'invalid_field_type';
+    if (!Number.isSafeInteger(action.expected_version) || action.expected_version <= 0) {
+      return 'invalid_field_value';
+    }
+  }
+
+  switch (kind) {
+    case 'no_action':
+      return enumHas(NO_ACTION_REASONS, action.reason_class) ? null : 'invalid_field_value';
+    case 'reply_user':
+      return enumHas(MESSAGE_CLASSES, action.message_class) ? null : 'invalid_field_value';
+    case 'ask_user':
+      return enumHas(MISSING_FIELDS, action.missing_field) ? null : 'invalid_field_value';
+    case 'dispatch_bot':
+    case 'follow_up_bot': {
+      if (!isLogicalTarget(action.logical_target)) return 'unknown_logical_target';
+      return validateModelInstruction(action.instruction, action.logical_target);
+    }
+    case 'request_approval':
+      return enumHas(GATED_ACTION_CLASSES, action.gated_class) ? null : 'invalid_field_value';
+    case 'wait':
+      return enumHas(WAIT_REASON_CLASSES, action.wait_reason_class) ? null : 'invalid_field_value';
+    case 'complete':
+      return action.outcome_class === 'accepted' ? null : 'invalid_field_value';
+    case 'fail':
+      return enumHas(FAILURE_OUTCOME_CLASSES, action.outcome_class) ? null : 'invalid_field_value';
+    case 'cancel':
+      return action.outcome_class === 'cancelled_by_human' ? null : 'invalid_field_value';
+  }
 }
 
 /** actions.md §5.1 — runtime-generated, never model-supplied. */
@@ -1067,24 +1241,40 @@ export interface DestinationConfig {
   readonly linear_app_id?: string | null;
 }
 
+export type ResolvedTargetIdentity =
+  | { readonly identity_kind: 'bot'; readonly bot_id: string; readonly app_id: null }
+  | { readonly identity_kind: 'app'; readonly bot_id: null; readonly app_id: string }
+  | { readonly identity_kind: 'bot_and_app'; readonly bot_id: string; readonly app_id: string };
+
 export interface ResolvedDestination {
-  readonly bot_id: string | null;
+  readonly target_identity: ResolvedTargetIdentity;
   readonly channel_id: string;
   readonly thread_root_ts: string;
 }
 
 /**
- * actions.md §3 steps 6–7 — the identity comes from configuration and the
- * destination comes from the binding. Neither is an input from the action.
+ * actions.md §3 steps 6–7 — target identity accepts either configured exact-ID
+ * form; the Slack destination still comes only from the source binding.
  */
 export function resolveDestination(
   target: LogicalTarget,
   config: DestinationConfig,
   binding: WorkflowBinding,
-): ResolvedDestination {
-  const botId = target === 'kilo' ? config.kilo_bot_id : config.linear_bot_id;
+): ResolvedDestination | null {
+  const rawBotId = target === 'kilo' ? config.kilo_bot_id : config.linear_bot_id;
+  const rawAppId = target === 'kilo' ? config.kilo_app_id : config.linear_app_id;
+  const botId = nonEmptyString(rawBotId) ? rawBotId : null;
+  const appId = nonEmptyString(rawAppId) ? rawAppId : null;
+  if (botId === null && appId === null) return null;
+
+  const targetIdentity: ResolvedTargetIdentity =
+    botId !== null && appId !== null
+      ? { identity_kind: 'bot_and_app', bot_id: botId, app_id: appId }
+      : botId !== null
+        ? { identity_kind: 'bot', bot_id: botId, app_id: null }
+        : { identity_kind: 'app', bot_id: null, app_id: appId as string };
   return {
-    bot_id: typeof botId === 'string' && botId !== '' ? botId : null,
+    target_identity: targetIdentity,
     channel_id: binding.channel_id,
     thread_root_ts: binding.thread_root_ts,
   };
@@ -1240,8 +1430,33 @@ export function ownershipPermissions(context: RequesterContext): {
 }
 
 /* ------------------------------------------------------------------ *
- * dispatch.md — checkpoints, delivery, reconciliation, failure
+ * dispatch.md — durable commands/outbox, delivery, reconciliation
  * ------------------------------------------------------------------ */
+
+export type CheckpointBindingKind = 'workflow' | 'event';
+
+export interface CheckpointBindingShape {
+  readonly binding_kind: CheckpointBindingKind;
+  readonly workflow_id: string | null;
+  readonly action_class: ActionClass;
+  readonly destination_source: 'workflow_binding' | 'source_event';
+}
+
+/** dispatch.md §1 — bound and unbound are closed, non-fabricated variants. */
+export function checkpointBindingFailure(
+  checkpoint: CheckpointBindingShape,
+): 'invalid_bound_checkpoint' | 'invalid_unbound_checkpoint' | null {
+  if (checkpoint.binding_kind === 'workflow') {
+    return nonEmptyString(checkpoint.workflow_id) && checkpoint.destination_source === 'workflow_binding'
+      ? null
+      : 'invalid_bound_checkpoint';
+  }
+  return checkpoint.workflow_id === null &&
+    checkpoint.action_class === 'reply_user' &&
+    checkpoint.destination_source === 'source_event'
+    ? null
+    : 'invalid_unbound_checkpoint';
+}
 
 /**
  * dispatch.md §2 — keyed on the source event alone.
@@ -1267,14 +1482,15 @@ export type DeliveryState = 'pending' | 'in_flight' | 'delivered' | 'failed' | '
 
 export const DELIVERY_TRANSITIONS: Readonly<Record<DeliveryState, readonly DeliveryState[]>> =
   Object.freeze({
+    // `pending` is a durable unsent command. Restart resumes its first send;
+    // only an explicit supersede/cancel may abandon it before an attempt.
     pending: ['in_flight', 'abandoned'],
-    // `in_flight → in_flight` is the indeterminate case: the outcome told us
-    // nothing, so nothing moves until reconciliation decides (§3.2).
-    // `in_flight → abandoned` survives only as a human-resolved route (§3.4):
-    // writing it asserts nothing was published, which §5.1 says cannot be
-    // inferred from absence.
+    // `in_flight` means the Slack call may have started. Ambiguity never moves
+    // back to pending and therefore can never create another attempt.
     in_flight: ['in_flight', 'delivered', 'failed', 'abandoned'],
     delivered: [],
+    // A new pending attempt is serial and exists only after this attempt's
+    // definitive pre-acceptance rejection was durably recorded.
     failed: ['pending', 'abandoned'],
     abandoned: [],
   });
@@ -1300,10 +1516,16 @@ export function mayAbandonInFlight(input: {
 
 export type DeliveryOutcome = 'delivered' | 'definitive_failure' | 'indeterminate';
 
+export type SlackAttemptFailureClass =
+  | 'slack_rate_limited'
+  | 'slack_transport_error'
+  | 'slack_permission_denied'
+  | 'slack_invalid_request';
+
 export interface AttemptResult {
   readonly slack_message_key: string | null;
-  /** The Slack error class, when the attempt returned one. */
-  readonly error_class: FailureClass | null;
+  /** Only a Slack call can produce an attempt result. Capability failures occur before the command. */
+  readonly error_class: SlackAttemptFailureClass | null;
   readonly timed_out: boolean;
 }
 
@@ -1311,11 +1533,10 @@ export interface AttemptResult {
  * dispatch.md §3.1 — error classes that prove the post was never published,
  * because Slack refused the call before accepting it.
  */
-export const DEFINITIVE_NON_DELIVERY: readonly FailureClass[] = Object.freeze([
+export const DEFINITIVE_NON_DELIVERY: readonly SlackAttemptFailureClass[] = Object.freeze([
   'slack_permission_denied',
   'slack_rate_limited',
   'slack_invalid_request',
-  'destination_unresolved',
 ]);
 
 /**
@@ -1365,6 +1586,35 @@ export function retryAllowed(input: {
   return input.workflow_state === 'ready';
 }
 
+export type OutboxRecoveryAction =
+  | 'resume_pending_first_send'
+  | 'reconcile_in_flight'
+  | 'schedule_serial_retry'
+  | 'skip_terminal';
+
+/** dispatch.md §4–§5 — restart dispatches pending; it never reconciles or auto-abandons it. */
+export function outboxRecoveryAction(state: DeliveryState): OutboxRecoveryAction {
+  if (state === 'pending') return 'resume_pending_first_send';
+  if (state === 'in_flight') return 'reconcile_in_flight';
+  if (state === 'failed') return 'schedule_serial_retry';
+  return 'skip_terminal';
+}
+
+export interface AttemptSequenceEntry {
+  readonly attempt: number;
+  readonly prior_attempt: number | null;
+  readonly prior_outcome: DeliveryOutcome | null;
+}
+
+/** dispatch.md §3.3 — every attempt starts after its predecessor definitively ended. */
+export function attemptsAreSerial(attempts: readonly AttemptSequenceEntry[]): boolean {
+  return attempts.every((entry, index) => {
+    if (entry.attempt !== index + 1) return false;
+    if (index === 0) return entry.prior_attempt === null && entry.prior_outcome === null;
+    return entry.prior_attempt === index && entry.prior_outcome === 'definitive_failure';
+  });
+}
+
 const BLOCKING_DELIVERY_STATES: readonly DeliveryState[] = Object.freeze(['pending', 'in_flight']);
 
 /** dispatch.md §2 — at most one action per workflow may be in flight. */
@@ -1409,8 +1659,9 @@ export interface ReconciliationResult {
  */
 export function reconcile(input: ReconciliationInput): ReconciliationResult {
   if (input.delivery_state === 'pending') {
-    // Nothing was ever attempted, so this is not a failure and counts as none.
-    return { delivery_state: 'abandoned', workflow_state: 'ready', reason_class: null };
+    // Not a reconciliation case. The durable command has not been attempted,
+    // so the outbox must resume its first send before new event evaluation.
+    return { delivery_state: 'pending', workflow_state: 'ready', reason_class: null };
   }
   if (input.own_outgoing_record || input.marker_found_in_thread) {
     return { delivery_state: 'delivered', workflow_state: 'dispatched', reason_class: null };
@@ -1433,7 +1684,7 @@ export function reconcile(input: ReconciliationInput): ReconciliationResult {
  * to `delivered` on positive evidence; it can never demote one to `failed`.
  */
 export function reconciliationCanConclude(): readonly DeliveryState[] {
-  return Object.freeze(['abandoned', 'delivered', 'in_flight']);
+  return Object.freeze(['pending', 'delivered', 'in_flight']);
 }
 
 export interface FailedDispatchInput {
@@ -1569,6 +1820,8 @@ export type CorrelationStrategy =
 export interface BotCompatibilityMeasurement {
   readonly logical_target: LogicalTarget;
   readonly sample_count: number;
+  readonly observed_success_count: number;
+  readonly observed_failure_count: number;
   readonly accepts_bot_authored: Tri;
   readonly requires_mention: Tri;
   readonly reply_placement: ReplyPlacement;
@@ -1653,11 +1906,21 @@ export function compatibilityDecision(
   if (!distinguishable || measurement.completion_signal === 'none') {
     return { decision: 'NO_GO', blocking_reason_class: 'no_outcome_signal' };
   }
+  const completeOutcomeEvidence =
+    Number.isSafeInteger(measurement.observed_success_count) &&
+    Number.isSafeInteger(measurement.observed_failure_count) &&
+    measurement.observed_success_count >= 1 &&
+    measurement.observed_failure_count >= 1 &&
+    measurement.sample_count >=
+      measurement.observed_success_count + measurement.observed_failure_count;
+  if (!completeOutcomeEvidence) {
+    return { decision: 'NO_GO', blocking_reason_class: 'insufficient_samples' };
+  }
   if (
     measurement.outcome_distinguishability === 'stable_text' &&
     measurement.sample_count < STABLE_TEXT_MIN_SAMPLES
   ) {
-    // The looser evidential standard gets the tighter sampling requirement.
+    // Stable prose needs repetition in addition to both observed outcomes.
     return { decision: 'NO_GO', blocking_reason_class: 'insufficient_samples' };
   }
   if (measurement.duplicate_behavior === 'second_action') {

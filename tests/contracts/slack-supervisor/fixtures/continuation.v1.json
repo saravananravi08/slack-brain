@@ -2,7 +2,7 @@
   "contract_set": "slack-supervisor",
   "contract_version": "1.0.0",
   "synthetic": true,
-  "defines": "docs/architecture/slack-supervisor/actions.md \u00a72.1\u2013\u00a72.3, events.md \u00a72.1, workflow-state.md \u00a73.4",
+  "defines": "docs/architecture/slack-supervisor/actions.md §2.1–§2.3, events.md §2.1, workflow-state.md §3.4",
   "note": "A continuation is a durable runtime-owned turn. It exists so a clear authorized assignment reaches dispatch without a second Slack message (GS-FR-006, PRD acceptance scenario 1).",
   "record_required_fields": [
     "contract_version",
@@ -151,7 +151,7 @@
     },
     {
       "name": "a_rejected_transition_enqueues_nothing",
-      "note": "A failed dispatch commits no state change, so it produces no continuation. Retry is dispatch.md \u00a73.3, not an internal turn loop.",
+      "note": "A failed dispatch commits no state change, so it produces no continuation. Retry is dispatch.md §3.3, not an internal turn loop.",
       "committed": false,
       "next_state": "ready",
       "continuation_pending": false,
@@ -166,7 +166,7 @@
     }
   ],
   "clear_assignment_walk": {
-    "note": "GS-FR-006 and PRD acceptance scenario 1 \u2014 one human message reaches a dispatched instruction with no confirmation asked and no second Slack event.",
+    "note": "GS-FR-006 and PRD acceptance scenario 1 — one human message reaches a dispatched instruction with no confirmation asked and no second Slack event.",
     "steps": [
       {
         "step": 1,
@@ -176,6 +176,7 @@
         "to_state": "draft",
         "expect_enqueues_continuation": true,
         "expect_visible_actions": 0,
+        "expect_slack_effects": 0,
         "expect_asks_human": false
       },
       {
@@ -186,6 +187,7 @@
         "to_state": "ready",
         "expect_enqueues_continuation": true,
         "expect_visible_actions": 0,
+        "expect_slack_effects": 0,
         "expect_asks_human": false
       },
       {
@@ -193,18 +195,34 @@
         "source": "continuation",
         "event_key": "cont:wf_supv_0001:2",
         "from_state": "ready",
-        "to_state": "dispatched",
+        "to_state": null,
+        "command_state": "pending",
+        "continuation_state": "completed",
         "expect_enqueues_continuation": false,
         "expect_visible_actions": 1,
+        "expect_slack_effects": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 4,
+        "source": "outbox",
+        "event_key": "cont:wf_supv_0001:2",
+        "from_state": "ready",
+        "to_state": "dispatched",
+        "command_state": "delivered",
+        "expect_enqueues_continuation": false,
+        "expect_visible_actions": 0,
+        "expect_slack_effects": 1,
         "expect_asks_human": false
       }
     ],
     "expect_additional_slack_events_required": 0,
     "expect_total_visible_actions": 1,
-    "expect_final_state": "dispatched"
+    "expect_final_state": "dispatched",
+    "expect_total_slack_effects": 1
   },
   "chain_bounds": {
-    "note": "actions.md \u00a72.2 rule 3 \u2014 restricted to the three Gist-expected states the legal edges are exactly draft\u2192ready and changes_requested\u2192ready, and `ready` has none, so the subgraph is acyclic with `ready` as its only sink. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations fired from that state is one more than that.",
+    "note": "actions.md §2.2 rule 3 — restricted to the three Gist-expected states the legal edges are exactly draft→ready and changes_requested→ready, and `ready` has none, so the subgraph is acyclic with `ready` as its only sink. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations fired from that state is one more than that.",
     "expect_longest_chain": {
       "draft": 1,
       "ready": 0,
@@ -229,7 +247,7 @@
     },
     {
       "name": "human_cancelled_while_it_waited",
-      "note": "events.md \u00a75 rule 2 \u2014 a queued event re-reads durable state before acting.",
+      "note": "events.md §5 rule 2 — a queued event re-reads durable state before acting.",
       "current_state": "cancelled",
       "enqueued_for_state": "draft",
       "expect_outcome": "superseded",
@@ -259,7 +277,7 @@
     }
   ],
   "turn_accounting": {
-    "note": "actions.md \u00a72.2 rule 4 \u2014 a continuation is a new supervisor event and consumes a turn, so max_turns bounds the internal path as tightly as Slack traffic.",
+    "note": "actions.md §2.2 rule 4 — a continuation is a new supervisor event and consumes a turn, so max_turns bounds the internal path as tightly as Slack traffic.",
     "transition": {
       "committed": true,
       "source_event_is_new": true,
@@ -270,7 +288,7 @@
     "expect_turn_count": 5
   },
   "not_self_evaluation": {
-    "note": "GS-INV-05 \u2014 a continuation is a state-machine step, not Gist reading its own message.",
+    "note": "GS-INV-05 — a continuation is a state-machine step, not Gist reading its own message.",
     "expect_has_actor_class": false,
     "expect_carries_message_content": false,
     "forbidden_origins": [
@@ -284,7 +302,7 @@
     "expect_carries_slack_only_fields": false
   },
   "claims": {
-    "note": "dispatch.md \u00a72 \u2014 when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is one of the two effect guards; whether the continuation has been handled is its processing state (actions.md \u00a72.4).",
+    "note": "dispatch.md §2 — when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is one of the two effect guards; whether the continuation has been handled is its processing state (actions.md §2.4).",
     "cases": [
       {
         "name": "continuation_claims_on_its_own_key",
@@ -299,7 +317,7 @@
     ]
   },
   "origin_typing": {
-    "note": "actions.md \u00a72.1 \u2014 the immediate origin is a SourceEventKey because a chain's later steps descend from another continuation, not from a message. root_message_key keeps the provenance a MessageKey genuinely answers.",
+    "note": "actions.md §2.1 — the immediate origin is a SourceEventKey because a chain's later steps descend from another continuation, not from a message. root_message_key keeps the provenance a MessageKey genuinely answers.",
     "chain": [
       {
         "name": "first_continuation_descends_from_the_human_message",
@@ -320,7 +338,7 @@
     "expect_root_constant_along_the_chain": true
   },
   "processing": {
-    "note": "actions.md \u00a72.4 \u2014 at-least-once and recoverable. A one-time marker taken before evaluation would strand a workflow whenever a run died between taking it and committing anything durable.",
+    "note": "actions.md §2.4 — at-least-once and recoverable. A one-time marker taken before evaluation would strand a workflow whenever a run died between taking it and committing anything durable.",
     "states": [
       "pending",
       "processing",
@@ -434,8 +452,8 @@
         "expect_may_complete": true
       },
       {
-        "name": "durable_action_checkpoint",
-        "evidence": "action_checkpoint",
+        "name": "durable_pending_outbox_intent",
+        "evidence": "durable_outbox_intent",
         "expect_may_complete": true
       },
       {
@@ -515,11 +533,21 @@
       }
     ],
     "silent_continuation": {
-      "note": "draft \u2192 ready produces no visible action, so no action claim is ever taken; its processing state is what records that it was handled.",
+      "note": "draft → ready produces no visible action, so no action claim is ever taken; its processing state is what records that it was handled.",
       "event_key": "cont:wf_supv_0001:1",
       "visible_actions": 0,
       "expect_action_claim_taken": false,
       "expect_completed_with": "committed_transition"
+    },
+    "outbox_completion": {
+      "note": "Continuation completion and the event-global action claim commit with one pending outbox intent. The outbox owns delivery after that commit.",
+      "continuation_state": "completed",
+      "delivery_state": "pending",
+      "slack_call_started": false,
+      "expect_restart_action": "resume_pending_first_send",
+      "expect_eventual_slack_effects": 1,
+      "expect_duplicate_evaluation": false,
+      "expect_duplicate_send": false
     }
   }
 }

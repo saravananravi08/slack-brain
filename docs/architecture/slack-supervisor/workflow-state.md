@@ -236,18 +236,16 @@ continuation there would be a poll rather than a step.
 
 On process start:
 
-1. Load every workflow in a non-terminal state.
-2. Re-arm inactivity and lifetime timers from `last_activity_at`, `created_at`, and `limits` —
-   timers are **derived** from durable timestamps, never from in-memory state, so a restart cannot
-   silently extend a deadline (GS-NFR-007).
-3. Reconcile any action left in a non-terminal delivery state per `dispatch.md` §5.
-4. Reload every `ContinuationEvent` that is not `completed`, including any left in `processing` by
-   the run that died: those are **resumed**, not skipped (`actions.md` §2.4). Processing is
-   at-least-once, so a resumed continuation may be evaluated a second time; its effects cannot
-   repeat, because the transition compare-and-set on its `event_key` and the external-action claim
-   both converge.
-5. Do **not** re-send any instruction whose delivery was confirmed, and do not re-run any completed
-   transition. Recovery replays state, not effects.
+1. Load every non-terminal workflow, outbox command, continuation, and human limit grant.
+2. Re-arm timers from durable timestamps and stored limits; restart never extends a deadline.
+3. Drain durable commands before accepting new supervisor events: a `pending` row resumes its first
+   or current send; an `in_flight` row reconciles and never blindly retries (`dispatch.md` §5).
+4. Reload every continuation not `completed`, including lapsed `processing` leases. A completed
+   continuation is skipped only because its transition, superseded outcome, or pending outbox intent
+   committed atomically. The pending intent remains live without re-running the continuation.
+5. Resume an unconsumed event-keyed human limit grant; never mint a new grant for the same event.
+6. Do not resend `delivered`, reapply a committed transition, or retry ambiguity. Recovery resumes
+   durable commands and state machines, not completed effects.
 
 A workflow whose in-flight action cannot be reconciled moves to `waiting_human` with reason class
 `dispatch_unreconciled`. Asking a human is the correct answer when the alternative is guessing
@@ -340,7 +338,9 @@ extension.
 ### 7.2 Counting
 
 - `turn_count` increments on every committed transition whose `source_event_key` is a new supervisor
-  event. Internal bookkeeping transitions do not consume a turn.
+  event, and when a one-opportunity human limit grant is consumed even if its evaluated result has
+  no state transition. Replaying a consumed grant increments nothing. Internal bookkeeping does not
+  consume a turn.
 - A continuation **is** a new supervisor event and consumes a turn like any other. This is not
   bookkeeping: it is how `max_turns` bounds the internal path as tightly as it bounds Slack traffic,
   so runtime-generated turns can never be the cheap ones (`actions.md` §2.2 rule 4).
@@ -357,13 +357,27 @@ extension.
 | `inactivity_timeout_ms` since `last_activity_at` | `timed_out` | `timeout_inactivity` |
 | `absolute_lifetime_ms` since `created_at` | `timed_out` | `timeout_lifetime` |
 
-Turn and failure limits stop and ask a human because the work may still be salvageable; timeouts
-terminate because nothing is going to arrive. In no case does the workflow continue silently
+Turn and failure limits stop autonomy and ask a human because work may still be salvageable;
+timeouts terminate. The control plane remains open after an autonomy stop:
+
+- after authorization and workflow binding, an owner/approver `status`, `pause`, `redirect`, or
+  `cancel` intent is processed despite `max_turns` or `max_consecutive_failures`; it cannot dispatch
+  autonomous work. Redirect writes a new action version and remains stopped unless separately
+  continued; cancel terminates;
+- `continue` creates at most one durable `LimitGrantRecord`, keyed by `(workflow_id,
+  source_event_key)`, with exactly one evaluation/action opportunity;
+- the grant does not reset a counter, raise a limit, or extend time. Its consumption commits with
+  the resulting transition, pending outbox command, or no-effect outcome;
+- replay/restart finds the same grant. An unconsumed grant resumes; a consumed grant cannot be
+  minted again. After the opportunity, normal limits apply again;
+- bot events, continuations, and other autonomous events remain blocked while the limit holds.
+
+This is bounded human control, not a counter bypass. In no case does the workflow continue silently
 (GS-FR-039).
 
-A limit check happens **before** evaluation on every correlated event and again before every
-dispatch. Checking only at dispatch time would let a bot-reply loop burn turns without ever
-reaching a check.
+A limit check happens before evaluation on every correlated event and before **command creation**.
+The outbox does not repeat policy checks between a committed pending command and its first send: the
+command is already the durable authorized effect, and rechecking could strand it after restart.
 
 ### 7.4 Limits cannot be raised from the channel
 
@@ -387,8 +401,8 @@ extension arriving through a field that looked like part of the work rather than
 | §3.2 compare-and-set, all five rejection modes, duplicate-source idempotence | `workflow-state.test.ts` |
 | §3.3 requester authority | `workflow-state.test.ts`, `approvals.test.ts` |
 | §3.4 continuation enqueued in the transition's commit, only for Gist-expected states | `continuation.test.ts` |
-| §4 restart replays state, not effects | `dispatch.test.ts` |
+| §4 restart drains pending outbox, reconciles in-flight, and resumes grants/continuations | `dispatch.test.ts`, `continuation.test.ts`, `limits.test.ts` |
 | §5 fresh review; PR alone is not acceptance | `workflow-state.test.ts` |
-| §7 limits, counting, and limit outcomes | `limits.test.ts` |
+| §7 limits, counting, human control admission, and one event-keyed continue grant | `limits.test.ts` |
 | §7.1 the derived response deadline; no dispatch when nothing remains | `limits.test.ts`, `actions.test.ts` |
 | §7.2 a continuation consumes a turn | `continuation.test.ts`, `limits.test.ts` |

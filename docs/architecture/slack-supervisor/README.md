@@ -44,7 +44,8 @@ Slack event
 → trusted event routing              (identity.md, events.md — new)
 → workflow correlation               (events.md — new)
 → supervisor decision                (actions.md — new)
-→ zero or one bounded action         (dispatch.md — new)
+→ zero or one durable command        (dispatch.md — new)
+→ outbox first-send/reconciliation    (dispatch.md — new)
 ```
 
 Vocabulary is reused rather than restated:
@@ -87,6 +88,11 @@ The set stayed at **1.0.0** through T801's integration review. Five defects were
 | Ambiguous retry could duplicate a dispatch | `dispatch.md` §3.1–§3.3, §5 — a third `DeliveryOutcome`, `indeterminate`; a timeout or transport error keeps the checkpoint `in_flight` and goes to reconciliation, and only a definitive pre-acceptance rejection from Slack permits a retry |
 | Unbound visible-action claim gap | `dispatch.md` §2 — `ActionClaimKey` is keyed on the source event alone, so replies carrying no `workflow_id` are bounded by the same one-action rule |
 | Compatibility outcome overconstraint | `compatibility.md` §2.1, §2.2, §4 — `outcome_distinguishability` accepts `stable_text` as well as `structured`, with a sample floor, while keeping prose as evidence and never as authority |
+| Command/outbox crash correction | `actions.md` §2.4 and `dispatch.md` §1–§5 — action claim + pending intent commit together; restart sends pending before new evaluation; in-flight only reconciles; continuation completion no longer owns send liveness |
+| Strict action schemas | `actions.md` §1, §5 — exact fields, closed enums, complete `ModelInstruction`, positive `expected_version`, unknown-field rejection |
+| Human control at autonomy limits | `workflow-state.md` §7.3 — control remains open; continue has one durable event-keyed opportunity without resetting counters |
+| Bound/unbound commands and target identity | `dispatch.md` §1 and `actions.md` §3 — no fabricated workflow IDs; source-derived unbound destination; bot/app/both target identity; `destination_unresolved` standardized |
+| Serial retries and outcome evidence | `dispatch.md` §3.3 and `compatibility.md` §2.1 — no overlapping attempt model; every GO observes success and failure, structured ≥2, stable text ≥3 |
 
 The first merge of this branch is the freeze. After it, the change control above applies without exception.
 
