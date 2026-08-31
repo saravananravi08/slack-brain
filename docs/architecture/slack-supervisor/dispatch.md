@@ -17,7 +17,7 @@ ActionCheckpoint
   action_id
   workflow_id
   version              integer >= 1
-  source_event_key     MessageKey        # the one event that justifies this action
+  source_event_key     SourceEventKey    # the one event that justifies this action (§2)
   action_class         # actions.md §1
   logical_target       LogicalTarget | null
   destination_ref      string | null     # opaque runtime handle; resolved from the binding
@@ -38,19 +38,41 @@ injected.
 class, or logical target — which is what makes approval invalidation structural
 (`approvals.md` §3.2).
 
+`SourceEventKey` is either a Slack `MessageKey` or a continuation key
+(`cont:<workflow_id>:<continuation_seq>`, `actions.md` §2.1). Both are durable identities that
+survive restart, which is what lets §2's claim treat them identically.
+
 ## 2. One event, at most one durable external action (GS-FR-024)
 
 Two durable claims, both taken **before** anything leaves the process:
 
 ```text
-ActionClaimKey   = "wf:<workflow_id>|ev:<source_event_key>"
+ActionClaimKey   = "ev:<source_event_key>"
 DispatchClaimKey = "wf:<workflow_id>|act:<action_id>|v:<version>|n:<attempt>"
 ```
 
-**`ActionClaimKey`** is claimed once per supervisor event. A second attempt to create an externally
-visible action for the same `(workflow_id, source_event_key)` fails the claim and is refused. This
-is the literal statement of GS-FR-024: one event, at most one externally visible action, and the
-claim commits before the action becomes visible.
+**`ActionClaimKey` is keyed on the source event alone.** The workflow is recorded on the claim as
+metadata for audit, but it is **not** part of the key. A second attempt to create an externally
+visible action for the same `source_event_key` fails the claim and is refused. This is the literal
+statement of GS-FR-024: one event, at most one externally visible action, and the claim commits
+before the action becomes visible.
+
+Event-global rather than per-workflow, for a reason that a workflow-scoped key gets wrong. Two of
+the externally visible actions carry **no** `workflow_id` at all — an unmatched trusted-bot
+notification (`events.md` §4.3) and ordinary assistance outside any workflow (`actions.md` §2).
+A key containing the workflow would have had nothing to put there, and every unbound reply would
+have fallen outside the invariant it is supposed to obey: a retried delivery of an unmatched bot
+message could produce two notifications, and GS-FR-024 would hold only for the bound half of the
+traffic. Keying on the event covers bound and unbound uniformly.
+
+It is also strictly stronger than the per-workflow form and costs nothing, because one event can
+correlate to at most one workflow: a thread holds at most one non-terminal workflow
+(`events.md` §4.1), so there is no case where a single event legitimately needs to act on two.
+
+The `source_event_key` may be a Slack `MessageKey` or a continuation's
+`cont:<workflow_id>:<continuation_seq>` (`actions.md` §2.1). Both are durable event identities, so
+a continuation is bounded by exactly the same claim as a Slack event, and a continuation replayed
+after restart cannot produce a second action.
 
 **`DispatchClaimKey`** is claimed once per delivery attempt. It bounds retries: a retry is a new
 attempt number with its own claim, so a retry that races with a slow original cannot produce two
@@ -75,15 +97,80 @@ DeliveryState = 'pending' | 'in_flight' | 'delivered' | 'failed' | 'abandoned'
 | `pending` | `in_flight` | the dispatch claim is held and the Slack call has started |
 | `pending` | `abandoned` | the action was superseded before any send (cancel, redirect, limit stop) |
 | `in_flight` | `delivered` | Slack returned a canonical message identity for the post |
-| `in_flight` | `failed` | Slack returned an error, or the attempt timed out |
-| `in_flight` | `abandoned` | reconciliation proved nothing was delivered (§5) |
-| `failed` | `pending` | a retry is permitted and a new attempt begins |
+| `in_flight` | `failed` | the attempt returned a **definitive non-delivery** result (§3.1) |
+| `in_flight` | `in_flight` | the attempt's outcome is **indeterminate**; nothing moves (§3.2) |
+| `in_flight` | `abandoned` | reconciliation proved nothing was delivered and the action was superseded (§5) |
+| `failed` | `pending` | a retry is permitted and a new attempt begins (§3.3) |
 | `failed` | `abandoned` | retries exhausted, or the workflow moved on |
 | `delivered` | — | terminal; a delivered action is never re-sent |
 
 `delivered` is set **only** from a Slack response carrying the outgoing message identity. Not from
 a timeout that "probably" succeeded, not from an absence of error. `slack_message_key` is set in the
 same commit, which is what lets a later reply be matched to the action that caused it.
+
+### 3.1 `DeliveryOutcome` — three answers, not two
+
+Every attempt resolves to exactly one of:
+
+```text
+DeliveryOutcome = 'delivered' | 'definitive_failure' | 'indeterminate'
+```
+
+| Outcome | Meaning | Next `DeliveryState` |
+|---|---|---|
+| `delivered` | Slack returned the outgoing message identity | `delivered` |
+| `definitive_failure` | Slack **rejected the post before accepting it**, so it provably was not published | `failed` |
+| `indeterminate` | the attempt neither confirmed nor disproved publication | stays `in_flight` |
+
+The split is by error class, because "an error occurred" is not the same claim as "nothing was
+posted":
+
+```text
+DEFINITIVE_NON_DELIVERY = {
+  slack_permission_denied,     # the API refused the call
+  slack_rate_limited,          # 429 before the post was accepted
+  slack_invalid_request,       # the request was rejected as malformed
+  destination_unresolved,      # no destination was ever resolved
+}
+```
+
+Everything else is `indeterminate`: a transport error (`slack_transport_error`), a timeout, a
+connection lost mid-request, and — importantly — a response that carries no identity, no error, and
+no timeout. A request whose reply never arrived may well have been received and published.
+
+### 3.2 An indeterminate outcome never retries (GS-INV-12)
+
+This is the rule that makes GS-FR-043 true rather than approximately true. On `indeterminate`:
+
+1. The checkpoint **stays `in_flight`**. It is not marked failed, and no retry is scheduled.
+2. Reconciliation (§5) runs immediately against the same evidence a restart would use.
+3. If reconciliation proves delivery, the action becomes `delivered` and the workflow advances
+   normally. If it proves non-delivery, the action becomes `failed` — now definitive — and §3.3
+   permits a bounded retry.
+4. If reconciliation cannot resolve it, the checkpoint stays `in_flight`, the workflow moves to
+   `waiting_human` with `dispatch_unreconciled`, and **no further send occurs**.
+
+The earlier reading of this contract mapped a timeout straight to `failed` and let `failed → pending`
+retry from there. That was a duplicate-dispatch path in plain sight: a slow Slack post that
+eventually succeeded would have been retried while it was still in flight, and the far end would
+have received one instruction twice. For a coding bot that is a duplicate pull request, and for
+Linear a duplicate work item — precisely the outcome `compatibility.md` §4 rule 5 refuses to accept
+from a bot. Gist must not create it itself.
+
+Asking a human is the correct answer when the alternative is guessing whether an external
+instruction was already delivered. It is also the cheap answer: the cost of asking is one message,
+and the cost of guessing wrong is duplicated work nobody asked for.
+
+### 3.3 Retry is permitted only after a definitive failure
+
+`failed → pending` requires all of:
+
+1. the checkpoint's `delivery_state` is `failed`, which by §3.1 means the attempt was definitively
+   not delivered, or reconciliation proved non-delivery;
+2. `consecutive_failures < max_consecutive_failures`;
+3. the workflow is still `ready` and non-terminal.
+
+There is no path from `indeterminate` to a retry that does not pass through reconciliation first.
 
 Retry convergence (GS-FR-043): retries share one `action_id` and one `version`. Whichever attempt
 succeeds first sets `delivered` under compare-and-set; later attempts observe `delivered` and stop.
@@ -105,26 +192,38 @@ There is no state that means "sent, we think". The whole point of confirming del
 advancing is that the alternative — advancing optimistically and correcting later — requires
 knowing whether the bot received something, which is exactly what a failed dispatch cannot tell you.
 
-## 5. Restart reconciliation (GS-FR-015, GS-NFR-002)
+## 5. Reconciliation (GS-FR-015, GS-NFR-002)
 
-At startup, every checkpoint in `pending` or `in_flight` is reconciled before the workflow accepts
-new events:
+One mechanism, two callers. It runs **inline** whenever an attempt returns `indeterminate` (§3.2),
+and again **at startup** for every checkpoint left in `pending` or `in_flight`, before the workflow
+accepts new events. Using the same function for both is deliberate: a timeout mid-run and a crash
+mid-send leave exactly the same question behind, and answering it two different ways is how the two
+paths drift apart.
 
 | Found state | Reconciliation | Result |
 |---|---|---|
-| `pending`, no claim consumed | nothing was sent | → `abandoned`; workflow stays `ready` |
+| `pending`, no claim consumed | nothing was sent | → `abandoned`; workflow stays `ready`; no failure counted |
+| `in_flight`, Gist's own outgoing record exists for this action | it was delivered | → `delivered`; workflow advances normally |
 | `in_flight`, an outgoing message with this action's `workflow_marker` exists in the bound thread | it was delivered | → `delivered`; workflow advances normally |
-| `in_flight`, the bound thread contains no such message and the thread is readable | nothing was delivered | → `abandoned`; workflow stays `ready` |
-| `in_flight`, the thread cannot be read or the answer is ambiguous | unknown | → left `in_flight`; workflow → `waiting_human`, reason `dispatch_unreconciled` |
+| `in_flight`, the bound thread is readable and contains no such message | proven non-delivery | → `failed`; workflow stays `ready`; retry permitted per §3.3 |
+| `in_flight`, the thread cannot be read or the answer is ambiguous | unknown | → left `in_flight`; workflow → `waiting_human`, reason `dispatch_unreconciled`; **no send** |
 
 Reconciliation reads Gist's **own** outgoing message record first — the send path persists
 outgoing messages directly, so the local record is authoritative and does not depend on Slack echo
 behavior. The thread scan is the fallback when the local record is absent because the process died
 between the Slack call and the local write.
 
-Row 4 is the important one: an unreconcilable in-flight action asks a human rather than re-sending.
-Re-sending would risk a duplicate instruction, and a duplicate instruction to a coding bot is a
-duplicate pull request, a duplicate issue, or duplicated work. Asking is cheap; duplicating is not.
+Row 4 is the only route to a retry after an ambiguous attempt, and it is a route through proof: the
+thread was readable and the instruction is not in it. Row 5 is the important one: an unreconcilable
+in-flight action asks a human rather than re-sending. Re-sending would risk a duplicate instruction,
+and a duplicate instruction to a coding bot is a duplicate pull request, a duplicate issue, or
+duplicated work. Asking is cheap; duplicating is not.
+
+Note what row 5 does *not* do. It does not mark the action failed, because that would make it
+retryable; it does not mark it delivered, because nothing proved that; and it does not abandon it,
+because the instruction may be live at the far end and the human needs to be told about a real
+possibility rather than a tidy fiction. `in_flight` is the honest state, and it is where the
+checkpoint stays.
 
 **Recovery replays state, not effects.** No confirmed-delivered instruction is re-sent, and no
 committed transition is re-applied.
@@ -134,10 +233,11 @@ committed transition is re-applied.
 ```text
 FailureClass =
   'slack_rate_limited' | 'slack_transport_error' | 'slack_permission_denied' |
-  'destination_unresolved' | 'in_flight_conflict' | 'claim_conflict' |
-  'state_mismatch' | 'version_mismatch' | 'illegal_transition' | 'terminal_workflow' |
-  'approval_missing' | 'approval_expired' | 'approval_scope_changed' |
-  'compatibility_blocked' | 'schema_invalid' | 'model_unavailable' |
+  'slack_invalid_request' | 'destination_unresolved' | 'in_flight_conflict' |
+  'claim_conflict' | 'state_mismatch' | 'version_mismatch' | 'illegal_transition' |
+  'terminal_workflow' | 'approval_missing' | 'approval_expired' |
+  'approval_scope_changed' | 'compatibility_blocked' | 'schema_invalid' |
+  'runtime_controlled_field_present' | 'model_unavailable' |
   'storage_unavailable' | 'dispatch_unreconciled' | 'internal_error'
 ```
 
@@ -147,11 +247,16 @@ Fail-closed behavior by group:
 
 | Group | Behavior |
 |---|---|
-| Slack transport (`slack_*`) | retry within `max_consecutive_failures`; workflow stays `ready` |
+| Definitive non-delivery (`slack_rate_limited`, `slack_permission_denied`, `slack_invalid_request`) | retry within `max_consecutive_failures`; workflow stays `ready` |
+| Ambiguous transport (`slack_transport_error`) | **no retry from the failure itself.** The outcome is `indeterminate`, so the checkpoint stays `in_flight` and §5 reconciles it. A retry happens only if reconciliation proves non-delivery |
 | Guard rejections (`state_*`, `version_*`, `illegal_*`, `terminal_*`, `approval_*`, `claim_*`, `in_flight_conflict`) | no retry; the decision was stale or unauthorized. Re-evaluate against current state |
 | Capability (`destination_unresolved`, `compatibility_blocked`) | no retry; `waiting_human`. Never substitute another destination or transport (D023, D029) |
-| Model/schema (`schema_invalid`, `model_unavailable`) | no action taken; the event is recorded as evaluated with no effect. Exact capture is unaffected |
+| Model/schema (`schema_invalid`, `runtime_controlled_field_present`, `model_unavailable`) | no action taken; the event is recorded as evaluated with no effect. Exact capture is unaffected |
 | Storage (`storage_unavailable`) | no dispatch. If the checkpoint cannot be written, nothing is sent |
+| Unresolvable (`dispatch_unreconciled`) | no retry and no send; `waiting_human` (§3.2) |
+
+`slack_transport_error` moving out of the retryable group is the whole of fix 3. It reads like a
+transport hiccup and it is the one error class that cannot tell you whether the post landed.
 
 The storage row is the ordering guarantee that makes the rest work: **the checkpoint write precedes
 the Slack call**. If durable state cannot record the intent to act, the act does not happen. A
@@ -165,9 +270,14 @@ never costs the memory layer.
 | Rule | Pinned by |
 |---|---|
 | §1 checkpoint shape; `destination_ref` not model-derived | `dispatch.test.ts` |
-| §2 both claim keys; one action per event; one in-flight per workflow | `dispatch.test.ts` |
+| §2 the event-global action claim; bound and unbound alike | `dispatch.test.ts` |
+| §2 a continuation is claimed like any source event | `dispatch.test.ts`, `continuation.test.ts` |
+| §2 one in-flight action per workflow | `dispatch.test.ts` |
 | §3 delivery transition table; `delivered` only on confirmed identity | `dispatch.test.ts` |
+| §3.1 the definitive / indeterminate split, per error class | `dispatch.test.ts` |
+| §3.2 an indeterminate outcome never retries and never re-sends | `dispatch.test.ts` |
+| §3.3 retry only after a definitive failure or proven non-delivery | `dispatch.test.ts` |
 | §3 retry convergence to one action and one bot turn | `dispatch.test.ts` |
 | §4 failed dispatch leaves the workflow in `ready` | `dispatch.test.ts`, `workflow-state.test.ts` |
-| §5 all four reconciliation rows, including the ask-a-human row | `dispatch.test.ts` |
+| §5 all five reconciliation rows, inline and at restart | `dispatch.test.ts` |
 | §6 failure classes are content-free; checkpoint precedes the send | `dispatch.test.ts`, `contract-safety.test.ts` |

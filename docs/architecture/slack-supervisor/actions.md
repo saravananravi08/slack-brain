@@ -47,6 +47,11 @@ report, which is itself an externally visible `reply_user` and counts against th
 `complete`, `fail`, and `cancel` do not get a free extra Slack message: reporting a terminal outcome
 is the one visible action for that event.
 
+The checkpoint covers **every** externally visible action, including the two forms that carry no
+`workflow_id` — an unmatched trusted-bot notification (`events.md` §4.3) and ordinary assistance
+outside any workflow (§2). Its claim is keyed on the source event alone, never on the workflow, so
+an unbound reply is bounded by exactly the same rule as a dispatch (`dispatch.md` §2).
+
 ### 1.2 Action authority by state
 
 An action is legal only when the transition it implies is legal for the workflow's current state
@@ -66,13 +71,98 @@ GS-FR-006 and D025, which say a clear assignment from an authorized human is suf
 reversible work. Redundant confirmation trains owners to approve without reading, which is how a
 genuinely gated action gets waved through.
 
-## 2. Unaddressed messages outside workflows (GS-FR-003)
+## 2. Intake, and how a clear assignment reaches dispatch (GS-FR-003, GS-FR-006)
 
 For an eligible `authorized_human` event with no workflow match, the permitted outcome set is
 `{ no_action, reply_user, ask_user }` plus creation of a `draft` workflow when a work intent is
 recognised. Recognising an intent never dispatches in the same turn: the workflow is created in
 `draft` or `clarifying`, and the dispatch decision is a separate evaluated turn against durable
 state.
+
+That separation exists so creation commits before anything external happens, and so the
+one-visible-action-per-event checkpoint (`dispatch.md` §2) is never stretched across a creation and
+a dispatch. It must **not** mean the work stalls. GS-FR-006 and PRD acceptance scenario 1 require a
+clear assignment from an authorized human to reach Kilo or Linear without a redundant confirmation
+and without the human having to say anything further.
+
+The separate turn is therefore supplied by the runtime, not by the human.
+
+### 2.1 `ContinuationEvent` — the durable internal turn
+
+A **continuation** is a durable, runtime-owned supervisor event. It is not a Slack message, is
+never rendered, and carries no content. It exists so a workflow whose next actor is Gist itself gets
+its next evaluation without waiting for anybody.
+
+```text
+ContinuationEvent
+  event_key          "cont:<workflow_id>:<continuation_seq>"
+  source             'continuation'
+  workflow_id        string
+  continuation_seq   integer >= 1
+  origin_event_key   MessageKey      # the Slack event whose transition enqueued this
+  enqueued_at        timestamp
+```
+
+**Enqueue rule.** A committed transition into a state whose `next_expected_actor` is `gist` — that
+is `draft`, `ready`, and `changes_requested` (`workflow-state.md` §2.1) — enqueues exactly one
+continuation **in the same atomic commit as the transition**. The enqueue is part of the
+compare-and-set write, so a workflow can never be left in a Gist-expected state with nothing
+scheduled to act on it, and a crash between the two is impossible rather than merely unlikely.
+
+**Processing rule.** A continuation enters the admission pipeline at the correlation step
+(`events.md` §2.1) — it is already bound, so identity, boundary, and routing have nothing to decide.
+It is serialized on its workflow, re-reads durable state, re-checks limits, and evaluates. It may
+produce at most one externally visible action, under its own claim (`dispatch.md` §2), exactly like
+a Slack-sourced event.
+
+Consequently a clear assignment progresses as:
+
+```text
+human Slack event → create workflow (draft)   [1 visible action: none or an acknowledgement]
+continuation #1   → draft → ready             [0 visible actions]
+continuation #2   → ready → dispatched        [1 visible action: the instruction]
+```
+
+No further human message is required, no confirmation is asked, and each step is one committed
+transition with at most one visible action.
+
+### 2.2 What bounds continuations
+
+Five rules, and together they make an unbounded internal loop unreachable rather than unlikely:
+
+1. **Only from a Gist-expected state.** A continuation is enqueued only on a committed transition
+   into `draft`, `ready`, or `changes_requested`. Transitions into `clarifying`, `waiting_human`,
+   `dispatched`, `running`, `waiting_bot`, `reviewing`, or any terminal state enqueue nothing —
+   those states are waiting for somebody else, and a continuation there would be a poll.
+2. **At most one pending per workflow.** Enqueue is idempotent on `(workflow_id,
+   continuation_seq)`, and a second continuation cannot be enqueued while one is pending.
+3. **The transition table forbids a cycle.** No Gist-expected state is reachable from another
+   Gist-expected state without passing through a state that waits on a human or a bot: `draft` and
+   `ready` have no self-transition, `ready → ready` is illegal, and `changes_requested → ready` is
+   the only edge between two of them. The longest continuation chain is therefore
+   `draft → ready → dispatched` — two.
+4. **It consumes a turn.** A continuation is a new source event, so `turn_count` increments and
+   `max_turns` bounds it exactly as it bounds Slack traffic (`workflow-state.md` §7.2).
+5. **A failed dispatch does not enqueue one.** A dispatch failure commits no state change
+   (`dispatch.md` §4), so it produces no continuation. Retry is the attempt mechanism in
+   `dispatch.md` §3, bounded by `max_consecutive_failures` — not an internal turn loop.
+
+### 2.3 What a continuation is not
+
+A continuation is **not** Gist evaluating its own message, and it is not a hole in GS-INV-05. The
+distinction is the input: a continuation is a state-machine step whose only inputs are the durable
+workflow record and its limits. It is never created from a Slack message of any sender, never
+carries or quotes message text, and cannot be created by trusted-bot content, by model output, or
+by a Gist echo. Gist's own Slack messages remain unevaluated, unconditionally.
+
+Nor is it a scheduler or a timer. Continuations fire once, immediately, off a committed transition.
+Inactivity and lifetime deadlines are `workflow-state.md` §7's separate concern and do not run
+through this mechanism.
+
+**Restart.** Pending continuations are durable. On restart they are reloaded with the active
+workflows (`workflow-state.md` §4) and processed exactly once — the claim in `dispatch.md` §2 keys
+on the continuation's own `event_key`, so a continuation that was already processed cannot produce a
+second action.
 
 ## 3. Logical targets and destination mapping (GS-FR-023, D027)
 
@@ -122,19 +212,35 @@ decisions (`approvals.md` §2) rather than things a bot is instructed to do unil
 ## 5. `InstructionEnvelope` (GS-FR-025)
 
 The structured content of a Slack instruction to a trusted bot. The runtime renders it to Slack
-text; the model supplies its fields.
+text. The rendered instruction carries everything GS-FR-025 requires, but it is composed from **two
+disjoint halves**, and which half a field belongs to is part of the contract:
 
 ```text
-InstructionEnvelope
-  work_class          WorkClass                  # §4, must match the logical target
-  objective           string                     # what to do, in the requester's terms
-  scope               string                     # explicit bounds of the work
-  acceptance          string                     # what "done" means for this instruction
-  context_refs        ContextRef[]               # opaque handles; see below
-  workflow_marker     string                     # §5.1, runtime-generated
-  expected_response   ExpectedResponse           # §5.2
-  prohibitions        string[]                   # §5.3, runtime-prepended
+InstructionEnvelope = ModelInstruction + RuntimeInstruction
+
+ModelInstruction                               # supplied by the model, validated
+  work_class          WorkClass                # §4, must match the logical target
+  objective           string                   # what to do, in the requester's terms
+  scope               string                   # explicit bounds of the work
+  acceptance          string                   # what "done" means for this instruction
+  context_refs        ContextRef[]             # opaque handles; see below
+
+RuntimeInstruction                             # composed by the runtime, never model input
+  workflow_marker     string                   # §5.1
+  expected_response   ExpectedResponse         # §5.2
+  prohibitions        string[]                 # §5.3
 ```
+
+The split is the enforcement, not a convention. A model action carrying **any** `RuntimeInstruction`
+field — `workflow_marker`, `expected_response`, or any of its members, or `prohibitions` — is
+rejected with `runtime_controlled_field_present`. It is not merged, not overridden, and not
+silently dropped: a model that tried to set one has demonstrated it will try again, and a
+silent drop makes that invisible.
+
+The line falls where it does because the model half describes **the work** and the runtime half
+describes **the protocol**. Protocol fields bind to policy the model must not reach: the marker is
+correlation identity, the prohibitions are a safety floor, and the response deadline is a timeout
+(§5.2).
 
 **Must not contain**, and validation rejects the envelope if it does:
 
@@ -174,17 +280,45 @@ through content and content is attacker-influenced (`identity.md` §4).
 Whether each bot preserves the marker in its replies is a T802 measurement, not an assumption
 (`compatibility.md` §2).
 
-### 5.2 `ExpectedResponse`
+### 5.2 `ExpectedResponse` — entirely runtime-derived
 
 ```text
 ExpectedResponse
-  reply_in_thread     boolean          # true unless compatibility measurement says otherwise
-  expected_signals    ('progress' | 'blocker' | 'failure' | 'completion' | 'review_findings')[]
-  response_deadline_ms integer > 0     # feeds the inactivity check, not a hard cancel
+  reply_in_thread      boolean         # from the target's measured reply_placement
+  expected_signals     ('progress' | 'blocker' | 'failure' | 'completion' | 'review_findings')[]
+  response_deadline_ms integer > 0     # derived; see below
 ```
 
-Stating expected signals in the instruction is what lets `events.md` §4.2 check 5 be meaningful:
-the workflow knows which kind of reply advances which state.
+Every member is computed by the runtime. None is model input.
+
+- `reply_in_thread` follows the target's measured `reply_placement` (`compatibility.md` §2), not a
+  preference.
+- `expected_signals` is a fixed function of `work_class`: `review` expects `review_findings`, every
+  work class expects `progress`, `blocker`, `failure`, and `completion`. Stating them is what lets
+  `events.md` §4.2 check 5 be meaningful — the workflow knows which kind of reply advances which
+  state.
+- `response_deadline_ms` is **derived from the workflow's own stored limits**:
+
+```text
+remaining_lifetime_ms = (created_at + limits.absolute_lifetime_ms) - now
+response_deadline_ms  = min(limits.inactivity_timeout_ms, remaining_lifetime_ms)
+```
+
+If that value is not positive, the workflow has no time left to wait in and the runtime **does not
+dispatch**: it times out per `workflow-state.md` §7.3 instead. Promising a bot a window that ends
+after the workflow does would be a deadline nobody could honour.
+
+This is the whole reason the field is not model-supplied. `workflow-state.md` §7.4 says no content
+from any actor may raise a limit or extend a timeout, and `limits` live on the workflow record
+precisely so a later change cannot widen a running workflow. A model-chosen
+`response_deadline_ms` would have been exactly the extension that rule forbids, arriving through
+the one field nobody was checking. Deriving it makes the bound structural: the deadline cannot
+exceed the inactivity timeout, cannot outlive the workflow, and cannot be argued up by anything in
+the channel.
+
+A model that believes the work needs longer has one honest route — say so to the human, who can
+cancel and start work under different configured limits (`approvals.md` §6). Nothing in an
+instruction, a reply, or a model output moves the bound.
 
 ### 5.3 `prohibitions`
 
@@ -230,9 +364,13 @@ matter of prompt discipline.
 | §1.1 externally visible split | `actions.test.ts`, `dispatch.test.ts` |
 | §1.2 state and actor authority per action | `actions.test.ts` |
 | §1.2 no approval request for non-gated actions (GS-FR-006) | `approvals.test.ts` |
+| §2.1 continuation enqueued with the transition; reaches dispatch with no further human message | `continuation.test.ts` |
+| §2.2 all five bounds, including the no-cycle argument | `continuation.test.ts` |
+| §2.3 a continuation is not self-evaluation and survives restart once | `continuation.test.ts` |
 | §3 no Slack ID anywhere in a validated action | `actions.test.ts`, `contract-safety.test.ts` |
 | §3 destination derives from the binding, never the action | `actions.test.ts` |
 | §4 closed work-class union per target | `actions.test.ts` |
-| §5 envelope fields; forbidden content; `context_refs` scoping | `actions.test.ts` |
+| §5 the model/runtime envelope split; forbidden content; `context_refs` scoping | `actions.test.ts` |
 | §5.1 marker is runtime-generated and secondary | `actions.test.ts`, `compatibility.test.ts` |
+| §5.2 the deadline is derived from stored limits and cannot be extended | `actions.test.ts`, `limits.test.ts` |
 | §6 untrusted content in both directions | `actions.test.ts` |

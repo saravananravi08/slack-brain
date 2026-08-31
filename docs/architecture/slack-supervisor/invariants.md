@@ -42,6 +42,10 @@ resolves to `unknown_automation`, not to trust.
 `gist_self` events are persisted and never evaluated. This is unconditional: no configuration,
 allowlist, flag, or later decision may enable it (GS-FR-040, `identity.md` §3).
 
+A `ContinuationEvent` is not an exception to this. It is a state-machine step whose only inputs are
+the durable workflow record and its limits; it carries no message, is never constructed from a Slack
+event of any sender, and cannot be produced by bot content or model output (`actions.md` §2.3).
+
 **GS-INV-06 — unknown automation cannot activate the supervisor.**
 An automation identity that is not in `TrustedAutomationConfig` is capture-only. It cannot create,
 advance, approve, redirect, or terminate a workflow (GS-FR-011, D024).
@@ -59,9 +63,14 @@ GS-FR-016, GS-FR-035, GS-NFR-003).
 ## Action integrity
 
 **GS-INV-09 — one event, at most one durable external action.**
-`ActionClaimKey = wf:<workflow_id>|ev:<source_event_key>` is claimed durably before the action
-becomes externally visible. A second externally visible action for the same event is refused
-(GS-FR-024, `dispatch.md` §2).
+`ActionClaimKey = ev:<source_event_key>` is claimed durably before the action becomes externally
+visible. A second externally visible action for the same event is refused (GS-FR-024,
+`dispatch.md` §2).
+
+The key is the **event alone**. It covers actions bound to a workflow and actions with no workflow
+at all — an unmatched trusted-bot notification and ordinary assistance — because a workflow-scoped
+key would have left the unbound half of the traffic outside the invariant. `source_event_key` covers
+Slack messages and continuations alike.
 
 **GS-INV-10 — the model never controls a Slack identifier.**
 A validated `SupervisorAction` contains no channel ID, thread timestamp, user ID, bot ID, app ID,
@@ -79,13 +88,22 @@ The checkpoint write precedes the Slack call; `delivered` is set only from a con
 message identity; retries share one action and one version; an unreconcilable in-flight action asks
 a human rather than re-sending (GS-FR-015, GS-FR-020, GS-FR-043, GS-NFR-002, `dispatch.md` §2, §5).
 
+**A retry requires a definitive non-delivery result.** A timeout, a transport error, or any response
+that neither confirms nor disproves publication is `indeterminate`: the checkpoint stays `in_flight`
+and reconciliation decides. Only a result that proves the post was never published — an API refusal,
+or a readable thread that does not contain it — permits another send (`dispatch.md` §3.1–§3.3).
+Retrying an ambiguous attempt is a duplicate dispatch wearing a retry's clothes.
+
 **GS-INV-13 — autonomy is bounded and survives restart.**
 Every workflow carries `max_turns`, `max_consecutive_failures`, `inactivity_timeout_ms`,
 `absolute_lifetime_ms`, and `max_in_flight_actions = 1` on its own record. Limits are checked before
 evaluation and before dispatch, are re-derived from durable timestamps after restart, and cannot be
-raised by channel content. Reaching one moves the workflow to `waiting_human`, `failed`, or
-`timed_out` — never silent continuation (GS-FR-038, GS-FR-039, GS-NFR-007,
-`workflow-state.md` §7).
+raised by channel content **or by model output**. The response deadline Gist states to a bot is
+derived from those limits rather than chosen (`actions.md` §5.2), so it can never exceed the
+inactivity timeout or outlive the workflow. Runtime-generated continuations consume turns like any
+other event and cannot form a cycle (`actions.md` §2.2). Reaching a limit moves the workflow to
+`waiting_human`, `failed`, or `timed_out` — never silent continuation (GS-FR-038, GS-FR-039,
+GS-NFR-007, `workflow-state.md` §7).
 
 ## Privacy and provenance
 
@@ -104,12 +122,13 @@ failing the suite.
 |---|---|
 | GS-INV-01, 02 | `events.test.ts`, `actions.test.ts` |
 | GS-INV-03 | `workflow-state.test.ts` |
-| GS-INV-04, 05, 06 | `identity-routing.test.ts` |
+| GS-INV-04, 06 | `identity-routing.test.ts` |
+| GS-INV-05 | `identity-routing.test.ts`, `continuation.test.ts` |
 | GS-INV-07 | `identity-routing.test.ts`, `actions.test.ts` |
 | GS-INV-08 | `approvals.test.ts` |
-| GS-INV-09 | `dispatch.test.ts` |
+| GS-INV-09 | `dispatch.test.ts`, `continuation.test.ts` |
 | GS-INV-10 | `actions.test.ts`, `contract-safety.test.ts` |
 | GS-INV-11 | `approvals.test.ts` |
 | GS-INV-12 | `dispatch.test.ts` |
-| GS-INV-13 | `limits.test.ts` |
+| GS-INV-13 | `limits.test.ts`, `continuation.test.ts` |
 | GS-INV-14 | `contract-safety.test.ts` |

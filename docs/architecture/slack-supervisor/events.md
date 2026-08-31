@@ -17,8 +17,9 @@ re-parses a raw Slack payload and never carries one.
 ```text
 SupervisorEvent
   contract_version      string
-  event_key             MessageKey            # workspace_id/channel_id/message_ts, verbatim
-  delivery_event_id     string                # Slack envelope event ID, for delivery dedup
+  source                'slack' | 'continuation'   # §2.1
+  event_key             SourceEventKey        # MessageKey, or a continuation key (§2.1)
+  delivery_event_id     string | null         # Slack envelope event ID; null for a continuation
   boundary_id           BoundaryId            # ch:<workspace_id>:<channel_id>
   thread_id             ThreadId              # <boundary_id>#<thread_root_ts>
   workspace_id          string
@@ -37,9 +38,14 @@ summary. The supervisor decision layer reads content through the bounded channel
 (`src/channel-memory/context/`), which already labels it `untrusted_slack_content`. Workflow state
 references messages by `event_key`; it never copies them (GS-NFR-004, D026).
 
-`event_key` is content identity and `delivery_event_id` is delivery identity. Both are required.
-This is the same split channel memory uses (CM-INV-05), and the supervisor reuses the durable
-claims rather than keeping a second ledger.
+`event_key` is content identity and `delivery_event_id` is delivery identity. Both are required for
+a Slack-sourced event. This is the same split channel memory uses (CM-INV-05), and the supervisor
+reuses the durable claims rather than keeping a second ledger.
+
+A continuation has no Slack delivery, so `delivery_event_id` is null and its `event_key` is its own
+durable identity. Everything downstream — serialization, the action claim, the transition audit —
+treats the two sources identically, which is the point: an internal turn must be as bounded and as
+replay-safe as a message from the outside.
 
 ## 2. Admission order (GS-FR-001, GS-FR-017, GS-NFR-003)
 
@@ -66,6 +72,29 @@ Steps 1–5 are pure policy over the record and the durable ledger. No model cal
 step 8, so an unauthorized, unknown, duplicate, or uncorrelated event costs no model call and can
 produce no outward effect.
 
+### 2.1 Continuations enter at step 6
+
+A `ContinuationEvent` (`actions.md` §2.1) is created by the runtime from a committed transition, not
+received from Slack. Steps 1–4 have nothing to decide for it: there is no message to persist, no
+sender to classify, no boundary to check beyond the binding it was born with, and no actor to route.
+It therefore enters the pipeline at **step 6**, and runs steps 6, 7, and 8 in full:
+
+- **Correlate** — it names its workflow directly. The §4.2 checks that concern a *sender*
+  (checks 4 and 5) do not apply; the checks that concern the *binding* are satisfied by
+  construction, because the continuation was written in the same commit as the transition.
+- **Serialize** — on its workflow, in the same queue as Slack events, and it re-reads durable state
+  and re-checks limits after the queue exactly as §5 rule 2 requires. A continuation enqueued
+  before a human cancelled the workflow finds the cancellation when it runs, and does nothing.
+- **Evaluate** — producing at most one action, under its own claim.
+
+Deduplication (step 5) is not skipped so much as relocated: a continuation's replay protection is
+the action claim on its `event_key` (`dispatch.md` §2), which is what makes reprocessing after a
+restart a no-op rather than a second dispatch.
+
+Continuations are the **only** events that may enter below step 4. Nothing received from Slack can
+take this path, and a continuation can never be constructed from a Slack message, from bot content,
+or from model output (`actions.md` §2.3).
+
 ## 3. Evaluation eligibility (GS-FR-002, GS-FR-003, D024)
 
 | Event | Reaches evaluation | Why |
@@ -76,6 +105,7 @@ produce no outward effect.
 | `kilo` / `linear` | always, via the automation path | GS-FR-017; may yield `no_action` |
 | `gist_self` | never | GS-FR-040 |
 | `unauthorized_human`, `unknown_automation`, `system` | never | `identity.md` §3 |
+| a `continuation` | always, on its own workflow | `actions.md` §2.1; it exists precisely to be evaluated, and may yield `no_action` |
 
 Row 2 is the one that must not be lost in implementation: **an active workflow thread does not
 depend on proactive relevance classification or on the channel cooldown** (GS-FR-002, GS-FR-021).
@@ -146,6 +176,8 @@ outcome: nothing moves (GS-NFR-001).
 
 **Rule 1 — per-workflow serialization.** Events correlated to the same `workflow_id` are processed
 one at a time, in arrival order. Concurrent trusted bot replies for one workflow do not interleave.
+Continuations share that queue rather than running beside it: an internal turn racing a bot reply
+would reintroduce exactly the interleaving this rule exists to remove.
 
 **Rule 2 — recheck after the queue.** Serialization alone is not enough: an event that waited in the
 queue must **re-read** durable workflow state and re-run the §4.2 checks before acting. State may
@@ -197,8 +229,13 @@ Every dropped or uncorrelated event is counted by reason class. The legal reason
 not_captured | unauthorized_human | unknown_automation | gist_self |
 wrong_workspace | unenrolled_channel | external_channel | direct_message |
 duplicate_delivery | duplicate_event | no_workflow_match | actor_mismatch |
-state_rejects_actor | terminal_workflow | limit_reached
+state_rejects_actor | terminal_workflow | limit_reached |
+continuation_superseded | continuation_already_processed
 ```
+
+The last two are continuation outcomes: `continuation_superseded` when the workflow left the state
+the continuation was enqueued for, and `continuation_already_processed` when a replay after restart
+finds the claim already held.
 
 Every one of these strings is safe to log. A supervisor log line may carry `workflow_id`,
 `action_id`, prior and new state, event class, action class, outcome, reason class, and a coarse
@@ -211,6 +248,7 @@ model output, a raw payload, or a credential.
 |---|---|
 | §1 record shape; no content fields | `events.test.ts` |
 | §2 admission order; fail-closed steps | `events.test.ts` |
+| §2.1 continuations enter at step 6 and nothing else may | `continuation.test.ts` |
 | §3 eligibility table, including the active-thread row | `events.test.ts` |
 | §4.2 all five correlation checks, each failing independently | `events.test.ts` |
 | §4.3 unmatched trusted event outcome set | `events.test.ts` |

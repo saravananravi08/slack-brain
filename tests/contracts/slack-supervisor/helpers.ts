@@ -54,6 +54,7 @@ export const FIXTURE_FILES = [
   'approvals.v1.json',
   'dispatch.v1.json',
   'limits.v1.json',
+  'continuation.v1.json',
   'compatibility.v1.json',
 ] as const;
 

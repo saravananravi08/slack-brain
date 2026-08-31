@@ -9,18 +9,22 @@ import { describe, expect, it } from 'vitest';
 
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
+  DEFINITIVE_NON_DELIVERY,
   DELIVERY_TRANSITIONS,
   actionClaimAllowed,
   actionClaimKey,
+  applyDeliveryOutcome,
   applyFailedDispatch,
-  confirmDelivery,
+  deliveryOutcome,
   dispatchBlockedBy,
   dispatchClaimKey,
   failureBehavior,
   isLegalDeliveryTransition,
   looksLikeSlackId,
   reconcile,
+  retryAllowed,
   type ActionClass,
+  type AttemptResult,
   type DeliveryState,
   type FailureClass,
   type ReconciliationInput,
@@ -33,7 +37,10 @@ const claimKeys = asArray(fixture.claim_keys, 'claim_keys');
 const oneEventOneAction = asArray(fixture.one_event_one_action, 'one_event_one_action');
 const inFlightCases = asArray(fixture.in_flight_conflict, 'in_flight_conflict');
 const illegalDelivery = asArray(fixture.illegal_delivery_transitions, 'illegal_delivery_transitions');
-const confirmations = asArray(fixture.delivery_confirmation, 'delivery_confirmation');
+const outcomeFixture = asRecord(fixture.delivery_outcomes, 'delivery_outcomes');
+const outcomeCases = asArray(outcomeFixture.cases, 'delivery_outcomes.cases');
+const retryCases = asArray(asRecord(fixture.retry_permission, 'retry_permission').cases, 'retry.cases');
+const unbound = asRecord(fixture.unbound_visible_actions, 'unbound_visible_actions');
 const failedDispatch = asArray(fixture.failed_dispatch, 'failed_dispatch');
 const reconciliation = asArray(fixture.reconciliation, 'reconciliation');
 const failureCases = asArray(fixture.failure_behavior, 'failure_behavior');
@@ -63,11 +70,26 @@ describe('ActionCheckpoint (dispatch.md §1)', () => {
 });
 
 describe('claim keys (dispatch.md §2)', () => {
-  it('keys the action claim on the workflow and its one source event', () => {
-    const testCase = byName(claimKeys, 'action_claim_is_per_event');
-    expect(
-      actionClaimKey(String(testCase.workflow_id), String(testCase.source_event_key)),
-    ).toBe(testCase.expect_action_claim_key);
+  it('keys the action claim on the source event alone', () => {
+    const testCase = byName(claimKeys, 'action_claim_is_keyed_on_the_event_alone');
+    expect(actionClaimKey(String(testCase.source_event_key))).toBe(
+      testCase.expect_action_claim_key,
+    );
+  });
+
+  it('claims a continuation the same way as a Slack event', () => {
+    const testCase = byName(claimKeys, 'a_continuation_claims_the_same_way');
+    expect(actionClaimKey(String(testCase.source_event_key))).toBe(
+      testCase.expect_action_claim_key,
+    );
+  });
+
+  it('puts no workflow in the action claim key', () => {
+    // A workflow-scoped key would have had nothing to put there for the two
+    // visible actions that carry no workflow at all.
+    expect(actionClaimKey('T0SUPVTEST/C0SUPVTESTA/1756684860.000200')).not.toContain('wf:');
+    expect(unbound.expect_workflow_in_key).toBe(false);
+    expect(unbound.expect_workflow_recorded_as_metadata).toBe(true);
   });
 
   it('keys the dispatch claim on the workflow, action, version, and attempt', () => {
@@ -83,7 +105,7 @@ describe('claim keys (dispatch.md §2)', () => {
   });
 
   it('separates the two claims so a retry cannot re-use the action claim', () => {
-    const action = actionClaimKey('wf_supv_0001', 'T0SUPVTEST/C0SUPVTESTA/1756684860.000200');
+    const action = actionClaimKey('T0SUPVTEST/C0SUPVTESTA/1756684860.000200');
     const dispatch = dispatchClaimKey('wf_supv_0001', 'act_supv_0001', 1, 1);
     expect(action).not.toBe(dispatch);
   });
@@ -176,6 +198,10 @@ describe('the delivery state machine (dispatch.md §3)', () => {
     expect(DELIVERY_TRANSITIONS.abandoned).toEqual([]);
   });
 
+  it('lets in_flight stay in_flight, which is where an ambiguous attempt rests', () => {
+    expect(DELIVERY_TRANSITIONS.in_flight).toContain('in_flight');
+  });
+
   it('reaches delivered only from in_flight', () => {
     const sources = (Object.keys(DELIVERY_TRANSITIONS) as DeliveryState[]).filter((state) =>
       DELIVERY_TRANSITIONS[state].includes('delivered'),
@@ -184,23 +210,145 @@ describe('the delivery state machine (dispatch.md §3)', () => {
   });
 });
 
-describe('delivery is confirmed, never assumed (dispatch.md §3)', () => {
-  it.each(names(confirmations))('%s', (name) => {
-    const testCase = byName(confirmations, name);
+describe('three delivery outcomes, not two (dispatch.md §3.1)', () => {
+  it.each(names(outcomeCases))('%s', (name) => {
+    const testCase = byName(outcomeCases, name);
+    const attempt = testCase.attempt as unknown as AttemptResult;
+    expect(deliveryOutcome(attempt)).toBe(testCase.expect_outcome);
     expect(
-      confirmDelivery({
-        slack_message_key: (testCase.slack_message_key as string | null) ?? null,
-        errored: Boolean(testCase.errored),
-        timed_out: Boolean(testCase.timed_out),
-      }),
+      applyDeliveryOutcome(
+        testCase.current_delivery_state as DeliveryState,
+        deliveryOutcome(attempt),
+      ),
     ).toBe(testCase.expect_delivery_state);
   });
 
-  it('treats an absence of error as a failure, not a confirmation', () => {
-    // There is no state whose meaning is "sent, we think".
+  it('declares the same definitive set as the contract', () => {
+    expect(asStrings(outcomeFixture.definitive_non_delivery, 'definitive_non_delivery')).toEqual([
+      ...DEFINITIVE_NON_DELIVERY,
+    ]);
+  });
+
+  it('treats a timeout as indeterminate, never as a failure', () => {
+    // The defect this fixes: mapping a timeout to `failed` made it retryable,
+    // and a slow post that eventually succeeded would have been sent twice.
+    const attempt: AttemptResult = {
+      slack_message_key: null,
+      error_class: null,
+      timed_out: true,
+    };
+    expect(deliveryOutcome(attempt)).toBe('indeterminate');
+    expect(applyDeliveryOutcome('in_flight', deliveryOutcome(attempt))).toBe('in_flight');
+  });
+
+  it('treats a transport error as indeterminate', () => {
     expect(
-      confirmDelivery({ slack_message_key: null, errored: false, timed_out: false }),
-    ).toBe('failed');
+      deliveryOutcome({
+        slack_message_key: null,
+        error_class: 'slack_transport_error',
+        timed_out: false,
+      }),
+    ).toBe('indeterminate');
+  });
+
+  it('treats silence as indeterminate rather than as either answer', () => {
+    // An absence of error is not a confirmation, and it is not a disproof.
+    expect(
+      deliveryOutcome({ slack_message_key: null, error_class: null, timed_out: false }),
+    ).toBe('indeterminate');
+  });
+
+  it('confirms delivery only from a returned identity', () => {
+    for (const errorClass of [null, 'slack_transport_error'] as (FailureClass | null)[]) {
+      expect(
+        deliveryOutcome({
+          slack_message_key: 'T0SUPVTEST/C0SUPVTESTA/1756684865.000250',
+          error_class: errorClass,
+          timed_out: false,
+        }),
+      ).toBe('delivered');
+    }
+  });
+
+  it('never moves an indeterminate attempt out of in_flight', () => {
+    expect(applyDeliveryOutcome('in_flight', 'indeterminate')).toBe('in_flight');
+    expect(applyDeliveryOutcome('pending', 'indeterminate')).toBe('pending');
+  });
+});
+
+describe('retry needs a definitive non-delivery (dispatch.md §3.3)', () => {
+  it.each(names(retryCases))('%s', (name) => {
+    const testCase = byName(retryCases, name);
+    expect(
+      retryAllowed({
+        delivery_state: testCase.delivery_state as DeliveryState,
+        consecutive_failures: Number(testCase.consecutive_failures),
+        max_consecutive_failures: Number(testCase.max_consecutive_failures),
+        workflow_state: testCase.workflow_state as WorkflowState,
+      }),
+    ).toBe(testCase.expect_allowed);
+  });
+
+  it('never retries from in_flight, whatever the counters say', () => {
+    // There is no path from indeterminate to a retry that does not pass
+    // through reconciliation first.
+    for (const failures of [0, 1, 2]) {
+      expect(
+        retryAllowed({
+          delivery_state: 'in_flight',
+          consecutive_failures: failures,
+          max_consecutive_failures: 3,
+          workflow_state: 'ready',
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('permits a retry from failed only', () => {
+    const states: DeliveryState[] = ['pending', 'in_flight', 'delivered', 'failed', 'abandoned'];
+    for (const state of states) {
+      expect(
+        retryAllowed({
+          delivery_state: state,
+          consecutive_failures: 0,
+          max_consecutive_failures: 3,
+          workflow_state: 'ready',
+        }),
+        state,
+      ).toBe(state === 'failed');
+    }
+  });
+});
+
+describe('the unbound visible-action claim (dispatch.md §2, GS-FR-024)', () => {
+  const cases = asArray(unbound.cases, 'unbound_visible_actions.cases');
+
+  it.each(names(cases))('%s', (name) => {
+    const testCase = byName(cases, name);
+    const result = actionClaimAllowed({
+      action_class: testCase.action_class as ActionClass,
+      already_claimed: Boolean(testCase.already_claimed),
+    });
+    expect(result.allowed).toBe(testCase.expect_allowed);
+    if (testCase.expect_action_claim_key !== undefined) {
+      expect(actionClaimKey(String(testCase.source_event_key))).toBe(
+        testCase.expect_action_claim_key,
+      );
+    }
+  });
+
+  it('bounds a reply that carries no workflow at all', () => {
+    // Without an event-global key this action had no key to claim, so a Slack
+    // retry could have produced a second notification.
+    const first = byName(cases, 'unmatched_trusted_bot_notice_is_claimed');
+    const retry = byName(cases, 'retried_delivery_of_that_notice_is_refused');
+    expect(first.workflow_id).toBeNull();
+    expect(retry.expect_failure_class).toBe('claim_conflict');
+  });
+
+  it('uses one key shape for bound and unbound actions alike', () => {
+    const keys = cases.map((testCase) => actionClaimKey(String(testCase.source_event_key)));
+    for (const key of keys) expect(key).toMatch(/^ev:/);
   });
 });
 
@@ -306,7 +454,45 @@ describe('restart reconciliation (dispatch.md §5, GS-FR-015)', () => {
     });
     expect(result.workflow_state).toBe('waiting_human');
     expect(result.reason_class).toBe('dispatch_unreconciled');
-    expect(result.delivery_state).not.toBe('pending');
+    // Not `failed`, which would make it retryable; not `delivered`, which
+    // nothing proved; not `abandoned`, which would deny a live instruction.
+    expect(result.delivery_state).toBe('in_flight');
+    expect(
+      retryAllowed({
+        delivery_state: result.delivery_state,
+        consecutive_failures: 0,
+        max_consecutive_failures: 3,
+        workflow_state: result.workflow_state,
+      }),
+    ).toBe(false);
+  });
+
+  it('turns proven non-delivery into a retryable failure', () => {
+    // The only route from an ambiguous attempt to a retry, and it is a route
+    // through proof: the thread was readable and the instruction is not in it.
+    const result = reconcile({
+      delivery_state: 'in_flight',
+      own_outgoing_record: false,
+      marker_found_in_thread: false,
+      thread_readable: true,
+    });
+    expect(result.delivery_state).toBe('failed');
+    expect(result.workflow_state).toBe('ready');
+    expect(
+      retryAllowed({
+        delivery_state: result.delivery_state,
+        consecutive_failures: 0,
+        max_consecutive_failures: 3,
+        workflow_state: result.workflow_state,
+      }),
+    ).toBe(true);
+  });
+
+  it('runs inline after an indeterminate outcome and again at restart', () => {
+    expect(asStrings(fixture.reconciliation_callers, 'reconciliation_callers')).toEqual([
+      'inline_after_indeterminate_outcome',
+      'restart',
+    ]);
   });
 
   it('replays state, not effects', () => {
@@ -338,6 +524,7 @@ describe('ordering and failure taxonomy (dispatch.md §6, GS-NFR-006)', () => {
       const behavior = failureBehavior(testCase.failure_class as FailureClass);
       expect(behavior.retryable).toBe(testCase.expect_retryable);
       expect(behavior.workflow_state).toBe(testCase.expect_workflow_state);
+      expect(behavior.reconciles).toBe(testCase.expect_reconciles);
     },
   );
 
@@ -354,15 +541,23 @@ describe('ordering and failure taxonomy (dispatch.md §6, GS-NFR-006)', () => {
     },
   );
 
-  it('retries transport failures only', () => {
+  it('retries only definitive non-delivery failures', () => {
     const retryable = failureCases
       .filter((testCase) => testCase.expect_retryable === true)
       .map((testCase) => testCase.failure_class);
     expect(retryable.slice().sort()).toEqual([
+      'slack_invalid_request',
       'slack_permission_denied',
       'slack_rate_limited',
-      'slack_transport_error',
     ]);
+  });
+
+  it('sends an ambiguous transport error to reconciliation rather than to a retry', () => {
+    // It reads like a transport hiccup and is the one error class that cannot
+    // say whether the post landed.
+    const behavior = failureBehavior('slack_transport_error');
+    expect(behavior.retryable).toBe(false);
+    expect(behavior.reconciles).toBe(true);
   });
 
   it('never substitutes a destination or a transport when capability fails', () => {

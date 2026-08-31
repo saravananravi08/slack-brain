@@ -46,6 +46,10 @@ describe('SupervisorEvent record (events.md §1)', () => {
     expect(sample).not.toHaveProperty(field);
   });
 
+  it('names its source, so a continuation is never mistaken for Slack traffic', () => {
+    expect(sample.source).toBe('slack');
+  });
+
   it('keeps content identity and delivery identity separate', () => {
     expect(sample.event_key).not.toBe(sample.delivery_event_id);
     expect(String(sample.event_key)).toContain(String(sample.message_ts));
@@ -321,11 +325,25 @@ describe('serialization and cooldown separation (events.md §5, GS-FR-021, GS-FR
   });
 });
 
+describe('continuations share the workflow queue (events.md §5 rule 1)', () => {
+  it('does not run a runtime turn beside the Slack queue', () => {
+    // An internal turn racing a bot reply would reintroduce exactly the
+    // interleaving per-workflow serialization exists to remove.
+    expect(serialization.continuation_shares_the_queue).toBe(true);
+  });
+
+  it('counts continuation outcomes among the reason classes', () => {
+    const reasonClasses = asStrings(fixture.reason_classes, 'reason_classes');
+    expect(reasonClasses).toContain('continuation_superseded');
+    expect(reasonClasses).toContain('continuation_already_processed');
+  });
+});
+
 describe('observability (events.md §7, GS-NFR-004)', () => {
   const reasonClasses = asStrings(fixture.reason_classes, 'reason_classes');
 
   it('names a reason class for every drop path', () => {
-    expect(reasonClasses.length).toBeGreaterThanOrEqual(15);
+    expect(reasonClasses.length).toBeGreaterThanOrEqual(17);
     expect(new Set(reasonClasses).size).toBe(reasonClasses.length);
   });
 

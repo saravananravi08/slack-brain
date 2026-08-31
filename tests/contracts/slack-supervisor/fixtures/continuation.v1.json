@@ -1,0 +1,282 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/actions.md \u00a72.1\u2013\u00a72.3, events.md \u00a72.1, workflow-state.md \u00a73.4",
+  "note": "A continuation is a durable runtime-owned turn. It exists so a clear authorized assignment reaches dispatch without a second Slack message (GS-FR-006, PRD acceptance scenario 1).",
+  "record_required_fields": [
+    "event_key",
+    "source",
+    "workflow_id",
+    "continuation_seq",
+    "origin_event_key",
+    "enqueued_at"
+  ],
+  "record_forbidden_fields": [
+    "text",
+    "message_text",
+    "objective",
+    "instruction",
+    "sender_id",
+    "actor_id",
+    "actor_class",
+    "delivery_event_id",
+    "prompt",
+    "model_output",
+    "raw_event"
+  ],
+  "sample_record": {
+    "event_key": "cont:wf_supv_0001:1",
+    "source": "continuation",
+    "workflow_id": "wf_supv_0001",
+    "continuation_seq": 1,
+    "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+    "enqueued_at": "2026-09-01T00:00:01.000Z"
+  },
+  "gist_expected_states": [
+    "draft",
+    "ready",
+    "changes_requested"
+  ],
+  "event_keys": [
+    {
+      "name": "first_turn",
+      "workflow_id": "wf_supv_0001",
+      "sequence": 1,
+      "expect_key": "cont:wf_supv_0001:1"
+    },
+    {
+      "name": "second_turn",
+      "workflow_id": "wf_supv_0001",
+      "sequence": 2,
+      "expect_key": "cont:wf_supv_0001:2"
+    },
+    {
+      "name": "other_workflow",
+      "workflow_id": "wf_supv_0002",
+      "sequence": 1,
+      "expect_key": "cont:wf_supv_0002:1"
+    }
+  ],
+  "enqueue": [
+    {
+      "name": "creation_into_draft_enqueues",
+      "committed": true,
+      "next_state": "draft",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "draft_to_ready_enqueues",
+      "committed": true,
+      "next_state": "ready",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "changes_requested_enqueues",
+      "committed": true,
+      "next_state": "changes_requested",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "clarifying_waits_for_the_human_instead",
+      "committed": true,
+      "next_state": "clarifying",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "waiting_human_waits_for_the_human_instead",
+      "committed": true,
+      "next_state": "waiting_human",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "dispatched_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "dispatched",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "waiting_bot_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "waiting_bot",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "reviewing_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "reviewing",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "running_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "running",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "terminal_completed_enqueues_nothing",
+      "committed": true,
+      "next_state": "completed",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "terminal_cancelled_enqueues_nothing",
+      "committed": true,
+      "next_state": "cancelled",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "a_rejected_transition_enqueues_nothing",
+      "note": "A failed dispatch commits no state change, so it produces no continuation. Retry is dispatch.md \u00a73.3, not an internal turn loop.",
+      "committed": false,
+      "next_state": "ready",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "one_pending_at_a_time",
+      "committed": true,
+      "next_state": "ready",
+      "continuation_pending": true,
+      "expect_enqueued": false
+    }
+  ],
+  "clear_assignment_walk": {
+    "note": "GS-FR-006 and PRD acceptance scenario 1 \u2014 one human message reaches a dispatched instruction with no confirmation asked and no second Slack event.",
+    "steps": [
+      {
+        "step": 1,
+        "source": "slack",
+        "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "from_state": null,
+        "to_state": "draft",
+        "expect_enqueues_continuation": true,
+        "expect_visible_actions": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 2,
+        "source": "continuation",
+        "event_key": "cont:wf_supv_0001:1",
+        "from_state": "draft",
+        "to_state": "ready",
+        "expect_enqueues_continuation": true,
+        "expect_visible_actions": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 3,
+        "source": "continuation",
+        "event_key": "cont:wf_supv_0001:2",
+        "from_state": "ready",
+        "to_state": "dispatched",
+        "expect_enqueues_continuation": false,
+        "expect_visible_actions": 1,
+        "expect_asks_human": false
+      }
+    ],
+    "expect_additional_slack_events_required": 0,
+    "expect_total_visible_actions": 1,
+    "expect_final_state": "dispatched"
+  },
+  "chain_bounds": {
+    "note": "actions.md \u00a72.2 rule 3 \u2014 no Gist-expected state reaches another without passing through a state that waits on somebody, so the chain is finite by construction. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations actually fired from that state is one more than that.",
+    "expect_longest_chain": {
+      "draft": 1,
+      "ready": 0,
+      "changes_requested": 1
+    },
+    "expect_any_cycle": false,
+    "expect_max_chain_overall": 1,
+    "expect_max_continuations_from_draft": 2
+  },
+  "outcomes": [
+    {
+      "name": "state_unchanged_so_it_evaluates",
+      "claim_held": false,
+      "current_state": "draft",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "evaluated"
+    },
+    {
+      "name": "human_cancelled_while_it_waited",
+      "note": "events.md \u00a75 rule 2 \u2014 a queued event re-reads durable state before acting.",
+      "claim_held": false,
+      "current_state": "cancelled",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "superseded"
+    },
+    {
+      "name": "workflow_moved_on_while_it_waited",
+      "claim_held": false,
+      "current_state": "waiting_human",
+      "enqueued_for_state": "ready",
+      "expect_outcome": "superseded"
+    },
+    {
+      "name": "replayed_after_restart",
+      "note": "The action claim on the continuation's own event_key makes reprocessing a no-op rather than a second dispatch.",
+      "claim_held": true,
+      "current_state": "ready",
+      "enqueued_for_state": "ready",
+      "expect_outcome": "already_processed"
+    },
+    {
+      "name": "claim_held_wins_over_a_state_match",
+      "claim_held": true,
+      "current_state": "draft",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "already_processed"
+    }
+  ],
+  "turn_accounting": {
+    "note": "actions.md \u00a72.2 rule 4 \u2014 a continuation is a new supervisor event and consumes a turn, so max_turns bounds the internal path as tightly as Slack traffic.",
+    "transition": {
+      "committed": true,
+      "source_event_is_new": true,
+      "next_state": "ready"
+    },
+    "turn_count_before": 4,
+    "consecutive_failures_before": 0,
+    "expect_turn_count": 5
+  },
+  "not_self_evaluation": {
+    "note": "GS-INV-05 \u2014 a continuation is a state-machine step, not Gist reading its own message.",
+    "expect_has_actor_class": false,
+    "expect_carries_message_content": false,
+    "forbidden_origins": [
+      "gist_slack_message",
+      "trusted_bot_content",
+      "unknown_bot_content",
+      "model_output",
+      "channel_summary",
+      "channel_observation"
+    ]
+  },
+  "claims": {
+    "note": "dispatch.md \u00a72 \u2014 a continuation is claimed exactly like a Slack event.",
+    "cases": [
+      {
+        "name": "continuation_claims_on_its_own_key",
+        "source_event_key": "cont:wf_supv_0001:1",
+        "expect_action_claim_key": "ev:cont:wf_supv_0001:1"
+      },
+      {
+        "name": "slack_event_claims_on_its_message_key",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684800.000100"
+      }
+    ]
+  }
+}

@@ -88,6 +88,11 @@ ExpectedActor = 'gist' | 'human' | 'kilo' | 'linear' | 'none'
 `expected_actor` is what `events.md` §4.2 check 4 compares against. It is set by the transition that
 produces the state, never inferred from the last message seen. Terminal states carry `none`.
 
+Three states carry `gist`: `draft`, `ready`, and `changes_requested`. In those the workflow is
+waiting on Gist and on nobody else, so a committed transition into one of them enqueues a
+continuation in the same commit (§3.4). That is what stops a clear assignment from sitting in
+`draft` until somebody happens to type again.
+
 ### 2.3 Dispatch never advances state on hope (GS-FR-042)
 
 `ready → dispatched` happens **only** on a confirmed delivery. A dispatch attempt that fails,
@@ -191,6 +196,26 @@ No transition in any class may be requested by `kilo`, `linear`, `unknown_automa
 request a transition; it never requests one itself, and the requester recorded in the audit row is
 Gist.
 
+### 3.4 A transition into a Gist-expected state enqueues its own next turn
+
+Part of the same atomic commit as the transition, not a follow-up write:
+
+```text
+if next_expected_actor == 'gist' and next_state is not terminal:
+    enqueue ContinuationEvent(workflow_id, continuation_seq = pending_seq + 1)
+```
+
+Idempotent on `(workflow_id, continuation_seq)`, and refused while a continuation for this workflow
+is already pending. `actions.md` §2.1 defines the event and §2.2 the five bounds that keep the
+mechanism finite; the reason it belongs in the transition's commit rather than after it is that any
+gap between "the workflow now expects Gist" and "something is scheduled to act as Gist" is a window
+in which a crash strands the work silently. Making it one write removes the window instead of
+narrowing it.
+
+A transition into `clarifying`, `waiting_human`, `dispatched`, `running`, `waiting_bot`,
+`reviewing`, or a terminal state enqueues nothing: those states are waiting on somebody else, and a
+continuation there would be a poll rather than a step.
+
 ## 4. Restart and recovery (GS-FR-015, GS-NFR-002)
 
 On process start:
@@ -200,7 +225,10 @@ On process start:
    timers are **derived** from durable timestamps, never from in-memory state, so a restart cannot
    silently extend a deadline (GS-NFR-007).
 3. Reconcile any action left in a non-terminal delivery state per `dispatch.md` §5.
-4. Do **not** re-send any instruction whose delivery was confirmed, and do not re-run any completed
+4. Reload every pending `ContinuationEvent` and process it exactly once. The action claim on the
+   continuation's own `event_key` is what makes "exactly once" true: a continuation that already
+   produced an action finds its claim held and does nothing.
+5. Do **not** re-send any instruction whose delivery was confirmed, and do not re-run any completed
    transition. Recovery replays state, not effects.
 
 A workflow whose in-flight action cannot be reconciled moves to `waiting_human` with reason class
@@ -284,10 +312,20 @@ started under (GS-NFR-007).
 invariant (GS-FR-024) expressed as a limit, and making it tunable would make that invariant a
 setting.
 
+These limits are also the **only** source of the response deadline Gist states to a bot.
+`actions.md` §5.2 derives `response_deadline_ms` as
+`min(inactivity_timeout_ms, remaining_lifetime_ms)` and dispatches nothing when that is not
+positive. The deadline is therefore a projection of the stored limits, not a second, softer bound
+living in the instruction — which is what §7.4 requires of anything that could otherwise read as an
+extension.
+
 ### 7.2 Counting
 
 - `turn_count` increments on every committed transition whose `source_event_key` is a new supervisor
   event. Internal bookkeeping transitions do not consume a turn.
+- A continuation **is** a new supervisor event and consumes a turn like any other. This is not
+  bookkeeping: it is how `max_turns` bounds the internal path as tightly as it bounds Slack traffic,
+  so runtime-generated turns can never be the cheap ones (`actions.md` §2.2 rule 4).
 - `consecutive_failures` increments on a dispatch failure, a bot-reported failure, or an internal
   error, and **resets to zero** on any committed transition into `running`, `reviewing`, or
   `completed`.
@@ -315,6 +353,11 @@ No message, from any actor class including the owner, may raise a limit, extend 
 a counter by content (`identity.md` §4). An owner who needs more room cancels and starts new work,
 or an operator changes configuration, which affects only workflows created afterwards.
 
+Nor may **model output**. The response deadline Gist puts in an instruction is derived here
+(§7.1), never supplied by the model: a model-chosen `response_deadline_ms` would have been an
+extension arriving through a field that looked like part of the work rather than part of the policy.
+`actions.md` §5 splits the instruction envelope so that field cannot be reached at all.
+
 ## 8. Where each rule is pinned
 
 | Rule | Pinned by |
@@ -325,6 +368,9 @@ or an operator changes configuration, which affects only workflows created after
 | §3.1 the full transition table, legal and illegal | `workflow-state.test.ts` |
 | §3.2 compare-and-set, all five rejection modes, duplicate-source idempotence | `workflow-state.test.ts` |
 | §3.3 requester authority | `workflow-state.test.ts`, `approvals.test.ts` |
+| §3.4 continuation enqueued in the transition's commit, only for Gist-expected states | `continuation.test.ts` |
 | §4 restart replays state, not effects | `dispatch.test.ts` |
 | §5 fresh review; PR alone is not acceptance | `workflow-state.test.ts` |
 | §7 limits, counting, and limit outcomes | `limits.test.ts` |
+| §7.1 the derived response deadline; no dispatch when nothing remains | `limits.test.ts`, `actions.test.ts` |
+| §7.2 a continuation consumes a turn | `continuation.test.ts`, `limits.test.ts` |

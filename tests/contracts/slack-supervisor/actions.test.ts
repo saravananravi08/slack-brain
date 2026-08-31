@@ -10,7 +10,11 @@ import { asArray, asRecord, asStrings, byName, loadFixture, names } from './help
 import {
   ACTION_CLASSES,
   EXTERNALLY_VISIBLE_ACTIONS,
+  MODEL_INSTRUCTION_FIELDS,
+  RUNTIME_INSTRUCTION_FIELDS,
   WORK_CLASSES,
+  deriveResponseDeadlineMs,
+  expectedSignalsFor,
   actionAllowedInState,
   containsSlackIdentifier,
   isAllowedWorkClass,
@@ -32,6 +36,7 @@ const valid = asArray(fixture.valid_actions, 'valid_actions');
 const invalid = asArray(fixture.invalid_actions, 'invalid_actions');
 const workClassCases = asArray(fixture.work_class_rejections, 'work_class_rejections');
 const envelope = asRecord(fixture.instruction_envelope, 'instruction_envelope');
+const deadline = asRecord(envelope.response_deadline, 'response_deadline');
 const destination = asRecord(fixture.destination_mapping, 'destination_mapping');
 const authority = asArray(fixture.action_authority, 'action_authority');
 const reporting = asRecord(fixture.progress_reporting, 'progress_reporting');
@@ -78,6 +83,7 @@ describe('schema validation', () => {
     const reasons = invalid.map((testCase) => testCase.expect_reason);
     for (const reason of [
       'unknown_action_class',
+      'runtime_controlled_field_present',
       'slack_identifier_present',
       'destination_field_present',
       'missing_workflow_id',
@@ -227,36 +233,59 @@ describe('destination mapping (actions.md §3)', () => {
 });
 
 describe('the instruction envelope (actions.md §5, GS-FR-025)', () => {
-  const required = asStrings(envelope.required_fields, 'required_fields');
+  const modelFields = asStrings(envelope.model_fields, 'model_fields');
+  const runtimeFields = asStrings(envelope.runtime_fields, 'runtime_fields');
   const forbidden = asStrings(envelope.forbidden_content_classes, 'forbidden_content_classes');
   const scoping = asRecord(envelope.context_ref_scoping, 'context_ref_scoping');
   const marker = asRecord(envelope.marker, 'marker');
+  const composed = asRecord(envelope.composed_sample, 'composed_sample');
 
-  it('requires objective, scope, acceptance, marker, expected response, and prohibitions', () => {
-    for (const field of [
-      'objective',
-      'scope',
-      'acceptance',
-      'workflow_marker',
-      'expected_response',
-      'prohibitions',
-    ]) {
-      expect(required, `envelope is missing ${field}`).toContain(field);
+  it('splits into a model half and a runtime half with no overlap', () => {
+    expect(modelFields).toEqual([...MODEL_INSTRUCTION_FIELDS]);
+    expect(runtimeFields.filter((field) => modelFields.includes(field))).toEqual([]);
+    for (const field of runtimeFields) {
+      expect(RUNTIME_INSTRUCTION_FIELDS, `${field} is not a declared runtime field`).toContain(
+        field,
+      );
+    }
+  });
+
+  it('composes an envelope carrying everything GS-FR-025 requires', () => {
+    // The requirement is about the rendered instruction; only the model's
+    // contribution is narrower.
+    for (const field of [...modelFields, ...runtimeFields]) {
+      expect(composed, `composed envelope is missing ${field}`).toHaveProperty(field);
     }
   });
 
   it.each(forbidden)('excludes %s', (contentClass) => {
-    expect(required).not.toContain(contentClass);
+    expect([...modelFields, ...runtimeFields]).not.toContain(contentClass);
   });
 
-  it('carries every required field in the sample dispatch', () => {
+  it('lets the model supply only the work, never the protocol', () => {
     const instruction = asRecord(
       asRecord(byName(valid, 'dispatch_bot_to_kilo').action, 'action').instruction,
       'instruction',
     );
-    for (const field of required) {
+    for (const field of modelFields) {
       expect(instruction, `sample instruction is missing ${field}`).toHaveProperty(field);
     }
+    for (const field of runtimeFields) {
+      expect(instruction, `sample model instruction leaks ${field}`).not.toHaveProperty(field);
+    }
+  });
+
+  it.each(RUNTIME_INSTRUCTION_FIELDS)('rejects a model action carrying %s', (field) => {
+    // Rejected, not merged and not silently dropped: a model that tried once
+    // will try again, and a silent drop makes that invisible.
+    expect(
+      validateAction({
+        action_class: 'dispatch_bot',
+        workflow_id: 'wf_supv_0001',
+        logical_target: 'kilo',
+        instruction: { work_class: 'implement', [field]: 'anything at all' },
+      }),
+    ).toBe('runtime_controlled_field_present');
   });
 
   describe('context handles', () => {
@@ -280,6 +309,73 @@ describe('the instruction envelope (actions.md §5, GS-FR-025)', () => {
       for (const handle of ['ctx_stale_channel', 'ctx_stale_workspace', 'ctx_stale_unenrolled']) {
         expect(resolveContextRef(handle, handleTable, binding), handle).toBeNull();
       }
+    });
+  });
+
+  describe('response deadline (actions.md §5.2)', () => {
+    const limits = deadline.limits as { inactivity_timeout_ms: number; absolute_lifetime_ms: number };
+    const cases = asArray(deadline.cases, 'response_deadline.cases');
+
+    it.each(names(cases))('%s', (name) => {
+      const testCase = byName(cases, name);
+      expect(
+        deriveResponseDeadlineMs(limits, String(deadline.created_at), String(testCase.now)),
+      ).toBe(testCase.expect_deadline_ms);
+    });
+
+    it('never exceeds the inactivity timeout', () => {
+      // A model-chosen deadline would have been exactly the timeout extension
+      // workflow-state.md §7.4 forbids, arriving through the one field nobody
+      // was checking.
+      for (const testCase of cases) {
+        const value = deriveResponseDeadlineMs(
+          limits,
+          String(deadline.created_at),
+          String(testCase.now),
+        );
+        if (value !== null) expect(value).toBeLessThanOrEqual(limits.inactivity_timeout_ms);
+      }
+      expect(deadline.expect_never_exceeds_inactivity_timeout).toBe(true);
+    });
+
+    it('never outlives the workflow', () => {
+      expect(
+        deriveResponseDeadlineMs(limits, '2026-09-01T00:00:00.000Z', '2026-09-01T23:45:00.000Z'),
+      ).toBe(900_000);
+      expect(deadline.expect_never_outlives_the_workflow).toBe(true);
+    });
+
+    it('returns null rather than a non-positive window, so nothing is dispatched', () => {
+      expect(
+        deriveResponseDeadlineMs(limits, '2026-09-01T00:00:00.000Z', '2026-09-02T00:00:00.000Z'),
+      ).toBeNull();
+      expect(deadline.expect_null_means_time_out_instead_of_dispatch).toBe(true);
+    });
+
+    it('is unreachable from a model action', () => {
+      expect(RUNTIME_INSTRUCTION_FIELDS).toContain('response_deadline_ms');
+      expect(
+        validateAction({
+          action_class: 'dispatch_bot',
+          workflow_id: 'wf_supv_0001',
+          logical_target: 'kilo',
+          instruction: { work_class: 'implement', response_deadline_ms: 604_800_000 },
+        }),
+      ).toBe('runtime_controlled_field_present');
+    });
+  });
+
+  describe('expected signals (actions.md §5.2)', () => {
+    const cases = asArray(envelope.expected_signals, 'expected_signals');
+
+    it.each(names(cases))('%s', (name) => {
+      const testCase = byName(cases, name);
+      expect(expectedSignalsFor(String(testCase.work_class))).toEqual(testCase.expect);
+    });
+
+    it('adds review findings only for a review', () => {
+      expect(expectedSignalsFor('review')).toContain('review_findings');
+      expect(expectedSignalsFor('implement')).not.toContain('review_findings');
     });
   });
 

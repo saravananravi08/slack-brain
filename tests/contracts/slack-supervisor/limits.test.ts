@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
   applyCounters,
+  deriveResponseDeadlineMs,
   limitStop,
   type CountingInput,
   type LimitCheckRecord,
@@ -204,6 +205,45 @@ describe('limits survive restart (GS-NFR-007)', () => {
   });
 });
 
+describe('the response deadline is a projection of these limits (§7.1)', () => {
+  const deadline = asRecord(fixture.response_deadline, 'response_deadline');
+  const deadlineLimits = deadline.limits as unknown as WorkflowLimits;
+  const cases = asArray(deadline.cases, 'response_deadline.cases');
+
+  it.each(names(cases))('%s', (name) => {
+    const testCase = byName(cases, name);
+    expect(
+      deriveResponseDeadlineMs(deadlineLimits, String(deadline.created_at), String(testCase.now)),
+    ).toBe(testCase.expect_deadline_ms);
+  });
+
+  it('is not model-supplied and cannot exceed the stored bounds', () => {
+    expect(deadline.expect_model_supplied).toBe(false);
+    expect(deadline.expect_can_exceed_inactivity_timeout).toBe(false);
+    expect(deadline.expect_can_outlive_the_workflow).toBe(false);
+  });
+
+  it('agrees with the limit check about when the workflow is out of time', () => {
+    // The deadline going null and the lifetime timeout firing are the same
+    // fact seen from two places; they must not disagree.
+    const now = '2026-09-02T00:00:00.000Z';
+    expect(deriveResponseDeadlineMs(deadlineLimits, String(deadline.created_at), now)).toBeNull();
+    expect(
+      limitStop(
+        {
+          state: 'ready',
+          turn_count: 1,
+          consecutive_failures: 0,
+          created_at: String(deadline.created_at),
+          last_activity_at: String(deadline.created_at),
+        },
+        deadlineLimits,
+        now,
+      )?.outcome_class,
+    ).toBe('timeout_lifetime');
+  });
+});
+
 describe('channel content cannot raise a limit (workflow-state.md §7.4)', () => {
   const cases = asArray(attempts.attempts, 'content_cannot_raise_limits.attempts');
 
@@ -217,9 +257,16 @@ describe('channel content cannot raise a limit (workflow-state.md §7.4)', () =>
     },
   );
 
-  it('covers the owner as well as every automation class', () => {
+  it('covers the owner, every automation class, and the model itself', () => {
     const actors = cases.map((testCase) => testCase.actor_class);
-    for (const actor of ['authorized_human', 'kilo', 'linear', 'unknown_automation', 'gist_self']) {
+    for (const actor of [
+      'authorized_human',
+      'kilo',
+      'linear',
+      'unknown_automation',
+      'gist_self',
+      'model_output',
+    ]) {
       expect(actors, `no attempt from ${actor}`).toContain(actor);
     }
   });

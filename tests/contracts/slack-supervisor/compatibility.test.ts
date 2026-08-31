@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
+  STABLE_TEXT_MIN_SAMPLES,
   compatibilityDecision,
   correlationStrategyFor,
   dispatchAllowedByCompatibility,
@@ -57,6 +58,7 @@ describe('the measurement record (compatibility.md §2)', () => {
     for (const key of [
       'tri',
       'reply_placement',
+      'outcome_distinguishability',
       'completion_signal',
       'duplicate_behavior',
       'latency_bucket',
@@ -173,7 +175,7 @@ describe('GO / NO-GO rules (compatibility.md §4, GS-FR-010)', () => {
   });
 
   it('blocks when success and failure are indistinguishable', () => {
-    for (const name of ['no_distinguishable_outcome', 'no_completion_signal']) {
+    for (const name of ['outcomes_are_unreliable', 'no_completion_signal']) {
       const testCase = byName(decisionCases, name);
       expect(
         compatibilityDecision(testCase.measurement as unknown as BotCompatibilityMeasurement)
@@ -183,6 +185,41 @@ describe('GO / NO-GO rules (compatibility.md §4, GS-FR-010)', () => {
     }
   });
 
+  it('accepts a bot that reports outcomes reliably in prose', () => {
+    // The defect this fixes: requiring a *structural* success/failure signal
+    // would have blocked the Slack-only path over a formatting preference,
+    // which is neither a PRD requirement nor consistent with D024/GS-FR-028.
+    const testCase = byName(decisionCases, 'stable_textual_outcomes_are_go');
+    const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
+    expect(measurement.outcome_distinguishability).toBe('stable_text');
+    expect(compatibilityDecision(measurement)).toEqual({
+      decision: 'GO',
+      blocking_reason_class: null,
+    });
+  });
+
+  it('holds stable_text to a sample floor', () => {
+    const testCase = byName(decisionCases, 'stable_text_claimed_from_too_few_samples');
+    const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
+    expect(measurement.sample_count).toBeLessThan(STABLE_TEXT_MIN_SAMPLES);
+    expect(compatibilityDecision(measurement).blocking_reason_class).toBe('insufficient_samples');
+  });
+
+  it('applies no sample floor to a structural signal', () => {
+    // Present or absent, rather than inferred from repetition.
+    const testCase = byName(decisionCases, 'structured_outcomes_need_no_sample_floor');
+    const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
+    expect(measurement.sample_count).toBe(1);
+    expect(compatibilityDecision(measurement).decision).toBe('GO');
+  });
+
+  it('still blocks when outcomes cannot be told apart at all', () => {
+    const testCase = byName(decisionCases, 'outcomes_are_unreliable');
+    const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
+    expect(measurement.outcome_distinguishability).toBe('unreliable');
+    expect(compatibilityDecision(measurement).blocking_reason_class).toBe('no_outcome_signal');
+  });
+
   it('leaves the marker-required path GO for T803 to rule on', () => {
     // Correlation is possible, so it is not a NO_GO here; §5 records that the
     // clause it depends on may still move.
@@ -190,6 +227,29 @@ describe('GO / NO-GO rules (compatibility.md §4, GS-FR-010)', () => {
     const measurement = testCase.measurement as unknown as BotCompatibilityMeasurement;
     expect(correlationStrategyFor(measurement)).toBe('marker_required');
     expect(compatibilityDecision(measurement).decision).toBe('GO');
+  });
+});
+
+describe('prose is evidence, never authority (compatibility.md §2.2, GS-INV-07)', () => {
+  const prose = asRecord(fixture.prose_is_not_authority, 'prose_is_not_authority');
+
+  it('applies to the loosened value specifically', () => {
+    expect(prose.outcome_distinguishability).toBe('stable_text');
+  });
+
+  it.each(asStrings(prose.claim_classes, 'claim_classes'))('%s changes nothing', (claim) => {
+    // Measuring that a bot's wording is consistent tells Gist how to read a
+    // reply. It does not make the reply true, or make it an instruction.
+    expect(prose.expect_effect).toBe('none');
+    expect(claim.length).toBeGreaterThan(0);
+  });
+
+  it('still routes a textual completion signal through every gate', () => {
+    expect(asStrings(prose.expect_still_requires, 'expect_still_requires')).toEqual([
+      'full_binding_correlation',
+      'legal_transition_and_compare_and_set',
+      'version_bound_human_approval_for_gated_actions',
+    ]);
   });
 });
 
@@ -268,6 +328,7 @@ describe('clauses conditional on measurement (compatibility.md §5)', () => {
       'actions.md §5.1',
       'workflow-state.md §3.1',
       'dispatch.md §5',
+      'events.md §4.2 check 5 reply classification',
     ]) {
       expect(clauses, `${clause} is not listed as conditional`).toContain(clause);
     }

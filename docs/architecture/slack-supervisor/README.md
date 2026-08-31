@@ -76,6 +76,20 @@ This set versions **independently** of the v1 and channel-memory sets. Tests pin
 
 T803 is expected to produce at least a patch bump: `compatibility.md` §5 lists the clauses whose final wording is conditional on T802's measurements, so that the places live evidence may move are known in advance rather than discovered during review.
 
+### 2.1 Pre-merge revision
+
+The set stayed at **1.0.0** through T801's integration review. Five defects were found before the branch merged, so no consumer ever saw the earlier shapes and there is nothing to stay compatible with; a 2.0.0 for a version that never left the branch would only mislead T802 and T803 about which document to read. What changed:
+
+| Fix | Change |
+|---|---|
+| Clear-assignment progress gap | `actions.md` §2.1–§2.3, `events.md` §2.1, `workflow-state.md` §3.4 — a durable runtime-owned `ContinuationEvent`, enqueued in the transition's own commit, so a clear assignment reaches dispatch without a second Slack message |
+| Model-controlled timeout | `actions.md` §5 — the instruction envelope splits into a model half and a runtime half, and `response_deadline_ms` is derived from the workflow's stored limits (§5.2) instead of being model-supplied |
+| Ambiguous retry could duplicate a dispatch | `dispatch.md` §3.1–§3.3, §5 — a third `DeliveryOutcome`, `indeterminate`; a timeout or transport error keeps the checkpoint `in_flight` and goes to reconciliation, and only proven non-delivery permits a retry |
+| Unbound visible-action claim gap | `dispatch.md` §2 — `ActionClaimKey` is keyed on the source event alone, so replies carrying no `workflow_id` are bounded by the same one-action rule |
+| Compatibility outcome overconstraint | `compatibility.md` §2.1, §2.2, §4 — `outcome_distinguishability` accepts `stable_text` as well as `structured`, with a sample floor, while keeping prose as evidence and never as authority |
+
+The first merge of this branch is the freeze. After it, the change control above applies without exception.
+
 ## 3. Synthetic identifiers
 
 Every identifier in this set and its fixtures is invented. No real workspace, channel, user, bot, app, message body, URL, token, prompt, model output, or trace appears here or in `tests/contracts/slack-supervisor/**` (FR-PRV-007, GS-NFR-004). `contract-safety.test.ts` enforces this by scanning the fixtures and the contract documents against the manifest allowlist, so a real ID pasted in later fails the suite rather than merging quietly.

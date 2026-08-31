@@ -271,6 +271,30 @@ describe('requester authority (workflow-state.md §3.3)', () => {
   });
 });
 
+describe('a Gist-expected state schedules its own next turn (§3.4)', () => {
+  it('names the three states that carry `gist`', () => {
+    const expectedActor: Record<string, string> = {
+      draft: 'gist',
+      ready: 'gist',
+      changes_requested: 'gist',
+    };
+    // Stated here as well as in continuation.test.ts because the enqueue is
+    // part of the transition's commit, not a separate subsystem.
+    expect(Object.keys(expectedActor).sort()).toEqual([
+      'changes_requested',
+      'draft',
+      'ready',
+    ]);
+    expect(loadContractDoc('workflow-state.md')).toContain('enqueues its own next turn');
+  });
+
+  it('says the enqueue is atomic with the transition', () => {
+    const doc = loadContractDoc('workflow-state.md');
+    expect(doc).toContain('same atomic commit as the transition');
+    expect(doc).toContain('enqueue ContinuationEvent');
+  });
+});
+
 describe('terminal immutability and reopen (workflow-state.md §2.4)', () => {
   const reopen = asRecord(fixture.reopen, 'reopen');
   const terminal = asRecord(reopen.terminal_record, 'terminal_record');

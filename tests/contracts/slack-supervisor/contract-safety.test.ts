@@ -151,11 +151,12 @@ describe('no captured conversation, prompt, or model output', () => {
     }
   });
 
-  it('keeps workflow, event, and checkpoint records free of message text', () => {
+  it('keeps workflow, event, checkpoint, and continuation records free of message text', () => {
     for (const [file, sampleKey, forbiddenKey] of [
       ['workflow.v1.json', 'sample_record', 'record_forbidden_fields'],
       ['events.v1.json', 'sample_event', 'event_record_forbidden_fields'],
       ['dispatch.v1.json', 'sample_checkpoint', 'checkpoint_forbidden_fields'],
+      ['continuation.v1.json', 'sample_record', 'record_forbidden_fields'],
     ] as const) {
       const fixture = loadFixture(file);
       const sample = fixture[sampleKey] as Record<string, unknown>;
@@ -175,6 +176,7 @@ describe('every reason, failure, and outcome class is safe to log (GS-NFR-004)',
     ['approvals.v1.json', 'gated_action_classes'],
     ['approvals.v1.json', 'approval_states'],
     ['actions.v1.json', 'action_classes'],
+    ['continuation.v1.json', 'gist_expected_states'],
   ];
 
   it.each(CLASS_SOURCES)('%s / %s uses lowercase content-free identifiers', (file, key) => {

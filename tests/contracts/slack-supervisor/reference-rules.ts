@@ -440,6 +440,83 @@ export function evaluateTransition(
   return { outcome: 'committed', reason: null };
 }
 
+/* ------------------------------------------------------------------ *
+ * actions.md §2.1–§2.3 — continuations
+ * ------------------------------------------------------------------ */
+
+export type SupervisorEventSource = 'slack' | 'continuation';
+
+/**
+ * The states whose `expected_actor` is `gist`. A committed transition into one
+ * of these enqueues a continuation in the same commit (workflow-state.md §3.4),
+ * because a workflow waiting on Gist with nothing scheduled is a workflow that
+ * has silently stopped.
+ */
+export const GIST_EXPECTED_STATES: readonly WorkflowState[] = Object.freeze([
+  'draft',
+  'ready',
+  'changes_requested',
+]);
+
+export function continuationEventKey(workflowId: string, sequence: number): string {
+  return `cont:${workflowId}:${sequence}`;
+}
+
+/** workflow-state.md §3.4 — does this committed transition schedule its own next turn? */
+export function enqueuesContinuation(input: {
+  readonly committed: boolean;
+  readonly next_state: WorkflowState;
+  readonly continuation_pending: boolean;
+}): boolean {
+  if (!input.committed) return false;
+  if (isTerminal(input.next_state)) return false;
+  if (!GIST_EXPECTED_STATES.includes(input.next_state)) return false;
+  // At most one pending per workflow (actions.md §2.2 rule 2).
+  return !input.continuation_pending;
+}
+
+export type ContinuationOutcome = 'evaluated' | 'superseded' | 'already_processed';
+
+/**
+ * actions.md §2.1 — a continuation re-reads durable state after the queue.
+ *
+ * It is not a promise that the workflow is still where it was: a human may have
+ * cancelled while the continuation waited, in which case it does nothing.
+ */
+export function continuationOutcome(input: {
+  readonly claim_held: boolean;
+  readonly current_state: WorkflowState;
+  readonly enqueued_for_state: WorkflowState;
+}): ContinuationOutcome {
+  if (input.claim_held) return 'already_processed';
+  if (input.current_state !== input.enqueued_for_state) return 'superseded';
+  return 'evaluated';
+}
+
+/**
+ * actions.md §2.2 rule 3 — the transition table forbids a continuation cycle.
+ *
+ * Returns the longest chain of consecutive Gist-expected states reachable from
+ * `start` using only legal transitions, or `null` if a cycle exists. A finite
+ * answer is the proof that internal turns cannot run away.
+ */
+export function longestContinuationChain(
+  start: WorkflowState,
+  seen: readonly WorkflowState[] = [],
+): number | null {
+  if (!GIST_EXPECTED_STATES.includes(start)) return 0;
+  if (seen.includes(start)) return null;
+
+  let longest = 0;
+  for (const next of WORKFLOW_TRANSITIONS[start]) {
+    if (!GIST_EXPECTED_STATES.includes(next)) continue;
+    const rest = longestContinuationChain(next, [...seen, start]);
+    if (rest === null) return null;
+    if (rest + 1 > longest) longest = rest + 1;
+  }
+  return longest;
+}
+
 export type TransitionClass =
   | 'cancel'
   | 'approval_grant'
@@ -681,6 +758,7 @@ export function containsDestinationField(value: unknown): boolean {
 
 export type ActionRejection =
   | 'unknown_action_class'
+  | 'runtime_controlled_field_present'
   | 'slack_identifier_present'
   | 'destination_field_present'
   | 'missing_workflow_id'
@@ -703,6 +781,9 @@ export function validateAction(action: Record<string, unknown>): ActionRejection
   if (typeof actionClass !== 'string' || !ACTION_CLASSES.includes(actionClass as ActionClass)) {
     return 'unknown_action_class';
   }
+  // Checked before the identifier scan: a model reaching for a policy field is
+  // a more specific and more actionable diagnosis than "there is an ID in here".
+  if (containsRuntimeInstructionField(action)) return 'runtime_controlled_field_present';
   if (containsSlackIdentifier(action)) return 'slack_identifier_present';
   if (containsDestinationField(action)) return 'destination_field_present';
 
@@ -731,6 +812,65 @@ export function validateAction(action: Record<string, unknown>): ActionRejection
 /** actions.md §5.1 — runtime-generated, never model-supplied. */
 export function workflowMarker(workflowId: string, actionVersion: number): string {
   return `[gist-wf:${workflowId}#${actionVersion}]`;
+}
+
+/** actions.md §5 — the halves of the instruction envelope. */
+export const MODEL_INSTRUCTION_FIELDS: readonly string[] = Object.freeze([
+  'work_class',
+  'objective',
+  'scope',
+  'acceptance',
+  'context_refs',
+]);
+
+/**
+ * Fields the runtime composes. A model action carrying any of them — including
+ * a member of `expected_response` — is rejected rather than merged, because a
+ * silent drop makes a model that reaches for policy invisible.
+ */
+export const RUNTIME_INSTRUCTION_FIELDS: readonly string[] = Object.freeze([
+  'workflow_marker',
+  'expected_response',
+  'prohibitions',
+  'reply_in_thread',
+  'expected_signals',
+  'response_deadline_ms',
+]);
+
+export function containsRuntimeInstructionField(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsRuntimeInstructionField);
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>;
+    if (Object.keys(record).some((key) => RUNTIME_INSTRUCTION_FIELDS.includes(key))) return true;
+    return Object.values(record).some(containsRuntimeInstructionField);
+  }
+  return false;
+}
+
+/**
+ * actions.md §5.2 — the response deadline is derived from the workflow's own
+ * stored limits, never chosen.
+ *
+ * Returns null when nothing is left to wait in: the runtime then times the
+ * workflow out rather than promising a bot a window that ends after the
+ * workflow does. This is what keeps GS-NFR-007 true through a field that would
+ * otherwise have read as part of the work rather than part of the policy.
+ */
+export function deriveResponseDeadlineMs(
+  limits: Pick<WorkflowLimits, 'inactivity_timeout_ms' | 'absolute_lifetime_ms'>,
+  createdAtIso: string,
+  nowIso: string,
+): number | null {
+  const remainingLifetimeMs =
+    Date.parse(createdAtIso) + limits.absolute_lifetime_ms - Date.parse(nowIso);
+  const deadline = Math.min(limits.inactivity_timeout_ms, remainingLifetimeMs);
+  return deadline > 0 ? deadline : null;
+}
+
+/** actions.md §5.2 — `expected_signals` is a fixed function of the work class. */
+export function expectedSignalsFor(workClass: string): readonly string[] {
+  const base = ['progress', 'blocker', 'failure', 'completion'];
+  return workClass === 'review' ? Object.freeze([...base, 'review_findings']) : Object.freeze(base);
 }
 
 /** actions.md §5 — a handle resolves only inside the workflow's own binding. */
@@ -928,8 +1068,15 @@ export function ownershipPermissions(context: RequesterContext): {
  * dispatch.md — checkpoints, delivery, reconciliation, failure
  * ------------------------------------------------------------------ */
 
-export function actionClaimKey(workflowId: string, sourceEventKey: string): string {
-  return `wf:${workflowId}|ev:${sourceEventKey}`;
+/**
+ * dispatch.md §2 — keyed on the source event alone.
+ *
+ * The workflow is deliberately absent. Two externally visible actions carry no
+ * workflow at all (an unmatched trusted-bot notice and ordinary assistance),
+ * and a workflow-scoped key would have left them outside GS-FR-024 entirely.
+ */
+export function actionClaimKey(sourceEventKey: string): string {
+  return `ev:${sourceEventKey}`;
 }
 
 export function dispatchClaimKey(
@@ -946,7 +1093,9 @@ export type DeliveryState = 'pending' | 'in_flight' | 'delivered' | 'failed' | '
 export const DELIVERY_TRANSITIONS: Readonly<Record<DeliveryState, readonly DeliveryState[]>> =
   Object.freeze({
     pending: ['in_flight', 'abandoned'],
-    in_flight: ['delivered', 'failed', 'abandoned'],
+    // `in_flight → in_flight` is the indeterminate case: the outcome told us
+    // nothing, so nothing moves until reconciliation decides (§3.2).
+    in_flight: ['in_flight', 'delivered', 'failed', 'abandoned'],
     delivered: [],
     failed: ['pending', 'abandoned'],
     abandoned: [],
@@ -956,19 +1105,71 @@ export function isLegalDeliveryTransition(from: DeliveryState, to: DeliveryState
   return DELIVERY_TRANSITIONS[from].includes(to);
 }
 
-/**
- * dispatch.md §3 — `delivered` only from a returned message identity. An
- * absence of error is not a confirmation.
- */
-export function confirmDelivery(result: {
+export type DeliveryOutcome = 'delivered' | 'definitive_failure' | 'indeterminate';
+
+export interface AttemptResult {
   readonly slack_message_key: string | null;
-  readonly errored: boolean;
+  /** The Slack error class, when the attempt returned one. */
+  readonly error_class: FailureClass | null;
   readonly timed_out: boolean;
-}): DeliveryState {
-  if (result.errored || result.timed_out) return 'failed';
-  return typeof result.slack_message_key === 'string' && result.slack_message_key !== ''
-    ? 'delivered'
-    : 'failed';
+}
+
+/**
+ * dispatch.md §3.1 — error classes that prove the post was never published,
+ * because Slack refused the call before accepting it.
+ */
+export const DEFINITIVE_NON_DELIVERY: readonly FailureClass[] = Object.freeze([
+  'slack_permission_denied',
+  'slack_rate_limited',
+  'slack_invalid_request',
+  'destination_unresolved',
+]);
+
+/**
+ * dispatch.md §3.1 — three answers, not two.
+ *
+ * `delivered` only from a returned message identity. Everything that neither
+ * confirms nor disproves publication is `indeterminate`: a timeout, a transport
+ * error, and a response carrying no identity, no error, and no timeout. "An
+ * error occurred" is not the same claim as "nothing was posted".
+ */
+export function deliveryOutcome(result: AttemptResult): DeliveryOutcome {
+  if (typeof result.slack_message_key === 'string' && result.slack_message_key !== '') {
+    return 'delivered';
+  }
+  if (result.timed_out) return 'indeterminate';
+  if (result.error_class === null) return 'indeterminate';
+  return DEFINITIVE_NON_DELIVERY.includes(result.error_class)
+    ? 'definitive_failure'
+    : 'indeterminate';
+}
+
+/**
+ * dispatch.md §3.1 — the delivery state an outcome produces.
+ *
+ * `indeterminate` leaves the checkpoint where it is. That is the whole fix:
+ * moving it to `failed` would make it retryable, and retrying a post that may
+ * already have landed is a duplicate dispatch wearing a retry's clothes.
+ */
+export function applyDeliveryOutcome(
+  current: DeliveryState,
+  outcome: DeliveryOutcome,
+): DeliveryState {
+  if (outcome === 'delivered') return 'delivered';
+  if (outcome === 'definitive_failure') return 'failed';
+  return current;
+}
+
+/** dispatch.md §3.3 — a retry needs a definitive failure, not merely a failure. */
+export function retryAllowed(input: {
+  readonly delivery_state: DeliveryState;
+  readonly consecutive_failures: number;
+  readonly max_consecutive_failures: number;
+  readonly workflow_state: WorkflowState;
+}): boolean {
+  if (input.delivery_state !== 'failed') return false;
+  if (input.consecutive_failures >= input.max_consecutive_failures) return false;
+  return input.workflow_state === 'ready';
 }
 
 const BLOCKING_DELIVERY_STATES: readonly DeliveryState[] = Object.freeze(['pending', 'in_flight']);
@@ -1014,13 +1215,16 @@ export interface ReconciliationResult {
  */
 export function reconcile(input: ReconciliationInput): ReconciliationResult {
   if (input.delivery_state === 'pending') {
+    // Nothing was ever attempted, so this is not a failure and counts as none.
     return { delivery_state: 'abandoned', workflow_state: 'ready', reason_class: null };
   }
   if (input.own_outgoing_record || input.marker_found_in_thread) {
     return { delivery_state: 'delivered', workflow_state: 'dispatched', reason_class: null };
   }
   if (input.thread_readable) {
-    return { delivery_state: 'abandoned', workflow_state: 'ready', reason_class: null };
+    // Proven non-delivery: the thread was readable and the instruction is not
+    // in it. Only this proof turns an ambiguous attempt into a retryable one.
+    return { delivery_state: 'failed', workflow_state: 'ready', reason_class: null };
   }
   return {
     delivery_state: 'in_flight',
@@ -1058,6 +1262,7 @@ export type FailureClass =
   | 'slack_rate_limited'
   | 'slack_transport_error'
   | 'slack_permission_denied'
+  | 'slack_invalid_request'
   | 'destination_unresolved'
   | 'in_flight_conflict'
   | 'claim_conflict'
@@ -1070,16 +1275,28 @@ export type FailureClass =
   | 'approval_scope_changed'
   | 'compatibility_blocked'
   | 'schema_invalid'
+  | 'runtime_controlled_field_present'
   | 'model_unavailable'
   | 'storage_unavailable'
   | 'dispatch_unreconciled'
   | 'internal_error';
 
+/**
+ * dispatch.md §6 — retryable means "we know it was not delivered".
+ *
+ * `slack_transport_error` is deliberately absent. It reads like a transport
+ * hiccup and is the one error class that cannot say whether the post landed,
+ * so it produces an `indeterminate` outcome and goes to reconciliation instead
+ * of straight to a retry.
+ */
 const RETRYABLE_FAILURES: readonly FailureClass[] = Object.freeze([
   'slack_rate_limited',
-  'slack_transport_error',
   'slack_permission_denied',
+  'slack_invalid_request',
 ]);
+
+/** dispatch.md §6 — no retry from the failure itself; §5 decides. */
+const RECONCILE_FAILURES: readonly FailureClass[] = Object.freeze(['slack_transport_error']);
 
 const HUMAN_STOP_FAILURES: readonly FailureClass[] = Object.freeze([
   'destination_unresolved',
@@ -1090,12 +1307,18 @@ const HUMAN_STOP_FAILURES: readonly FailureClass[] = Object.freeze([
 export function failureBehavior(failure: FailureClass): {
   readonly retryable: boolean;
   readonly workflow_state: 'ready' | 'waiting_human' | 'unchanged';
+  readonly reconciles: boolean;
 } {
-  if (RETRYABLE_FAILURES.includes(failure)) return { retryable: true, workflow_state: 'ready' };
-  if (HUMAN_STOP_FAILURES.includes(failure)) {
-    return { retryable: false, workflow_state: 'waiting_human' };
+  if (RETRYABLE_FAILURES.includes(failure)) {
+    return { retryable: true, workflow_state: 'ready', reconciles: false };
   }
-  return { retryable: false, workflow_state: 'unchanged' };
+  if (RECONCILE_FAILURES.includes(failure)) {
+    return { retryable: false, workflow_state: 'ready', reconciles: true };
+  }
+  if (HUMAN_STOP_FAILURES.includes(failure)) {
+    return { retryable: false, workflow_state: 'waiting_human', reconciles: false };
+  }
+  return { retryable: false, workflow_state: 'unchanged', reconciles: false };
 }
 
 /* ------------------------------------------------------------------ *
@@ -1106,6 +1329,11 @@ export type Tri = 'yes' | 'no' | 'unknown';
 export type ReplyPlacement = 'same_thread' | 'channel_root' | 'new_thread' | 'none' | 'unknown';
 export type CompletionSignal = 'explicit' | 'implicit' | 'none' | 'unknown';
 export type DuplicateBehavior = 'ignored' | 'second_action' | 'error' | 'unknown';
+/**
+ * compatibility.md §2.1 — can Gist reliably tell a success reply from a failure
+ * reply? Not "does the bot expose a status field".
+ */
+export type OutcomeDistinguishability = 'structured' | 'stable_text' | 'unreliable' | 'unknown';
 export type LatencyBucket = 'lt_5s' | 'lt_30s' | 'lt_5m' | 'gte_5m' | 'none' | 'unknown';
 export type BlockingReason =
   | 'ignores_bot_authored'
@@ -1113,7 +1341,11 @@ export type BlockingReason =
   | 'unstable_identity'
   | 'duplicate_side_effects'
   | 'no_outcome_signal'
+  | 'insufficient_samples'
   | 'unmeasured';
+
+/** compatibility.md §4 rule 5 — "the wording is stable" needs repetition to mean anything. */
+export const STABLE_TEXT_MIN_SAMPLES = 3;
 
 export type CorrelationStrategy =
   | 'thread_binding_with_marker'
@@ -1123,12 +1355,13 @@ export type CorrelationStrategy =
 
 export interface BotCompatibilityMeasurement {
   readonly logical_target: LogicalTarget;
+  readonly sample_count: number;
   readonly accepts_bot_authored: Tri;
   readonly requires_mention: Tri;
   readonly reply_placement: ReplyPlacement;
   readonly reply_identity_stable: Tri;
   readonly marker_preserved: Tri;
-  readonly distinguishes_outcomes: Tri;
+  readonly outcome_distinguishability: OutcomeDistinguishability;
   readonly completion_signal: CompletionSignal;
   readonly duplicate_behavior: DuplicateBehavior;
   readonly reply_latency_bucket: LatencyBucket;
@@ -1157,7 +1390,7 @@ const MEASURED_FIELDS = [
   'reply_placement',
   'reply_identity_stable',
   'marker_preserved',
-  'distinguishes_outcomes',
+  'outcome_distinguishability',
   'completion_signal',
   'duplicate_behavior',
   'reply_latency_bucket',
@@ -1175,12 +1408,19 @@ export interface CompatibilityDecision {
 }
 
 /**
- * compatibility.md §4 — the six GO rules, in order.
+ * compatibility.md §4 — the seven GO rules, in order.
  *
- * Rule 6 (nothing unmeasured) is last so a bot that genuinely fails an earlier
+ * Rule 7 (nothing unmeasured) is last so a bot that genuinely fails an earlier
  * rule is reported by that rule rather than by the gap it also has. An
  * unmeasured field is still a NO_GO: the point of the spike is that the
  * protocol stops assuming.
+ *
+ * Rules 4 and 5 replace an earlier rule that demanded a *structural*
+ * success/failure difference. That would have blocked a bot which reports
+ * outcomes reliably in prose, which is neither a PRD requirement nor consistent
+ * with D024/GS-FR-017/028 routing trusted replies into evaluation so Gist can
+ * read them. What does not soften is authority: prose stays evidence
+ * (compatibility.md §2.2, GS-INV-07).
  */
 export function compatibilityDecision(
   measurement: BotCompatibilityMeasurement,
@@ -1194,8 +1434,18 @@ export function compatibilityDecision(
   if (measurement.reply_identity_stable !== 'yes') {
     return { decision: 'NO_GO', blocking_reason_class: 'unstable_identity' };
   }
-  if (measurement.distinguishes_outcomes !== 'yes' || measurement.completion_signal === 'none') {
+  const distinguishable =
+    measurement.outcome_distinguishability === 'structured' ||
+    measurement.outcome_distinguishability === 'stable_text';
+  if (!distinguishable || measurement.completion_signal === 'none') {
     return { decision: 'NO_GO', blocking_reason_class: 'no_outcome_signal' };
+  }
+  if (
+    measurement.outcome_distinguishability === 'stable_text' &&
+    measurement.sample_count < STABLE_TEXT_MIN_SAMPLES
+  ) {
+    // The looser evidential standard gets the tighter sampling requirement.
+    return { decision: 'NO_GO', blocking_reason_class: 'insufficient_samples' };
   }
   if (measurement.duplicate_behavior === 'second_action') {
     return { decision: 'NO_GO', blocking_reason_class: 'duplicate_side_effects' };

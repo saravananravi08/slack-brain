@@ -11,6 +11,7 @@
     "workflow_id": "wf_supv_0001"
   },
   "event_record_required_fields": [
+    "source",
     "contract_version",
     "event_key",
     "delivery_event_id",
@@ -42,6 +43,7 @@
   ],
   "sample_event": {
     "contract_version": "1.0.0",
+    "source": "slack",
     "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
     "delivery_event_id": "Ev0SUPVTEST0001",
     "boundary_id": "ch:T0SUPVTEST:C0SUPVTESTA",
@@ -149,7 +151,10 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "waiting_bot", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
       "expect_failure": null
     },
     {
@@ -160,7 +165,10 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "waiting_bot", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
       "expect_failure": "wrong_workspace"
     },
     {
@@ -171,7 +179,10 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "waiting_bot", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
       "expect_failure": "wrong_channel"
     },
     {
@@ -182,19 +193,25 @@
         "thread_root_ts": "1756685000.000900",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "waiting_bot", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
       "expect_failure": "wrong_thread"
     },
     {
       "name": "linear_reply_while_kilo_expected",
-      "note": "PRD acceptance scenario 6 — interleaved trusted replies in one thread. The thread is right and the bot is trusted; check 4 still fails.",
+      "note": "PRD acceptance scenario 6 \u2014 interleaved trusted replies in one thread. The thread is right and the bot is trusted; check 4 still fails.",
       "event": {
         "workspace_id": "T0SUPVTEST",
         "channel_id": "C0SUPVTESTA",
         "thread_root_ts": "1756684800.000100",
         "actor_class": "linear"
       },
-      "workflow": { "state": "waiting_bot", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
       "expect_failure": "actor_mismatch"
     },
     {
@@ -205,7 +222,10 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "waiting_human", "expected_actor": "human" },
+      "workflow": {
+        "state": "waiting_human",
+        "expected_actor": "human"
+      },
       "expect_failure": "actor_mismatch"
     },
     {
@@ -216,7 +236,10 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "completed", "expected_actor": "kilo" },
+      "workflow": {
+        "state": "completed",
+        "expected_actor": "kilo"
+      },
       "expect_failure": "state_rejects_actor"
     },
     {
@@ -228,13 +251,19 @@
         "thread_root_ts": "1756684800.000100",
         "actor_class": "kilo"
       },
-      "workflow": { "state": "ready", "expected_actor": "gist" },
+      "workflow": {
+        "state": "ready",
+        "expected_actor": "gist"
+      },
       "expect_failure": "actor_mismatch"
     }
   ],
   "unmatched_trusted_event": {
-    "note": "events.md §4.3 — permitted outcomes for a trusted bot event with no valid workflow match.",
-    "allowed_action_classes": ["no_action", "reply_user"],
+    "note": "events.md \u00a74.3 \u2014 permitted outcomes for a trusted bot event with no valid workflow match.",
+    "allowed_action_classes": [
+      "no_action",
+      "reply_user"
+    ],
     "forbidden_effects": [
       "create_workflow",
       "mutate_workflow",
@@ -245,10 +274,22 @@
     ]
   },
   "boundary_drops": [
-    { "name": "unapproved_workspace", "expect_reason_class": "wrong_workspace" },
-    { "name": "unenrolled_channel", "expect_reason_class": "unenrolled_channel" },
-    { "name": "external_shared_channel", "expect_reason_class": "external_channel" },
-    { "name": "direct_message", "expect_reason_class": "direct_message" }
+    {
+      "name": "unapproved_workspace",
+      "expect_reason_class": "wrong_workspace"
+    },
+    {
+      "name": "unenrolled_channel",
+      "expect_reason_class": "unenrolled_channel"
+    },
+    {
+      "name": "external_shared_channel",
+      "expect_reason_class": "external_channel"
+    },
+    {
+      "name": "direct_message",
+      "expect_reason_class": "direct_message"
+    }
   ],
   "duplicates": [
     {
@@ -300,7 +341,7 @@
     }
   ],
   "serialization": {
-    "note": "events.md §5 — concurrent trusted replies for one workflow are ordered, and a queued event re-reads state before acting.",
+    "note": "events.md \u00a75 \u2014 concurrent trusted replies for one workflow are ordered, continuations share that queue, and a queued event re-reads state before acting.",
     "concurrent_arrivals": [
       {
         "name": "first_reply_transitions_to_running",
@@ -312,7 +353,7 @@
       },
       {
         "name": "second_reply_rechecks_and_finds_cancelled",
-        "note": "GS-FR-041 — the human cancelled while this event waited. Acting on the state seen at arrival would be a stale-state write.",
+        "note": "GS-FR-041 \u2014 the human cancelled while this event waited. Acting on the state seen at arrival would be a stale-state write.",
         "event_key": "T0SUPVTEST/C0SUPVTESTA/1756685041.000600",
         "arrival_order": 2,
         "state_on_arrival": "waiting_bot",
@@ -340,7 +381,8 @@
         "cooldown_active": false,
         "expect_suppressed": false
       }
-    ]
+    ],
+    "continuation_shares_the_queue": true
   },
   "reason_classes": [
     "not_captured",
@@ -357,6 +399,39 @@
     "actor_mismatch",
     "state_rejects_actor",
     "terminal_workflow",
-    "limit_reached"
-  ]
+    "limit_reached",
+    "continuation_superseded",
+    "continuation_already_processed"
+  ],
+  "continuation_admission": {
+    "note": "events.md \u00a72.1 \u2014 a continuation enters at step 6. Nothing received from Slack may take this path.",
+    "entry_step": 6,
+    "skipped_steps": [
+      "persist_exact_message",
+      "resolve_actor_class",
+      "check_boundary",
+      "route_by_actor"
+    ],
+    "required_steps": [
+      "correlate",
+      "serialize",
+      "evaluate"
+    ],
+    "expect_only_continuations_may_enter_below_step_4": true,
+    "sample_event": {
+      "contract_version": "1.0.0",
+      "source": "continuation",
+      "event_key": "cont:wf_supv_0001:1",
+      "delivery_event_id": null,
+      "boundary_id": "ch:T0SUPVTEST:C0SUPVTESTA",
+      "thread_id": "ch:T0SUPVTEST:C0SUPVTESTA#1756684800.000100",
+      "workspace_id": "T0SUPVTEST",
+      "channel_id": "C0SUPVTESTA",
+      "thread_root_ts": "1756684800.000100",
+      "message_ts": "1756684800.000100",
+      "is_thread_reply": false,
+      "addressed_to_gist": false,
+      "sent_at": "2026-09-01T00:00:01.000Z"
+    }
+  }
 }
