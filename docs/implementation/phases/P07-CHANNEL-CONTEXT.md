@@ -27,7 +27,7 @@ T701, T702, and T703 run in parallel after P06. T704 composes their outputs into
 | T702 — Enable channel-scoped Observation Memory | Completed | P06 | PG-07A | pi-coder-22 | 3fdc67f |
 | T703 — Implement scoped semantic memory tool | Completed | P06 | PG-07A | pi-coder-24 | e18fcb1 |
 | T704 — Assemble bounded channel context | Completed | T701, T702, T703 | PG-07B | pi-coder-23 | fb7e35c |
-| T705 — Integrate context with Gist agent | Planned | T704 | PG-07C | Unassigned | — |
+| T705 — Integrate context with Gist agent | Completed | T704 | PG-07C | pi-coder-24 | 0ab9164 |
 | T706 — Validate channel intelligence end to end | Planned | T705 | PG-07D | Unassigned | — |
 
 ## Integration procedure
