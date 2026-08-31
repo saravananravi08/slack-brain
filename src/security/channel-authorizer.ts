@@ -17,6 +17,10 @@
  */
 
 import { AUTHORIZATION_CONTRACT_VERSION, authorize } from './authorize.js';
+import {
+  policyForEnrolledChannel,
+  type ResponseChannelEnrollmentProbe,
+} from './channel-enrollment.js';
 import { denyLogFields } from './deny.js';
 import type {
   AuthorizationEvent,
@@ -50,6 +54,8 @@ export interface SenderAttributes {
   readonly isExternal: boolean;
   readonly isGuest: boolean;
   readonly isDeactivated: boolean;
+  /** Attribution captured at write time; authorization does not inspect it. */
+  readonly displayName?: string;
 }
 
 /**
@@ -78,6 +84,8 @@ export interface ChannelAuthorizerOptions {
   readonly policy: PolicySnapshot;
   readonly resolveIdentity: IdentityResolver;
   readonly resolveSender: SenderResolver;
+  /** D013 channel gate. Omit only for legacy/DM-only composition. */
+  readonly enrollment?: ResponseChannelEnrollmentProbe;
   readonly logger?: SecurityLogger;
 }
 
@@ -109,7 +117,7 @@ function toChannelReason(reason: DenyReason): ChannelDenyReason {
 export function createChannelAuthorizer(
   options: ChannelAuthorizerOptions,
 ): (request: ChannelAuthorizationInput) => Promise<ChannelAuthorizationDecision> {
-  const { policy, resolveIdentity, resolveSender, logger } = options;
+  const { policy, resolveIdentity, resolveSender, enrollment, logger } = options;
 
   return async (request) => {
     const decision = await decide(request);
@@ -132,6 +140,10 @@ export function createChannelAuthorizer(
       // Without a team ID the workspace gate cannot be evaluated, and D001
       // does not permit assuming the approved one.
       return denied('malformed_request');
+    }
+
+    if (workspaceId !== policy.approved_workspace_id) {
+      return denied('unapproved_workspace');
     }
 
     let attributes: SenderAttributes | null;
@@ -161,12 +173,24 @@ export function createChannelAuthorizer(
       return denied('identity_unresolved');
     }
 
+    let effectivePolicy = policy;
+    if (conversationType === 'channel' && enrollment) {
+      let enrolled = false;
+      try {
+        enrolled = await enrollment.isEnrolled(workspaceId, request.channelId);
+      } catch {
+        // Unknown membership is not authority to answer.
+      }
+      if (!enrolled) return denied('unapproved_channel');
+      effectivePolicy = policyForEnrolledChannel(policy, request.channelId);
+    }
+
     const result = authorize({
       contract_version: AUTHORIZATION_CONTRACT_VERSION,
       gate: 'accept_event',
       event,
       identity,
-      policy,
+      policy: effectivePolicy,
     });
 
     if (result.allowed) return ALLOWED;

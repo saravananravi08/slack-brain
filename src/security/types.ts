@@ -96,7 +96,7 @@ export type MembershipResolution =
  */
 export interface PolicySnapshot {
   readonly approved_workspace_id: string;
-  /** GIST_APPROVED_CHANNEL_IDS. Never empty — an empty list denies (D001). */
+  /** Legacy list; T606 replaces it with one T602-confirmed channel per request. */
   readonly approved_channel_ids: readonly string[];
   /** GIST_USER_ALLOWLIST. Empty means all full members (D006). */
   readonly user_allowlist: readonly string[];

@@ -7,6 +7,8 @@ const slackAppCredential = z.string().trim().regex(/^xapp-[A-Za-z0-9-]{8,}$/);
 const workspaceId = z.string().trim().regex(/^T[A-Z0-9]{8,}$/);
 const channelId = z.string().trim().regex(/^[CG][A-Z0-9]{8,}$/);
 const userId = z.string().trim().regex(/^[UW][A-Z0-9]{8,}$/);
+const botId = z.string().trim().regex(/^B[A-Z0-9]{8,}$/);
+const appId = z.string().trim().regex(/^A[A-Z0-9]{8,}$/);
 const requiredCredential = z.string().trim().regex(/^[^\s<>]{8,}$/);
 
 function commaSeparatedIds(idSchema: z.ZodString, allowEmpty: boolean) {
@@ -36,8 +38,11 @@ const environmentSchema = z.object({
   SLACK_BOT_TOKEN: slackBotCredential,
   SLACK_APP_TOKEN: slackAppCredential,
   GIST_APPROVED_WORKSPACE_ID: workspaceId,
-  GIST_APPROVED_CHANNEL_IDS: commaSeparatedIds(channelId, false),
+  // D013: optional deny-only migration list; membership is the channel grant.
+  GIST_APPROVED_CHANNEL_IDS: commaSeparatedIds(channelId, true).default([]),
   GIST_USER_ALLOWLIST: commaSeparatedIds(userId, true).default([]),
+  GIST_KILO_BOT_ID: botId.optional(),
+  GIST_KILO_APP_ID: appId.optional(),
   GIST_DM_SHARED_KNOWLEDGE: z.literal('false').default('false').transform(() => false as const),
   GIST_MODEL: z.enum(['gpt-4.1', 'gpt-4.1-mini']).default('gpt-4.1'),
   EMBEDDING_MODEL: z.literal('openai/text-embedding-3-small'),
@@ -51,6 +56,8 @@ export interface Config {
   readonly approvedWorkspaceId: string;
   readonly approvedChannelIds: readonly string[];
   readonly userAllowlist: readonly string[];
+  readonly kiloBotId?: string;
+  readonly kiloAppId?: string;
   readonly dmSharedKnowledge: false;
   readonly gistModel: 'gpt-4.1' | 'gpt-4.1-mini';
   readonly embeddingModel: 'openai/text-embedding-3-small';
@@ -94,6 +101,8 @@ export function parseConfig(
     approvedWorkspaceId: env.GIST_APPROVED_WORKSPACE_ID,
     approvedChannelIds: Object.freeze([...env.GIST_APPROVED_CHANNEL_IDS]),
     userAllowlist: Object.freeze([...env.GIST_USER_ALLOWLIST]),
+    ...(env.GIST_KILO_BOT_ID === undefined ? {} : { kiloBotId: env.GIST_KILO_BOT_ID }),
+    ...(env.GIST_KILO_APP_ID === undefined ? {} : { kiloAppId: env.GIST_KILO_APP_ID }),
     dmSharedKnowledge: env.GIST_DM_SHARED_KNOWLEDGE,
     gistModel: env.GIST_MODEL,
     embeddingModel: env.EMBEDDING_MODEL,

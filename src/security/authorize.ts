@@ -120,10 +120,8 @@ function envelopeIsMalformed(request: AuthorizationRequest): boolean {
   if (typeof policy !== 'object' || policy === null) return true;
   if (!isNonBlankString(policy.approved_workspace_id)) return true;
   if (!isStringArray(policy.approved_channel_ids)) return true;
-  // D001: an empty allowlist is "no channels approved", never "all channels
-  // approved". T102 fails startup on this; the guard denies as well, so a
-  // policy that reaches the guard degraded cannot open the door.
-  if (policy.approved_channel_ids.length === 0) return true;
+  // D013 permits an empty legacy list. Channel grants come from T602 and are
+  // projected into this pure v1 guard only after membership confirmation.
   if (!isStringArray(policy.user_allowlist)) return true;
   if (typeof policy.dm_shared_knowledge !== 'boolean') return true;
 

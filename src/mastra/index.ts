@@ -2,19 +2,29 @@ import type { SlackAdapter } from '@chat-adapter/slack';
 import type { MastraDBMessage } from '@mastra/core/agent';
 import { MastraStateAdapter } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
-import { LibSQLVector, type LibSQLStore } from '@mastra/libsql';
+import {
+  LibSQLFactoryStorage,
+  LibSQLVector,
+  type LibSQLStore,
+} from '@mastra/libsql';
 
 import { parseConfig, type Config } from '../config.js';
 import {
-  AmbientPersistenceService,
+  ChannelMessagePersistenceService,
   MastraMutationStorage,
   MutationHandler,
   sentAtFrom,
 } from '../ingestion/index.js';
+import type { DerivedInvalidationSink } from '../ingestion/mutations/index.js';
+import {
+  JoinedChannelRegistry,
+  type ChannelBoundaryId,
+} from '../channel-memory/registry/index.js';
 import {
   AUTHORIZATION_CONTRACT_VERSION,
   authorize,
   createChannelAuthorizer,
+  policyForEnrolledChannel,
   policySnapshotFromConfig,
   type AuthorizationEvent,
   type SenderAttributes,
@@ -24,6 +34,7 @@ import { createGistAgent, createGistModel } from './agents/gist.js';
 import { ChannelError } from './channels/index.js';
 import {
   createLiveSlackChannel,
+  type ChannelMemoryMetrics,
   type LiveGistSlackChannel,
 } from './channels/slack.js';
 import type { ChannelRequest } from './channels/types.js';
@@ -34,6 +45,7 @@ import {
   resolveIdentity,
 } from './memory/resource-policy.js';
 import {
+  STORAGE_RETENTION,
   StorageUnavailableError,
   createMastraStorage,
 } from './storage/index.js';
@@ -73,6 +85,10 @@ export function createRuntimeMastra(storage: LibSQLStore): {
 export interface FoundationRuntimeOptions {
   /** Test/deployment seam. Absence uses Slack users.info and fails closed. */
   readonly resolveSender?: SenderResolver;
+  /** Content-free operational metrics; default no-op in the channel runtime. */
+  readonly channelMemoryMetrics?: ChannelMemoryMetrics;
+  /** Synchronous P07 handoff; default no-op in T605. */
+  readonly derivedInvalidationSink?: DerivedInvalidationSink;
 }
 
 export async function resolveSlackSender(
@@ -93,11 +109,13 @@ export async function resolveSlackSender(
       ? 'bot'
       : 'human';
 
+  const displayName = user.profile?.display_name || user.profile?.real_name || user.real_name;
   return {
     senderType,
     isExternal: user.team_id !== input.workspaceId,
     isGuest: user.is_restricted === true || user.is_ultra_restricted === true,
     isDeactivated: user.deleted === true,
+    ...(displayName ? { displayName } : {}),
   };
 }
 
@@ -198,6 +216,7 @@ export interface FoundationRuntime {
   readonly config: Readonly<Config>;
   readonly mastra: Mastra;
   readonly channel: LiveGistSlackChannel;
+  readonly enrollment: JoinedChannelRegistry;
   readonly memory: ReturnType<typeof createGistMemory>;
   readonly gistAgent: ReturnType<typeof createGistAgent>;
   start(): Promise<void>;
@@ -211,10 +230,19 @@ export async function createFoundationRuntime(
   // anything touches the filesystem (F-05).
   const config = parseConfig();
 
-  const storage = createRuntimeStorage(config);
+  // T602 requires FactoryStorage so app-owned enrollment rows and Mastra state
+  // share one durable LibSQL connection.
+  const factoryStorage = new LibSQLFactoryStorage({
+    id: 'gist-storage',
+    url: config.databaseUrl,
+    retention: STORAGE_RETENTION,
+  });
+  const enrollment = factoryStorage.registerDomain(new JoinedChannelRegistry());
+  await factoryStorage.init();
+  // FactoryStorage wraps a LibSQLStore at runtime; current Mastra package types
+  // expose the shared instance as the base composite type.
+  const storage = factoryStorage.getMastraStorage() as unknown as LibSQLStore;
   const { mastra } = createRuntimeMastra(storage);
-
-  await storage.init();
   const memoryStore = await storage.getStore('memory');
   if (!memoryStore) throw new StorageUnavailableError();
 
@@ -228,20 +256,24 @@ export async function createFoundationRuntime(
 
   const policy = policySnapshotFromConfig(config);
   const state = new MastraStateAdapter(memoryStore, () => gistAgent.id);
+  const boundaryFor = (workspaceId: string, channelId: string) =>
+    `ch:${workspaceId}:${channelId}` as ChannelBoundaryId;
+  const enrollmentProbe = {
+    isEnrolled: async (workspaceId: string, channelId: string) =>
+      (await enrollment.enrollmentFor(boundaryFor(workspaceId, channelId)))?.state === 'enrolled',
+    captureFloorTs: async (workspaceId: string, channelId: string) =>
+      (await enrollment.enrollmentFor(boundaryFor(workspaceId, channelId)))?.capture_floor_ts ?? null,
+  };
   const mutationStorage = new MastraMutationStorage({ memory, storage });
-  const mutations = new MutationHandler({ storage: mutationStorage, policy });
-  const ambientPersistence = new AmbientPersistenceService({
-    memory,
-    storage,
-    resolveIdentity,
-    authorizeWrite: ({ event, identity }) => authorize({
-      contract_version: AUTHORIZATION_CONTRACT_VERSION,
-      gate: 'write_memory',
-      event,
-      identity,
-      policy,
-    }),
+  const mutations = new MutationHandler({
+    storage: mutationStorage,
+    policy,
+    enrollment: enrollmentProbe,
+    ...(options.derivedInvalidationSink === undefined
+      ? {}
+      : { derivedInvalidationSink: options.derivedInvalidationSink }),
   });
+  const channelPersistence = new ChannelMessagePersistenceService({ memory, storage });
 
   let channel: LiveGistSlackChannel;
   const resolveSender: SenderResolver =
@@ -251,8 +283,49 @@ export async function createFoundationRuntime(
     {
       event: AuthorizationEvent;
       identity: ReturnType<typeof resolveIdentity>;
+      policy: ReturnType<typeof policySnapshotFromConfig>;
+      membershipAuthoritative: boolean;
     }
   >();
+
+  const authorizeRequest = async (request: ChannelRequest, membershipAuthoritative: boolean) => {
+    const { channel: rawChannelId } = channel.adapter.decodeThreadId(request.threadId);
+    const adapterChannelId = channel.adapter.channelIdFromThreadId(request.threadId);
+    if (request.channelId !== rawChannelId && request.channelId !== adapterChannelId) {
+      return { allowed: false as const, reason: 'identity_unresolved' as const };
+    }
+    const authorizationRequest = { ...request, channelId: rawChannelId };
+    const effectivePolicy = membershipAuthoritative && !request.isDirectMessage
+      ? policyForEnrolledChannel(policy, rawChannelId)
+      : policy;
+    let context:
+      | {
+          event: AuthorizationEvent;
+          identity: ReturnType<typeof resolveIdentity>;
+          policy: typeof effectivePolicy;
+          membershipAuthoritative: boolean;
+        }
+      | undefined;
+    const decision = await createChannelAuthorizer({
+      policy: effectivePolicy,
+      ...(membershipAuthoritative ? { enrollment: enrollmentProbe } : {}),
+      resolveSender: async (input) => {
+        const attributes = await resolveSender(input);
+        if (!attributes) return null;
+        return channel.adapter.getChannelVisibility(request.threadId) === 'external'
+          ? { ...attributes, isExternal: true }
+          : attributes;
+      },
+      resolveIdentity: (event) => {
+        const identity = identityForChannelRequest(authorizationRequest, channel.adapter);
+        context = { event, identity, policy: effectivePolicy, membershipAuthoritative };
+        return identity;
+      },
+    })(authorizationRequest);
+
+    if (decision.allowed && context) authorizedContexts.set(request, context);
+    return decision;
+  };
 
   channel = createLiveSlackChannel({
     credentials: {
@@ -262,40 +335,16 @@ export async function createFoundationRuntime(
     state,
     policy,
     resolveSender,
-    ambientPersistence,
+    enrollment,
+    channelPersistence,
     mutations,
-    authorize: async (request) => {
-      const { channel: rawChannelId } = channel.adapter.decodeThreadId(request.threadId);
-      const adapterChannelId = channel.adapter.channelIdFromThreadId(request.threadId);
-      if (request.channelId !== rawChannelId && request.channelId !== adapterChannelId) {
-        return { allowed: false, reason: 'identity_unresolved' };
-      }
-      const authorizationRequest = { ...request, channelId: rawChannelId };
-      let context:
-        | {
-            event: AuthorizationEvent;
-            identity: ReturnType<typeof resolveIdentity>;
-          }
-        | undefined;
-      const decision = await createChannelAuthorizer({
-        policy,
-        resolveSender: async (input) => {
-          const attributes = await resolveSender(input);
-          if (!attributes) return null;
-          return channel.adapter.getChannelVisibility(request.threadId) === 'external'
-            ? { ...attributes, isExternal: true }
-            : attributes;
-        },
-        resolveIdentity: (event) => {
-          const identity = identityForChannelRequest(authorizationRequest, channel.adapter);
-          context = { event, identity };
-          return identity;
-        },
-      })(authorizationRequest);
-
-      if (decision.allowed && context) authorizedContexts.set(request, context);
-      return decision;
-    },
+    ...(config.kiloBotId === undefined ? {} : { kiloBotId: config.kiloBotId }),
+    ...(config.kiloAppId === undefined ? {} : { kiloAppId: config.kiloAppId }),
+    ...(options.channelMemoryMetrics === undefined
+      ? {}
+      : { metrics: options.channelMemoryMetrics }),
+    authorize: (request) => authorizeRequest(request, false),
+    authorizeCaptured: (request) => authorizeRequest(request, true),
     respond: async (request) => {
       const context = authorizedContexts.get(request);
       authorizedContexts.delete(request);
@@ -307,7 +356,7 @@ export async function createFoundationRuntime(
           gate,
           event: context.event,
           identity: context.identity,
-          policy,
+          policy: context.policy,
         });
         if (!decision.allowed) throw new ChannelError('unauthorized');
         if (gate === 'read_memory' && !decision.scope.includes(context.identity.boundary_id)) {
@@ -329,6 +378,9 @@ export async function createFoundationRuntime(
           memory: {
             resource: context.identity.resource_id,
             thread: context.identity.thread_id,
+            // P06 capture and outgoing_self persistence are the sole channel
+            // writers. DMs keep their existing agent-memory behavior.
+            ...(context.membershipAuthoritative ? { options: { readOnly: true } } : {}),
           },
         },
       );
@@ -343,6 +395,7 @@ export async function createFoundationRuntime(
     config,
     mastra,
     channel,
+    enrollment,
     memory,
     gistAgent,
     start: () => {
@@ -360,6 +413,7 @@ export async function createFoundationRuntime(
               ? memory.vector.close()
               : Promise.resolve(),
           () => mastra.shutdown(),
+          () => factoryStorage.close(),
         ]) {
           try {
             await settle();
