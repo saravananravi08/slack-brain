@@ -1,6 +1,6 @@
 # T704 — Assemble bounded channel context
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** T704 agent
 - **Branch:** `task/T704-assemble-bounded-channel-context`
@@ -58,6 +58,6 @@ git diff --check
 
 - Implementation commit: `d81dfd0`
 - Handoff commit: this handoff commit
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `fb7e35c`
+- Integration metadata commit: docs(P07) complete T704 metadata commit
+- Completed at: 2026-08-31
