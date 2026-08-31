@@ -300,3 +300,11 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `bdf4beb`; handoff `4e99e0c`; merge `a52871d`; integrator fix `3554c6b` (TS2308 barrel export ambiguity).
 - Verification: scope clean; diff-check clean; persistence 15/15; focused suites 494 passed; post-merge regression 969 passed / 5 skipped; typecheck OK.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T605 completed (P06 Wave 2)
+
+- Task: T605 edit fidelity + delete-ignore; worker: pi-coder-18; branch: task/T605-enforce-edit-fidelity.
+- Implementation `a4587fd`; handoff `8ef95d5`; merge `9cc1326`. Contract gaps resolved by coordinator ruling D018 (`34bd987`).
+- Verification: mutations 24/24; contracts 358 passed; typecheck OK; ingestion 135 passed; build OK.
+- Post-merge note: 4 D005-era tests fail on delete-ignore semantics; fix-up assigned to pi-coder-19 on fix/p06-d015-test-alignment before Wave 3.
+- Result: merged GO with recorded follow-up. Blockers: none.

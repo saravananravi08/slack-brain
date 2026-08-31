@@ -1,6 +1,6 @@
 # T605 — Enforce edit fidelity and delete-ignore policy
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** T605 worker
 - **Branch:** `task/T605-enforce-edit-fidelity`
@@ -62,6 +62,6 @@ Resolved by accepted D018 at integration commit `34bd987`: orphan edits are igno
 
 - Implementation commit: `a4587fd9fcab5c4789a5aad48552a73e852d3b99`
 - Handoff commit: this commit (`docs(T605): hand off edit fidelity policy`)
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `9cc1326`
+- Integration metadata commit: docs(P06) complete T605 metadata commit
+- Completed at: 2026-08-31
