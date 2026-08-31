@@ -1,0 +1,65 @@
+# P07 — Channel Context and Observational Memory
+
+- **Status:** Planned
+- **Depends on:** P06, accepted D016–D017
+- **Phase integrator:** Unassigned
+- **PRD coverage:** CM-FR-020…032, CM-NFR-003/005/007
+
+## Outcome
+
+Gist answers from a bounded, channel-isolated context containing current thread history, recent channel history, rolling summary, and observations. A model-callable semantic search tool is available only as a current-channel fallback.
+
+## Entry criteria
+
+- [ ] P06 is completed.
+- [ ] D016–D017 are accepted.
+- [ ] Exact channel messages and edits are stable enough to serve as observation sources.
+
+## Parallel execution plan
+
+T701, T702, and T703 run in parallel after P06. T704 composes their outputs into one context API. T705 integrates the API and semantic tool with Gist. T706 validates context priority, observational behavior, and isolation offline and live.
+
+## Tasks
+
+| Task | Status | Depends on | Parallel group | Owner | Completion commit |
+|---|---|---|---|---|---|
+| T701 — Build chronological channel history provider | Planned | P06 | PG-07A | Unassigned | — |
+| T702 — Enable channel-scoped Observation Memory | Planned | P06 | PG-07A | Unassigned | — |
+| T703 — Implement scoped semantic memory tool | Planned | P06 | PG-07A | Unassigned | — |
+| T704 — Assemble bounded channel context | Planned | T701, T702, T703 | PG-07B | Unassigned | — |
+| T705 — Integrate context with Gist agent | Planned | T704 | PG-07C | Unassigned | — |
+| T706 — Validate channel intelligence end to end | Planned | T705 | PG-07D | Unassigned | — |
+
+## Integration procedure
+
+1. Merge T701–T703 one at a time and rerun focused memory/security tests.
+2. Merge T704 and prove deterministic context limits/order.
+3. Merge T705 and rerun agent, channel, memory, security, and full suites.
+4. Execute T706 with two live channels and recorded content-free evidence.
+5. Update task, phase, status, and global log metadata.
+
+## Exit criteria
+
+- [ ] Current-thread and channel-wide histories are distinct and chronological.
+- [ ] Observation Memory and rolling summaries are isolated per channel.
+- [ ] Observation failure never blocks exact message capture.
+- [ ] Default answers receive history, summary, and observations.
+- [ ] `search_channel_memory` cannot accept or override channel scope.
+- [ ] Older details are recoverable through semantic fallback with attribution.
+- [ ] Cross-channel context leakage tests pass.
+- [ ] Context API is ready for a later orchestrator phase.
+
+## Phase verification
+
+```bash
+npm run typecheck
+npm test
+npm run test:e2e
+npm run build
+```
+
+## Completion record
+
+- Gate approved by: —
+- Gate date: —
+- Commit: —

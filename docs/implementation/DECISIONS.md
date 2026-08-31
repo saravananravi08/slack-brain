@@ -11,7 +11,7 @@ Product decisions originate in PRD Section 15. Coordinator owns this file. Do no
 - **Accepted:** the named owner approved it. Only then may downstream tasks implement it.
 - **Deferred (accepted):** a sub-item whose final value cannot be fixed yet. The stated **safe default is in force** and downstream tasks implement against it; the named owner supplies the final value by the stated deadline. A deferral does not block the tasks its parent decision unblocks.
 
-D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment. D007 was later superseded by D012; all other recorded postures remain in force.
+D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment. D007 was later superseded by D012. D013–D017 were accepted directly by product owner saravanan on 2026-08-31 for the P06/P07 channel-memory extension; where they conflict with original v1 behavior, they govern P06/P07 and later work.
 
 Five sub-items are carried as **accepted deferrals** (D001 production channel IDs, D003 archive date floor, D004 legal/HR retention holds, D006 production authorization posture, D010 residency assumption). Each names an owner, a deadline, and a safe default that is in force now. They do not hold up the decisions that contain them.
 
@@ -28,6 +28,11 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 | D009 | Citation requirement | Accepted | Coordinator (Augment) | T004, T205 | Sender + date required for every historical claim; unattributable evidence must be omitted or explicitly marked |
 | D010 | Data residency/provider restrictions | Accepted | Coordinator (Augment) | T101, T103, T201 | No jurisdiction constraint for internal beta beyond US/EU providers under no-training terms; new provider = amendment |
 | D012 | OpenAI generation model/provider | Accepted | Augment coordinator | T205, T503 | OpenAI `gpt-4.1`; `gpt-4.1-mini` pre-approved step-down; supersedes D007 |
+| D013 | Joined-channel enrollment and no backfill | Accepted | Product owner (saravanan) | T601, T602 | Capture every internal channel Gist joins from join time onward; no history backfill |
+| D014 | Capture every message sender | Accepted | Product owner (saravanan) | T601, T603, T604, T606 | Store human, Gist, Kilo, bot, and app messages; response policy remains separate |
+| D015 | Edit and delete behavior for channel-memory extension | Accepted | Product owner (saravanan) | T601, T605, T606 | Edits replace text/vector; live deletes are ignored and retained content remains recallable |
+| D016 | Channel history and Observation Memory | Accepted | Product owner (saravanan) | T701, T702, T704 | Always provide recent history, rolling summary, and channel-scoped observations |
+| D017 | Semantic recall as scoped agent tool | Accepted | Product owner (saravanan) | T703, T705 | Gist may call `search_channel_memory`; channel scope comes only from authorized runtime context |
 
 ---
 
@@ -282,6 +287,51 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: Supersede D007. Use OpenAI `gpt-4.1` for generation, with `gpt-4.1-mini` as the pre-approved step-down. Generation and embeddings now share one OpenAI provider and credential, simplifying D010.
 - Consequences: T205 re-baselines generation quality against `gpt-4.1`. T503 adjusts generation cost and latency expectations for the OpenAI models. B-02 is resolved; no Anthropic credential is required.
 - Affected tasks/files: T102, T105, T205, T503, D007, D010, `src/config.ts`, `src/mastra/agents/gist.ts`, `.env.example`
+
+## D013 — Joined-channel enrollment and no backfill
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Gist will be an always-online memory layer for new Slack channels rather than a static allowlist plus legacy-history product.
+- Decision: Capture begins when Slack confirms Gist has joined an internal channel. Support every joined channel with a separate boundary. No Slack history backfill is required. Reconnect/retry handling and idempotency remain required.
+- Consequences: P06 replaces static capture enrollment with a durable membership-authoritative registry. Existing archive migration remains separate and is not an entry gate for P06/P07.
+- Affected tasks/files: T601, T602, T606, GIST_CHANNEL_MEMORY_PRD.md
+
+## D014 — Capture every message sender
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Complete channel context includes human discussion and automation activity from Gist, Kilo, and other apps.
+- Decision: Persist all channel messages regardless of human/bot/app/own sender class. Capturing and responding are separate policies: bot/app/Gist/Kilo messages are stored but do not trigger Gist responses.
+- Consequences: P06 changes normalization and persistence while preserving loop prevention. Gist outgoing messages are persisted directly so event echo does not create a gap or duplicate.
+- Affected tasks/files: T601, T603, T604, T606
+
+## D015 — Edit fidelity and temporary delete-ignore policy
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Edits must be reflected accurately; deletion handling is intentionally deferred.
+- Decision: `message_changed` replaces canonical text and embedding under the original identity and records edit time. `message_deleted` is ignored in P06/P07; stored content, vectors, summaries, and observations may remain recallable.
+- Consequences: This overrides D005 for live channel-memory behavior in P06/P07. Retention/operator purge primitives remain. Retaining deleted Slack content is an explicit temporary privacy/retention risk.
+- Affected tasks/files: T601, T605, T606, T702
+
+## D016 — Default channel history and Observation Memory
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Gist should normally answer from what is happening in the active channel rather than requiring semantic retrieval for every question.
+- Decision: Enable channel-scoped Observation Memory. Default answer context contains current thread, chronological recent channel history, rolling channel summary, and observations. Observation model work may run asynchronously but must never post to Slack or block exact capture.
+- Consequences: Exact messages remain source of truth; summary and observations are derived. Edits must eventually refresh affected derived context. Channels remain structurally isolated.
+- Affected tasks/files: T701, T702, T704, T705
+
+## D017 — Semantic recall as a channel-scoped agent tool
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Summary, observations, and recent history are primary, but older details still require semantic retrieval.
+- Decision: Add one Gist-only `search_channel_memory` tool. It accepts query/limit but no channel, workspace, resource, or scope field. Scope is derived after authorization from runtime context. Use it when default context is insufficient or the user asks about older details.
+- Consequences: This supersedes the original no-tools rule only for this one bounded memory tool. Attribution and cross-channel denial remain mandatory.
+- Affected tasks/files: T703, T704, T705, T706
 
 ## Decision entry template
 
