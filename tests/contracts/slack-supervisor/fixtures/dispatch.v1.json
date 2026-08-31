@@ -1,0 +1,985 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/dispatch.md",
+  "checkpoint_required_fields": [
+    "action_id",
+    "binding_kind",
+    "workflow_id",
+    "version",
+    "source_event_key",
+    "action_class",
+    "logical_target",
+    "destination_ref",
+    "destination_source",
+    "delivery_state",
+    "slack_message_key",
+    "attempt_count",
+    "last_failure_class",
+    "created_at",
+    "updated_at"
+  ],
+  "checkpoint_forbidden_fields": [
+    "instruction_text",
+    "text",
+    "message_text",
+    "bot_reply_text",
+    "prompt",
+    "model_output",
+    "raw_event",
+    "credentials"
+  ],
+  "sample_checkpoint": {
+    "action_id": "act_supv_0001",
+    "workflow_id": "wf_supv_0001",
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+    "action_class": "dispatch_bot",
+    "logical_target": "kilo",
+    "destination_ref": "dest_supv_0001",
+    "delivery_state": "delivered",
+    "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:01:00.000Z",
+    "updated_at": "2026-09-01T00:01:05.000Z",
+    "binding_kind": "workflow",
+    "destination_source": "workflow_binding",
+    "version": 1,
+    "attempt_count": 1
+  },
+  "claim_keys": [
+    {
+      "name": "action_claim_is_keyed_on_the_event_alone",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+    },
+    {
+      "name": "a_continuation_claims_the_same_way",
+      "source_event_key": "cont:wf_supv_0001:1",
+      "expect_action_claim_key": "ev:cont:wf_supv_0001:1"
+    },
+    {
+      "name": "dispatch_claim_is_per_attempt",
+      "workflow_id": "wf_supv_0001",
+      "action_id": "act_supv_0001",
+      "version": 1,
+      "attempt": 2,
+      "expect_dispatch_claim_key": "wf:wf_supv_0001|act:act_supv_0001|v:1|n:2"
+    }
+  ],
+  "one_event_one_action": [
+    {
+      "name": "first_visible_action_claims",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": false,
+      "action_class": "dispatch_bot",
+      "expect_allowed": true
+    },
+    {
+      "name": "second_visible_action_for_the_same_event_is_refused",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": true,
+      "action_class": "reply_user",
+      "expect_allowed": false,
+      "expect_failure_class": "claim_conflict"
+    },
+    {
+      "name": "internal_action_needs_no_claim",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": true,
+      "action_class": "wait",
+      "expect_allowed": true
+    },
+    {
+      "name": "a_different_event_claims_independently",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+      "already_claimed": false,
+      "action_class": "follow_up_bot",
+      "expect_allowed": true
+    }
+  ],
+  "in_flight_conflict": [
+    {
+      "name": "no_in_flight_allows_dispatch",
+      "in_flight_delivery_state": null,
+      "expect_allowed": true
+    },
+    {
+      "name": "pending_blocks_a_second_dispatch",
+      "in_flight_delivery_state": "pending",
+      "expect_allowed": false,
+      "expect_failure_class": "in_flight_conflict"
+    },
+    {
+      "name": "in_flight_blocks_a_second_dispatch",
+      "in_flight_delivery_state": "in_flight",
+      "expect_allowed": false,
+      "expect_failure_class": "in_flight_conflict"
+    },
+    {
+      "name": "delivered_does_not_block",
+      "in_flight_delivery_state": "delivered",
+      "expect_allowed": true
+    },
+    {
+      "name": "abandoned_does_not_block",
+      "in_flight_delivery_state": "abandoned",
+      "expect_allowed": true
+    },
+    {
+      "name": "failed_does_not_block",
+      "in_flight_delivery_state": "failed",
+      "expect_allowed": true
+    }
+  ],
+  "delivery_states": [
+    "pending",
+    "in_flight",
+    "delivered",
+    "failed",
+    "abandoned"
+  ],
+  "delivery_transitions": {
+    "pending": [
+      "in_flight",
+      "abandoned"
+    ],
+    "in_flight": [
+      "in_flight",
+      "delivered",
+      "failed",
+      "abandoned"
+    ],
+    "delivered": [],
+    "failed": [
+      "pending",
+      "abandoned"
+    ],
+    "abandoned": []
+  },
+  "illegal_delivery_transitions": [
+    {
+      "name": "delivered_is_terminal",
+      "from": "delivered",
+      "to": "pending",
+      "note": "A delivered action is never re-sent."
+    },
+    {
+      "name": "delivered_cannot_fail_afterwards",
+      "from": "delivered",
+      "to": "failed"
+    },
+    {
+      "name": "abandoned_is_terminal",
+      "from": "abandoned",
+      "to": "in_flight"
+    },
+    {
+      "name": "failed_cannot_become_delivered",
+      "from": "failed",
+      "to": "delivered"
+    },
+    {
+      "name": "pending_cannot_jump_to_delivered",
+      "from": "pending",
+      "to": "delivered",
+      "note": "Delivery is only confirmed from an in-flight attempt that returned an outgoing message identity."
+    },
+    {
+      "name": "abandoned_cannot_return_to_failed",
+      "from": "abandoned",
+      "to": "failed"
+    }
+  ],
+  "retry_convergence": {
+    "note": "GS-FR-043 — attempts are serial. Attempt N+1 is created only after attempt N durably records a definitive pre-acceptance rejection.",
+    "action_id": "act_supv_0001",
+    "version": 1,
+    "attempts": [
+      {
+        "attempt": 1,
+        "prior_attempt": null,
+        "prior_outcome": null,
+        "result": "definitive_failure",
+        "expect_delivery_state": "failed",
+        "failure_class": "slack_rate_limited"
+      },
+      {
+        "attempt": 2,
+        "prior_attempt": 1,
+        "prior_outcome": "definitive_failure",
+        "result": "delivered",
+        "expect_delivery_state": "delivered"
+      }
+    ],
+    "expect_distinct_actions": 1,
+    "expect_expected_bot_turns": 1,
+    "first_attempt_failure_class": "slack_rate_limited",
+    "expect_attempts_serial": true,
+    "expect_overlapping_attempts": false
+  },
+  "failed_dispatch": [
+    {
+      "name": "definitive_failure_leaves_the_workflow_ready",
+      "note": "dispatch.md §4 — only a definitive non-delivery reaches this path at all; an ambiguous attempt goes to reconciliation first (§3.2).",
+      "failure_class": "slack_permission_denied",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 0,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 1,
+      "expect_expected_actor": "gist"
+    },
+    {
+      "name": "rate_limit_leaves_the_workflow_ready",
+      "failure_class": "slack_rate_limited",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 1,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 2,
+      "expect_expected_actor": "gist"
+    },
+    {
+      "name": "invalid_request_is_a_definitive_failure",
+      "failure_class": "slack_invalid_request",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 0,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 1,
+      "expect_expected_actor": "gist",
+      "note": "Reconciliation can never produce this state; only Slack rejecting the post before accepting it can."
+    },
+    {
+      "name": "reaching_the_failure_limit_asks_a_human",
+      "failure_class": "slack_rate_limited",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 2,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "waiting_human",
+      "expect_consecutive_failures": 3,
+      "expect_expected_actor": "human"
+    }
+  ],
+  "reconciliation": [
+    {
+      "name": "in_flight_with_our_own_outgoing_record_was_delivered",
+      "note": "The send path persists outgoing messages directly, so the local record is authoritative and does not depend on Slack echo behavior.",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": true,
+      "marker_found_in_thread": false,
+      "thread_readable": false,
+      "expect_delivery_state": "delivered",
+      "expect_workflow_state": "dispatched",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_marker_in_thread_was_delivered",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": true,
+      "thread_readable": true,
+      "expect_delivery_state": "delivered",
+      "expect_workflow_state": "dispatched",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_a_readable_empty_thread_is_still_inconclusive",
+      "note": "The defect this fixes. A post can be accepted and not visible yet: event delivery lags, history lags, our own capture may be mid-write, and a rate-limited read returns a short page. Absence looks identical to non-delivery at the moment we look.",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": false,
+      "thread_readable": true,
+      "expect_delivery_state": "in_flight",
+      "expect_workflow_state": "waiting_human",
+      "expect_reason_class": "dispatch_unreconciled"
+    },
+    {
+      "name": "in_flight_with_an_unreadable_thread_asks_a_human",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": false,
+      "thread_readable": false,
+      "expect_delivery_state": "in_flight",
+      "expect_workflow_state": "waiting_human",
+      "expect_reason_class": "dispatch_unreconciled"
+    },
+    {
+      "name": "inline_reconciliation_after_a_timeout_uses_the_same_rules",
+      "note": "dispatch.md §5 — one mechanism, two callers. A timeout mid-run and a crash mid-send leave the same question behind.",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": true,
+      "thread_readable": true,
+      "expect_delivery_state": "delivered",
+      "expect_workflow_state": "dispatched",
+      "expect_reason_class": null
+    }
+  ],
+  "restart": {
+    "note": "GS-FR-015 — recovery replays state, not effects.",
+    "expect_resends_confirmed_delivered": false,
+    "expect_reapplies_committed_transitions": false,
+    "expect_rearms_timers_from_durable_timestamps": true,
+    "expect_reconciles_before_accepting_new_events": true,
+    "expect_drains_pending_outbox_before_new_events": true,
+    "expect_pending_first_send_resumed": true
+  },
+  "ordering": {
+    "note": "dispatch.md §6 — the checkpoint write precedes the Slack call. A process that sends first and records after cannot survive its own crash.",
+    "expect_order": [
+      "commit_action_claim_and_pending_outbox",
+      "move_pending_to_in_flight",
+      "slack_call",
+      "record_result"
+    ],
+    "storage_unavailable_expect_sent": false
+  },
+  "failure_classes": [
+    "slack_rate_limited",
+    "slack_transport_error",
+    "slack_permission_denied",
+    "slack_invalid_request",
+    "destination_unresolved",
+    "in_flight_conflict",
+    "claim_conflict",
+    "state_mismatch",
+    "version_mismatch",
+    "illegal_transition",
+    "terminal_workflow",
+    "approval_missing",
+    "approval_expired",
+    "approval_scope_changed",
+    "compatibility_blocked",
+    "schema_invalid",
+    "runtime_controlled_field_present",
+    "model_unavailable",
+    "storage_unavailable",
+    "dispatch_unreconciled",
+    "internal_error"
+  ],
+  "failure_behavior": [
+    {
+      "failure_class": "slack_rate_limited",
+      "expect_retryable": true,
+      "expect_workflow_state": "ready",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "slack_transport_error",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human",
+      "expect_reconciles": true
+    },
+    {
+      "failure_class": "slack_permission_denied",
+      "expect_retryable": true,
+      "expect_workflow_state": "ready",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "slack_invalid_request",
+      "expect_retryable": true,
+      "expect_workflow_state": "ready",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "destination_unresolved",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "in_flight_conflict",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "claim_conflict",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "state_mismatch",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "version_mismatch",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "illegal_transition",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "terminal_workflow",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "approval_missing",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "approval_expired",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "approval_scope_changed",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "compatibility_blocked",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "schema_invalid",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "runtime_controlled_field_present",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "model_unavailable",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "storage_unavailable",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "dispatch_unreconciled",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human",
+      "expect_reconciles": false
+    },
+    {
+      "failure_class": "internal_error",
+      "expect_retryable": false,
+      "expect_workflow_state": "unchanged",
+      "expect_reconciles": false
+    }
+  ],
+  "capture_preserved_under_failure": {
+    "note": "GS-NFR-006 — supervision degrading never costs the memory layer.",
+    "expect_exact_capture_continues": true
+  },
+  "unbound_visible_actions": {
+    "note": "dispatch.md §2 — two externally visible actions carry no workflow_id. A workflow-scoped claim would have left them outside GS-FR-024 entirely.",
+    "cases": [
+      {
+        "name": "unmatched_trusted_bot_notice_is_claimed",
+        "action_class": "reply_user",
+        "workflow_id": null,
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+        "already_claimed": false,
+        "expect_allowed": true,
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+        "binding_kind": "event",
+        "destination_source": "source_event"
+      },
+      {
+        "name": "retried_delivery_of_that_notice_is_refused",
+        "note": "The defect this fixes: without an event-global key, a Slack retry could produce a second notification.",
+        "action_class": "reply_user",
+        "workflow_id": null,
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+        "already_claimed": true,
+        "expect_allowed": false,
+        "expect_failure_class": "claim_conflict",
+        "binding_kind": "event",
+        "destination_source": "source_event"
+      },
+      {
+        "name": "ordinary_assistance_outside_a_workflow_is_claimed",
+        "action_class": "reply_user",
+        "workflow_id": null,
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
+        "already_claimed": false,
+        "expect_allowed": true,
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
+        "binding_kind": "event",
+        "destination_source": "source_event"
+      },
+      {
+        "name": "a_bound_dispatch_uses_the_identical_key_shape",
+        "action_class": "dispatch_bot",
+        "workflow_id": "wf_supv_0001",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+        "already_claimed": false,
+        "expect_allowed": true,
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+        "binding_kind": "workflow",
+        "destination_source": "workflow_binding"
+      }
+    ],
+    "expect_workflow_in_key": false,
+    "expect_workflow_recorded_as_metadata": true
+  },
+  "delivery_outcomes": {
+    "note": "dispatch.md §3.1 — three answers, not two. `definitive_failure` means Slack refused the call before accepting it; everything ambiguous is `indeterminate`.",
+    "definitive_non_delivery": [
+      "slack_permission_denied",
+      "slack_rate_limited",
+      "slack_invalid_request"
+    ],
+    "cases": [
+      {
+        "name": "identity_returned_is_delivered",
+        "attempt": {
+          "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+          "error_class": null,
+          "timed_out": false
+        },
+        "expect_outcome": "delivered",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "delivered"
+      },
+      {
+        "name": "permission_denied_is_definitive",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": "slack_permission_denied",
+          "timed_out": false
+        },
+        "expect_outcome": "definitive_failure",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "failed"
+      },
+      {
+        "name": "rate_limited_is_definitive",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": "slack_rate_limited",
+          "timed_out": false
+        },
+        "expect_outcome": "definitive_failure",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "failed"
+      },
+      {
+        "name": "invalid_request_is_definitive",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": "slack_invalid_request",
+          "timed_out": false
+        },
+        "expect_outcome": "definitive_failure",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "failed"
+      },
+      {
+        "name": "timeout_is_indeterminate",
+        "note": "The defect this fixes. A slow post that eventually succeeded would previously have been retried while still in flight.",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": null,
+          "timed_out": true
+        },
+        "expect_outcome": "indeterminate",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "in_flight"
+      },
+      {
+        "name": "transport_error_is_indeterminate",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": "slack_transport_error",
+          "timed_out": false
+        },
+        "expect_outcome": "indeterminate",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "in_flight"
+      },
+      {
+        "name": "silence_is_indeterminate",
+        "note": "No identity, no error, no timeout. An absence of error is not a confirmation, and it is not a disproof either.",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": null,
+          "timed_out": false
+        },
+        "expect_outcome": "indeterminate",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "in_flight"
+      },
+      {
+        "name": "timeout_wins_over_a_definitive_error_class",
+        "attempt": {
+          "slack_message_key": null,
+          "error_class": "slack_permission_denied",
+          "timed_out": true
+        },
+        "expect_outcome": "indeterminate",
+        "current_delivery_state": "in_flight",
+        "expect_delivery_state": "in_flight"
+      }
+    ]
+  },
+  "retry_permission": {
+    "note": "dispatch.md §3.3 — the only route to `failed` is a definitive pre-acceptance rejection from Slack, so there is no route from an ambiguous attempt to a second send at all.",
+    "cases": [
+      {
+        "name": "definitive_failure_under_the_limit_may_retry",
+        "delivery_state": "failed",
+        "consecutive_failures": 1,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": true
+      },
+      {
+        "name": "in_flight_may_never_retry",
+        "delivery_state": "in_flight",
+        "consecutive_failures": 0,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": false
+      },
+      {
+        "name": "pending_may_not_retry",
+        "delivery_state": "pending",
+        "consecutive_failures": 0,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": false
+      },
+      {
+        "name": "delivered_may_never_retry",
+        "delivery_state": "delivered",
+        "consecutive_failures": 0,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": false
+      },
+      {
+        "name": "abandoned_may_not_retry",
+        "delivery_state": "abandoned",
+        "consecutive_failures": 0,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": false
+      },
+      {
+        "name": "at_the_failure_limit_stops_instead",
+        "delivery_state": "failed",
+        "consecutive_failures": 3,
+        "max_consecutive_failures": 3,
+        "workflow_state": "ready",
+        "expect_allowed": false
+      },
+      {
+        "name": "a_workflow_that_moved_on_does_not_retry",
+        "delivery_state": "failed",
+        "consecutive_failures": 0,
+        "max_consecutive_failures": 3,
+        "workflow_state": "waiting_human",
+        "expect_allowed": false
+      }
+    ]
+  },
+  "reconciliation_callers": [
+    "inline_after_indeterminate_outcome",
+    "restart_in_flight"
+  ],
+  "reconciliation_is_one_directional": {
+    "note": "dispatch.md §5.1 — positive evidence advances the workflow; the absence of evidence stops it. The two are not symmetric claims.",
+    "expect_reachable_delivery_states": [
+      "pending",
+      "delivered",
+      "in_flight"
+    ],
+    "expect_can_conclude_failed": false,
+    "expect_absence_permits_resend": false,
+    "expect_thread_readable_changes_outcome": false,
+    "delayed_visibility_causes": [
+      "event_delivery_lag",
+      "history_api_lag",
+      "capture_write_in_progress",
+      "rate_limited_short_page"
+    ]
+  },
+  "abandonment": {
+    "note": "dispatch.md §3.4 — writing `abandoned` from `in_flight` asserts nothing was published, which §5.1 says cannot be inferred. Only a person who can look at the channel may assert it.",
+    "cases": [
+      {
+        "name": "owner_may_resolve_an_unreconciled_action",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": true
+      },
+      {
+        "name": "configured_approver_may_resolve",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": true
+      },
+      {
+        "name": "another_authorized_human_may_not",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": false,
+        "expect_allowed": false
+      },
+      {
+        "name": "the_runtime_may_not_abandon_on_its_own",
+        "resolver_actor_class": null,
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "kilo_may_not",
+        "resolver_actor_class": "kilo",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "linear_may_not",
+        "resolver_actor_class": "linear",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "gist_self_may_not",
+        "resolver_actor_class": "gist_self",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "an_unauthorized_human_may_not",
+        "resolver_actor_class": "unauthorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      }
+    ],
+    "non_grounds": [
+      "message_absent_from_thread",
+      "thread_unreadable",
+      "reconciliation_found_nothing",
+      "time_elapsed"
+    ],
+    "expect_reconciliation_can_abandon_in_flight": false,
+    "expect_pending_abandonment_unaffected": true,
+    "unresolved_workflow_rests_at": "waiting_human",
+    "unresolved_terminates_via": [
+      "timeout_inactivity",
+      "timeout_lifetime"
+    ]
+  },
+  "failure_behavior_note": "dispatch.md §6 — `expect_workflow_state` is where the workflow lands when the failure is not resolved into a delivery by §5.",
+  "bound_checkpoint": {
+    "action_id": "act_supv_0001",
+    "workflow_id": "wf_supv_0001",
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+    "action_class": "dispatch_bot",
+    "logical_target": "kilo",
+    "destination_ref": "dest_supv_0001",
+    "delivery_state": "delivered",
+    "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:01:00.000Z",
+    "updated_at": "2026-09-01T00:01:05.000Z",
+    "binding_kind": "workflow",
+    "destination_source": "workflow_binding",
+    "version": 1,
+    "attempt_count": 1
+  },
+  "unbound_checkpoint": {
+    "action_id": "act_supv_0002",
+    "binding_kind": "event",
+    "workflow_id": null,
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
+    "action_class": "reply_user",
+    "logical_target": null,
+    "destination_ref": "dest_supv_0002",
+    "destination_source": "source_event",
+    "delivery_state": "pending",
+    "slack_message_key": null,
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:03:00.000Z",
+    "updated_at": "2026-09-01T00:03:00.000Z",
+    "version": 1,
+    "attempt_count": 1
+  },
+  "crash_matrix": [
+    {
+      "name": "before_outbox_commit",
+      "durable_state": "continuation_processing",
+      "slack_call_started": false,
+      "expect_recovery": "resume_continuation",
+      "expect_min_effects": 0,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "pending_checkpoint_committed_call_not_started",
+      "durable_state": "pending",
+      "slack_call_started": false,
+      "expect_recovery": "resume_pending_first_send",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "in_flight_committed_before_call_boundary",
+      "durable_state": "in_flight",
+      "slack_call_started": "unknown_after_restart",
+      "expect_recovery": "reconcile_in_flight",
+      "expect_min_effects": 0,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "slack_accepted_before_result_commit",
+      "durable_state": "in_flight",
+      "slack_call_started": true,
+      "expect_recovery": "reconcile_in_flight",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    },
+    {
+      "name": "delivered_result_committed",
+      "durable_state": "delivered",
+      "slack_call_started": true,
+      "expect_recovery": "skip_terminal",
+      "expect_min_effects": 1,
+      "expect_max_effects": 1,
+      "expect_blind_retry": false
+    }
+  ],
+  "checkpoint_schema_matrix": {
+    "required_fields": [
+      "action_id",
+      "binding_kind",
+      "workflow_id",
+      "version",
+      "source_event_key",
+      "action_class",
+      "logical_target",
+      "destination_ref",
+      "destination_source",
+      "delivery_state",
+      "slack_message_key",
+      "attempt_count",
+      "last_failure_class",
+      "created_at",
+      "updated_at"
+    ],
+    "variants": [
+      "workflow",
+      "event"
+    ],
+    "malformed_fields": [
+      "action_id",
+      "binding_kind",
+      "workflow_id",
+      "version",
+      "source_event_key",
+      "action_class",
+      "logical_target",
+      "destination_ref",
+      "destination_source",
+      "delivery_state",
+      "slack_message_key",
+      "attempt_count",
+      "last_failure_class",
+      "created_at",
+      "updated_at"
+    ],
+    "unknown_field": "unexpected_checkpoint_field",
+    "forbidden_action_classes": [
+      "no_action",
+      "wait",
+      "complete",
+      "fail",
+      "cancel"
+    ],
+    "state_consistency": [
+      "delivered_requires_message_key",
+      "non_delivered_forbids_message_key",
+      "updated_at_not_before_created_at",
+      "targeted_requires_logical_target",
+      "untargeted_forbids_logical_target",
+      "failed_requires_definitive_pre_acceptance_rejection",
+      "in_flight_allows_only_null_or_transport_error",
+      "other_states_require_null_failure"
+    ]
+  },
+  "checkpoint_semantic_matrix": {
+    "valid_source_event_keys": [
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1"
+    ],
+    "malformed_source_event_keys": [
+      "arbitrary-event-key",
+      "T0SUPVTEST/C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/not-a-timestamp",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200/extra",
+      "X0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "T0SUPVTEST/X0SUPVTESTA/1756684860.000200",
+      "cont::1",
+      "cont:wf_supv_0001:0",
+      "cont:wf supv 0001:1",
+      "cont:wf_supv_0001:1:extra"
+    ],
+    "malformed_message_keys": [
+      "arbitrary-message-key",
+      "T0SUPVTEST/C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/not-a-timestamp",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200/extra",
+      "X0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "T0SUPVTEST/X0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1"
+    ],
+    "malformed_destination_refs": [
+      "C0SUPVTESTA",
+      "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "cont:wf_supv_0001:1",
+      "dest_SUPV_0001",
+      "dest_supv__0001",
+      "dest_supv_0001/extra",
+      "dest_",
+      "dest_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "definitive_failed_classes": [
+      "slack_permission_denied",
+      "slack_rate_limited",
+      "slack_invalid_request"
+    ],
+    "in_flight_failure_classes": [
+      null,
+      "slack_transport_error"
+    ],
+    "destination_unresolved_expect_command_created": false
+  }
+}

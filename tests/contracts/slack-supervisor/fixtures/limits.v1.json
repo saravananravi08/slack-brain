@@ -1,0 +1,520 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/workflow-state.md §7",
+  "limit_fields": [
+    "max_turns",
+    "max_consecutive_failures",
+    "inactivity_timeout_ms",
+    "absolute_lifetime_ms",
+    "max_in_flight_actions"
+  ],
+  "fixed_limits": {
+    "note": "max_in_flight_actions is the one-event/one-action invariant expressed as a limit. Making it tunable would make that invariant a setting.",
+    "max_in_flight_actions": 1
+  },
+  "sample_limits": {
+    "max_turns": 40,
+    "max_consecutive_failures": 3,
+    "inactivity_timeout_ms": 3600000,
+    "absolute_lifetime_ms": 86400000,
+    "max_in_flight_actions": 1
+  },
+  "checks": [
+    {
+      "name": "healthy_workflow_continues",
+      "record": {
+        "state": "waiting_bot",
+        "turn_count": 5,
+        "consecutive_failures": 0,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-01T00:30:00.000Z"
+      },
+      "now": "2026-09-01T00:40:00.000Z",
+      "expect_stop": null
+    },
+    {
+      "name": "turn_limit_asks_a_human",
+      "record": {
+        "state": "running",
+        "turn_count": 40,
+        "consecutive_failures": 0,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-01T00:30:00.000Z"
+      },
+      "now": "2026-09-01T00:40:00.000Z",
+      "expect_stop": {
+        "next_state": "waiting_human",
+        "outcome_class": null,
+        "reason_class": "limit_reached"
+      }
+    },
+    {
+      "name": "failure_limit_asks_a_human",
+      "record": {
+        "state": "ready",
+        "turn_count": 6,
+        "consecutive_failures": 3,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-01T00:30:00.000Z"
+      },
+      "now": "2026-09-01T00:40:00.000Z",
+      "expect_stop": {
+        "next_state": "waiting_human",
+        "outcome_class": null,
+        "reason_class": "limit_reached"
+      }
+    },
+    {
+      "name": "inactivity_times_out",
+      "record": {
+        "state": "waiting_bot",
+        "turn_count": 6,
+        "consecutive_failures": 0,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-01T00:30:00.000Z"
+      },
+      "now": "2026-09-01T01:31:00.000Z",
+      "expect_stop": {
+        "next_state": "timed_out",
+        "outcome_class": "timeout_inactivity",
+        "reason_class": "limit_reached"
+      }
+    },
+    {
+      "name": "lifetime_times_out_even_while_active",
+      "note": "A workflow that keeps receiving replies still has an absolute bound.",
+      "record": {
+        "state": "running",
+        "turn_count": 12,
+        "consecutive_failures": 0,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-02T00:00:00.000Z"
+      },
+      "now": "2026-09-02T00:00:30.000Z",
+      "expect_stop": {
+        "next_state": "timed_out",
+        "outcome_class": "timeout_lifetime",
+        "reason_class": "limit_reached"
+      }
+    },
+    {
+      "name": "lifetime_wins_over_turns_when_both_are_reached",
+      "note": "A timeout terminates while a turn limit only pauses; the terminal answer is the correct one when both hold.",
+      "record": {
+        "state": "running",
+        "turn_count": 40,
+        "consecutive_failures": 0,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-02T00:00:00.000Z"
+      },
+      "now": "2026-09-02T00:00:30.000Z",
+      "expect_stop": {
+        "next_state": "timed_out",
+        "outcome_class": "timeout_lifetime",
+        "reason_class": "limit_reached"
+      }
+    },
+    {
+      "name": "terminal_workflows_are_not_re_checked",
+      "record": {
+        "state": "completed",
+        "turn_count": 99,
+        "consecutive_failures": 9,
+        "created_at": "2026-09-01T00:00:00.000Z",
+        "last_activity_at": "2026-09-01T00:05:00.000Z"
+      },
+      "now": "2026-09-05T00:00:00.000Z",
+      "expect_stop": null
+    }
+  ],
+  "counting": [
+    {
+      "name": "new_event_consumes_a_turn",
+      "transition": {
+        "committed": true,
+        "source_event_is_new": true,
+        "next_state": "running"
+      },
+      "turn_count_before": 4,
+      "consecutive_failures_before": 2,
+      "expect_turn_count": 5,
+      "expect_consecutive_failures": 0
+    },
+    {
+      "name": "internal_bookkeeping_does_not_consume_a_turn",
+      "transition": {
+        "committed": true,
+        "source_event_is_new": false,
+        "next_state": "waiting_bot"
+      },
+      "turn_count_before": 4,
+      "consecutive_failures_before": 1,
+      "expect_turn_count": 4,
+      "expect_consecutive_failures": 1
+    },
+    {
+      "name": "reviewing_resets_the_failure_counter",
+      "transition": {
+        "committed": true,
+        "source_event_is_new": true,
+        "next_state": "reviewing"
+      },
+      "turn_count_before": 7,
+      "consecutive_failures_before": 2,
+      "expect_turn_count": 8,
+      "expect_consecutive_failures": 0
+    },
+    {
+      "name": "completion_resets_the_failure_counter",
+      "transition": {
+        "committed": true,
+        "source_event_is_new": true,
+        "next_state": "completed"
+      },
+      "turn_count_before": 9,
+      "consecutive_failures_before": 1,
+      "expect_turn_count": 10,
+      "expect_consecutive_failures": 0
+    },
+    {
+      "name": "waiting_human_does_not_reset_the_failure_counter",
+      "transition": {
+        "committed": true,
+        "source_event_is_new": true,
+        "next_state": "waiting_human"
+      },
+      "turn_count_before": 9,
+      "consecutive_failures_before": 2,
+      "expect_turn_count": 10,
+      "expect_consecutive_failures": 2
+    },
+    {
+      "name": "a_rejected_transition_consumes_nothing",
+      "transition": {
+        "committed": false,
+        "source_event_is_new": true,
+        "next_state": "running"
+      },
+      "turn_count_before": 9,
+      "consecutive_failures_before": 2,
+      "expect_turn_count": 9,
+      "expect_consecutive_failures": 2
+    }
+  ],
+  "restart_persistence": {
+    "note": "GS-NFR-007 — limits live on the record, so neither a config change nor a restart can widen a running workflow's bounds.",
+    "limits_at_creation": {
+      "max_turns": 40,
+      "max_consecutive_failures": 3,
+      "inactivity_timeout_ms": 3600000,
+      "absolute_lifetime_ms": 86400000,
+      "max_in_flight_actions": 1
+    },
+    "configuration_after_restart": {
+      "max_turns": 5000,
+      "max_consecutive_failures": 99,
+      "inactivity_timeout_ms": 604800000,
+      "absolute_lifetime_ms": 2592000000,
+      "max_in_flight_actions": 1
+    },
+    "expect_effective_limits_source": "record",
+    "expect_timers_derived_from": [
+      "created_at",
+      "last_activity_at"
+    ]
+  },
+  "content_cannot_raise_limits": {
+    "note": "workflow-state.md §7.4 — no actor's message content may widen a bound.",
+    "attempts": [
+      {
+        "actor_class": "authorized_human",
+        "claim": "raise max_turns",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "authorized_human",
+        "claim": "extend the timeout",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "kilo",
+        "claim": "reset the failure counter",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "linear",
+        "claim": "extend the lifetime",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "unknown_automation",
+        "claim": "raise max_in_flight_actions",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "gist_self",
+        "claim": "raise max_turns",
+        "expect_effect": "none"
+      },
+      {
+        "actor_class": "model_output",
+        "claim": "set a longer response deadline in the instruction",
+        "expect_effect": "none",
+        "note": "actions.md §5.2 — the deadline is derived from these limits, and the field is not reachable from a model action at all."
+      }
+    ]
+  },
+  "continue_after_a_limit_stop": {
+    "note": "One event-keyed grant permits one evaluation/action opportunity without resetting counters or raising limits; the limit applies again after consumption.",
+    "turn_count": 40,
+    "max_turns": 40,
+    "human_says_continue": true,
+    "expect_limits_changed": false,
+    "expect_stops_again": true,
+    "expect_granted_opportunities": 1,
+    "expect_counters_reset": false
+  },
+  "response_deadline": {
+    "note": "workflow-state.md §7.1 — the deadline Gist states to a bot is a projection of the stored limits, not a second softer bound living in the instruction.",
+    "limits": {
+      "max_turns": 40,
+      "max_consecutive_failures": 3,
+      "inactivity_timeout_ms": 3600000,
+      "absolute_lifetime_ms": 86400000,
+      "max_in_flight_actions": 1
+    },
+    "created_at": "2026-09-01T00:00:00.000Z",
+    "cases": [
+      {
+        "name": "early_in_the_workflow_the_inactivity_timeout_binds",
+        "now": "2026-09-01T00:05:00.000Z",
+        "expect_deadline_ms": 3600000
+      },
+      {
+        "name": "late_in_the_workflow_the_remaining_lifetime_binds",
+        "now": "2026-09-01T23:45:00.000Z",
+        "expect_deadline_ms": 900000
+      },
+      {
+        "name": "nothing_left_means_no_dispatch",
+        "now": "2026-09-02T00:00:00.000Z",
+        "expect_deadline_ms": null
+      }
+    ],
+    "expect_model_supplied": false,
+    "expect_can_exceed_inactivity_timeout": false,
+    "expect_can_outlive_the_workflow": false
+  },
+  "human_control_at_limit": {
+    "note": "workflow-state.md §7.3 — the human control plane remains open while autonomous events remain blocked.",
+    "workflow_id": "wf_supv_0001",
+    "limit_reached": true,
+    "cases": [
+      {
+        "name": "authorized_non_owner_status_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": false,
+        "intent": "status",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "owner_pause_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "pause",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "approver_pause_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": true,
+        "intent": "pause",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "owner_redirect_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "redirect",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "approver_redirect_rejects",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": true,
+        "intent": "redirect",
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": false
+      },
+      {
+        "name": "owner_cancel_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "cancel",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "approver_cancel_passes",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": true,
+        "intent": "cancel",
+        "expect_admission": "control_only",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "owner_continue_mints_one_opportunity",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "continue",
+        "expect_admission": "one_granted_opportunity",
+        "expect_may_mint": true,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "approver_continue_mints_one_opportunity",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": true,
+        "intent": "continue",
+        "expect_admission": "one_granted_opportunity",
+        "expect_may_mint": true,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "authorized_non_owner_continue_rejects",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": false,
+        "is_approver": false,
+        "intent": "continue",
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": false
+      },
+      {
+        "name": "unauthorized_status_rejects",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": false,
+        "is_owner": false,
+        "is_approver": false,
+        "intent": "status",
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": false
+      },
+      {
+        "name": "role_without_authorization_rejects",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": false,
+        "is_owner": true,
+        "is_approver": true,
+        "intent": "cancel",
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": false
+      },
+      {
+        "name": "duplicate_continue_cannot_mint_again",
+        "limit_reached": true,
+        "grant_exists": true,
+        "grant_consumed": true,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "continue",
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "restart_resumes_owner_unconsumed_grant",
+        "limit_reached": true,
+        "grant_exists": true,
+        "grant_consumed": false,
+        "is_authorized_human": true,
+        "is_owner": true,
+        "is_approver": false,
+        "intent": "continue",
+        "expect_admission": "one_granted_opportunity",
+        "expect_may_mint": false,
+        "expect_intent_authorized": true
+      },
+      {
+        "name": "autonomous_event_at_limit_is_blocked",
+        "limit_reached": true,
+        "grant_exists": false,
+        "grant_consumed": false,
+        "is_authorized_human": false,
+        "is_owner": false,
+        "is_approver": false,
+        "intent": null,
+        "expect_admission": "blocked",
+        "expect_may_mint": false,
+        "expect_intent_authorized": false
+      }
+    ],
+    "grant": {
+      "grant_key": "limit-grant:wf_supv_0001:T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "opportunities": 1,
+      "expect_counters_reset": false,
+      "expect_limits_raised": false,
+      "expect_limit_applies_after_consumption": true
+    }
+  }
+}

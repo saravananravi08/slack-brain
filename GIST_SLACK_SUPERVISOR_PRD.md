@@ -259,3 +259,25 @@ Slack supervisor mode is GO only when:
 - one live Kilo implementation/review workflow and one live Linear workflow complete with sanitized evidence;
 - no Gist self-loop, unknown-bot action, duplicate dispatch, or cross-channel workflow transition occurs;
 - P06/P07 live-gate exceptions are either closed or explicitly accepted for this release.
+
+## 13. Contract mapping (P08)
+
+Annotation added by T801. This section records where each requirement is frozen; it does not add, remove, or restate any requirement above.
+
+The Slack-supervisor contract set lives in [`docs/architecture/slack-supervisor/`](docs/architecture/slack-supervisor/) at version 1.0.0, with synthetic fixtures and contract tests in `tests/contracts/slack-supervisor/`.
+
+| Requirements | Frozen in | Covers |
+|---|---|---|
+| GS-FR-008, 011, 017, 019, 026, 040 | [`identity.md`](docs/architecture/slack-supervisor/identity.md) | Exact-ID actor resolution, trust precedence, and the human/trusted-bot/self/unknown routing matrix |
+| GS-FR-001, 002, 003, 017–021, 032, 041 | [`events.md`](docs/architecture/slack-supervisor/events.md) | Supervisor event record, admission order, correlation to a workflow binding, per-workflow serialization, cooldown separation |
+| GS-FR-012–016, 029, 030, 038, 039 | [`workflow-state.md`](docs/architecture/slack-supervisor/workflow-state.md) | Durable record, the thirteen states, the legal transition table, compare-and-set, restart, limits, transition audit |
+| GS-FR-003, 005, 022–027, 031, 037 | [`actions.md`](docs/architecture/slack-supervisor/actions.md) | The ten-member action union, logical target → destination mapping, instruction envelope, untrusted-content rules |
+| GS-FR-006, 007, 016, 033–036 | [`approvals.md`](docs/architecture/slack-supervisor/approvals.md) | Gated action classes, version-bound approvals, ownership and transfer, human control verbs |
+| GS-FR-015, 020, 024, 042, 043 | [`dispatch.md`](docs/architecture/slack-supervisor/dispatch.md) | Action checkpoint, delivery state machine, one-event/one-action claim, restart reconciliation, failure taxonomy |
+| GS-FR-009, 010 | [`compatibility.md`](docs/architecture/slack-supervisor/compatibility.md) | The exact content-free measurements T802 must obtain, and the correlation strategy and GO/NO-GO each outcome permits |
+| GS-NFR-001–008 | [`invariants.md`](docs/architecture/slack-supervisor/invariants.md) | GS-INV-01…14: isolation, authority, action integrity, bounded autonomy, privacy |
+| GS-FR-001…043, GS-NFR-001…008 (complete map) | [`requirements-map.md`](docs/architecture/slack-supervisor/requirements-map.md) | Every requirement → contract clause, integration rule, or named later task, exactly once |
+
+GS-FR-009 and GS-FR-010 are the only requirements T801 defers: they require the live compatibility proof that is T802's work. `compatibility.md` freezes the measurement shape and the decision rules so that spike fills in evidence rather than inventing policy, and §5 of that file lists the seven clauses whose final wording depends on what it measures.
+
+Reopen (§5.1) is a pending product-owner decision. Terminal records remain immutable, but the contract intentionally supports neither terminal reactivation nor creation of a linked replacement workflow. T901/T904 must not implement reopen until the product owner chooses semantics and the contract/state model is amended.

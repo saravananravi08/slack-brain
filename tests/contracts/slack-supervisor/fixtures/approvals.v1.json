@@ -1,0 +1,472 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/approvals.md",
+  "gated_action_classes": [
+    "merge",
+    "release",
+    "delete",
+    "destructive",
+    "credential_or_security_change",
+    "irreversible_other",
+    "ownership_transfer",
+    "scope_expansion",
+    "cancel_other_owner_workflow"
+  ],
+  "human_decision_classes": [
+    "ambiguous_destination",
+    "conflicting_requirements",
+    "missing_required_target",
+    "unresolvable_blocker"
+  ],
+  "approval_states": [
+    "none",
+    "required",
+    "pending",
+    "granted",
+    "denied",
+    "expired",
+    "invalidated"
+  ],
+  "gating": [
+    {
+      "name": "merge_is_gated",
+      "action_class": "merge",
+      "expect_gated": true,
+      "expect_may_request_approval": true
+    },
+    { "name": "release_is_gated", "action_class": "release", "expect_gated": true, "expect_may_request_approval": true },
+    { "name": "delete_is_gated", "action_class": "delete", "expect_gated": true, "expect_may_request_approval": true },
+    {
+      "name": "ownership_transfer_is_gated",
+      "action_class": "ownership_transfer",
+      "expect_gated": true,
+      "expect_may_request_approval": true
+    },
+    {
+      "name": "cancelling_another_owner_is_gated",
+      "action_class": "cancel_other_owner_workflow",
+      "expect_gated": true,
+      "expect_may_request_approval": true
+    },
+    {
+      "name": "scope_expansion_is_gated",
+      "action_class": "scope_expansion",
+      "expect_gated": true,
+      "expect_may_request_approval": true
+    },
+    {
+      "name": "reversible_implementation_is_not_gated",
+      "note": "GS-FR-006 and D025 — asking for approval here is a contract violation, not caution.",
+      "action_class": "implement",
+      "expect_gated": false,
+      "expect_may_request_approval": false
+    },
+    {
+      "name": "investigation_is_not_gated",
+      "action_class": "investigate",
+      "expect_gated": false,
+      "expect_may_request_approval": false
+    },
+    {
+      "name": "running_tests_is_not_gated",
+      "action_class": "test",
+      "expect_gated": false,
+      "expect_may_request_approval": false
+    },
+    {
+      "name": "creating_a_work_item_is_not_gated",
+      "action_class": "create",
+      "expect_gated": false,
+      "expect_may_request_approval": false
+    },
+    {
+      "name": "commenting_is_not_gated",
+      "action_class": "comment",
+      "expect_gated": false,
+      "expect_may_request_approval": false
+    }
+  ],
+  "workflow": {
+    "workflow_id": "wf_supv_0001",
+    "owner_user_id": "U0SUPVOWNR1",
+    "approver_user_ids": ["U0SUPVAPPR1"],
+    "pending_action_id": "act_supv_0001",
+    "pending_action_version": 2
+  },
+  "validity": [
+    {
+      "name": "valid_owner_approval",
+      "approval": {
+        "approval_id": "apr_supv_0001",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": null
+    },
+    {
+      "name": "valid_configured_approver_approval",
+      "approval": {
+        "approval_id": "apr_supv_0002",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "release",
+        "approver_user_id": "U0SUPVAPPR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": null
+    },
+    {
+      "name": "not_granted",
+      "approval": {
+        "approval_id": "apr_supv_0003",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "pending"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "not_granted"
+    },
+    {
+      "name": "denied_is_not_granted",
+      "approval": {
+        "approval_id": "apr_supv_0004",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "denied"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "not_granted"
+    },
+    {
+      "name": "approval_for_another_workflow",
+      "approval": {
+        "approval_id": "apr_supv_0005",
+        "workflow_id": "wf_supv_0002",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "workflow_mismatch"
+    },
+    {
+      "name": "approval_for_another_action",
+      "approval": {
+        "approval_id": "apr_supv_0006",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0002",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "action_mismatch"
+    },
+    {
+      "name": "approval_for_a_superseded_version",
+      "note": "GS-FR-036 — the scope changed, the version incremented, and check 4 fails structurally.",
+      "approval": {
+        "approval_id": "apr_supv_0007",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 1,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "version_mismatch"
+    },
+    {
+      "name": "approval_from_a_non_owner_human",
+      "approval": {
+        "approval_id": "apr_supv_0008",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVUSER2",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "approver_not_authorized"
+    },
+    {
+      "name": "approval_from_an_unauthorized_human",
+      "approval": {
+        "approval_id": "apr_supv_0009",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "unauthorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "approver_not_authorized"
+    },
+    {
+      "name": "approval_from_kilo",
+      "approval": {
+        "approval_id": "apr_supv_0010",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "B0SUPVKILO1",
+        "approver_actor_class": "kilo",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "approver_not_authorized"
+    },
+    {
+      "name": "approval_from_linear",
+      "note": "GS-FR-033 — a Linear reply reporting an upstream approval is evidence about another system, never an approval here.",
+      "approval": {
+        "approval_id": "apr_supv_0011",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "release",
+        "approver_user_id": "B0SUPVLNR01",
+        "approver_actor_class": "linear",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "approver_not_authorized"
+    },
+    {
+      "name": "approval_from_gist_itself",
+      "approval": {
+        "approval_id": "apr_supv_0012",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVGIST1",
+        "approver_actor_class": "gist_self",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:20:00.000Z",
+      "expect_failure": "approver_not_authorized"
+    },
+    {
+      "name": "expired_approval",
+      "approval": {
+        "approval_id": "apr_supv_0013",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:45:00.000Z",
+      "expect_failure": "expired"
+    },
+    {
+      "name": "approval_used_before_it_was_granted",
+      "approval": {
+        "approval_id": "apr_supv_0014",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:05:00.000Z",
+      "expect_failure": "expired"
+    },
+    {
+      "name": "restart_between_grant_and_dispatch_changes_nothing",
+      "note": "GS-NFR-007 — validity is re-read from durable state at dispatch time, not cached at grant time.",
+      "approval": {
+        "approval_id": "apr_supv_0015",
+        "workflow_id": "wf_supv_0001",
+        "action_id": "act_supv_0001",
+        "action_version": 2,
+        "gated_class": "merge",
+        "approver_user_id": "U0SUPVOWNR1",
+        "approver_actor_class": "authorized_human",
+        "granted_at": "2026-09-01T00:10:00.000Z",
+        "expires_at": "2026-09-01T00:40:00.000Z",
+        "state": "granted"
+      },
+      "now": "2026-09-01T00:30:00.000Z",
+      "restarted_between": true,
+      "expect_failure": null
+    }
+  ],
+  "invalidation": [
+    { "name": "action_version_increment", "change": "version_increment", "expect_invalidated": true },
+    { "name": "objective_changed", "change": "objective", "expect_invalidated": true },
+    { "name": "scope_changed", "change": "scope", "expect_invalidated": true },
+    { "name": "acceptance_changed", "change": "acceptance", "expect_invalidated": true },
+    { "name": "work_class_changed", "change": "work_class", "expect_invalidated": true },
+    { "name": "logical_target_changed", "change": "logical_target", "expect_invalidated": true },
+    { "name": "owner_changed", "change": "owner", "expect_invalidated": true },
+    { "name": "state_left_the_approved_state", "change": "state_left", "expect_invalidated": true },
+    { "name": "action_superseded", "change": "action_superseded", "expect_invalidated": true },
+    { "name": "action_failed", "change": "action_failed", "expect_invalidated": true },
+    {
+      "name": "a_progress_reply_does_not_invalidate",
+      "note": "Ordinary progress on the approved action must not force the owner to approve twice.",
+      "change": "bot_progress_reply",
+      "expect_invalidated": false
+    }
+  ],
+  "ownership": [
+    {
+      "name": "owner_may_approve_cancel_and_redirect",
+      "actor_class": "authorized_human",
+      "is_owner": true,
+      "is_approver": false,
+      "expect_may_discuss": true,
+      "expect_may_control": true
+    },
+    {
+      "name": "configured_approver_may_control",
+      "actor_class": "authorized_human",
+      "is_owner": false,
+      "is_approver": true,
+      "expect_may_discuss": true,
+      "expect_may_control": true
+    },
+    {
+      "name": "other_authorized_human_may_discuss_only",
+      "actor_class": "authorized_human",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": true,
+      "expect_may_control": false
+    },
+    {
+      "name": "unauthorized_human_neither",
+      "actor_class": "unauthorized_human",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": false,
+      "expect_may_control": false
+    },
+    {
+      "name": "kilo_neither",
+      "actor_class": "kilo",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": false,
+      "expect_may_control": false
+    },
+    {
+      "name": "linear_neither",
+      "actor_class": "linear",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": false,
+      "expect_may_control": false
+    },
+    {
+      "name": "gist_self_neither",
+      "actor_class": "gist_self",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": false,
+      "expect_may_control": false
+    },
+    {
+      "name": "unknown_automation_neither",
+      "actor_class": "unknown_automation",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_may_discuss": false,
+      "expect_may_control": false
+    }
+  ],
+  "ownership_transfer": {
+    "note": "approvals.md §4 — transfer is itself gated, and the new owner inherits the work, not the previous owner's consent.",
+    "gated_class": "ownership_transfer",
+    "expect_requires_approval": true,
+    "expect_invalidates_outstanding_approvals": true,
+    "expect_recorded_on_workflow": true
+  },
+  "control_verbs": [
+    { "name": "status", "verb": "status", "requires_owner_or_approver": false, "owner_only": false },
+    { "name": "pause", "verb": "pause", "requires_owner_or_approver": true, "owner_only": false },
+    { "name": "resume", "verb": "resume", "requires_owner_or_approver": true, "owner_only": false },
+    { "name": "correct", "verb": "correct", "requires_owner_or_approver": true, "owner_only": true },
+    { "name": "cancel", "verb": "cancel", "requires_owner_or_approver": true, "owner_only": false },
+    {
+      "name": "provide_details",
+      "verb": "provide_details",
+      "requires_owner_or_approver": false,
+      "owner_only": false
+    },
+    { "name": "approve", "verb": "approve", "requires_owner_or_approver": true, "owner_only": false },
+    { "name": "deny", "verb": "deny", "requires_owner_or_approver": true, "owner_only": false }
+  ],
+  "limit_stop_is_not_an_approval": {
+    "note": "approvals.md §6 — a human telling Gist to continue does not raise the limit.",
+    "state": "waiting_human",
+    "approval_state": "none",
+    "expect_carries_approval_record": false,
+    "expect_limit_raised_by_continue": false
+  }
+}

@@ -1,0 +1,380 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/identity.md",
+  "config": {
+    "gist_bot_user_id": "U0SUPVGIST1",
+    "gist_bot_id": "B0SUPVGIST1",
+    "kilo_bot_id": "B0SUPVKILO1",
+    "kilo_app_id": "A0SUPVKILO1",
+    "linear_bot_id": "B0SUPVLNR01",
+    "linear_app_id": "A0SUPVLNR01"
+  },
+  "cases": [
+    {
+      "name": "authorized_human_owner",
+      "sender": {
+        "sender_class": "human",
+        "sender_id": "U0SUPVOWNR1",
+        "bot_id": null,
+        "app_id": null,
+        "human_authorized": true
+      },
+      "expect_actor_class": "authorized_human"
+    },
+    {
+      "name": "authorized_human_other_member",
+      "sender": {
+        "sender_class": "human",
+        "sender_id": "U0SUPVUSER2",
+        "bot_id": null,
+        "app_id": null,
+        "human_authorized": true
+      },
+      "expect_actor_class": "authorized_human"
+    },
+    {
+      "name": "human_denied_by_authorization",
+      "sender": {
+        "sender_class": "human",
+        "sender_id": "U0SUPVEXTU1",
+        "bot_id": null,
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "unauthorized_human"
+    },
+    {
+      "name": "gist_self_by_sender_class",
+      "sender": {
+        "sender_class": "gist",
+        "sender_id": "U0SUPVGIST1",
+        "bot_id": "B0SUPVGIST1",
+        "app_id": "A0SUPVGIST1",
+        "human_authorized": false
+      },
+      "expect_actor_class": "gist_self"
+    },
+    {
+      "name": "kilo_by_bot_id",
+      "sender": {
+        "sender_class": "kilo",
+        "sender_id": "B0SUPVKILO1",
+        "bot_id": "B0SUPVKILO1",
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "kilo"
+    },
+    {
+      "name": "kilo_by_app_id",
+      "sender": {
+        "sender_class": "app",
+        "sender_id": "A0SUPVKILO1",
+        "bot_id": null,
+        "app_id": "A0SUPVKILO1",
+        "human_authorized": false
+      },
+      "expect_actor_class": "kilo"
+    },
+    {
+      "name": "linear_by_bot_id",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "B0SUPVLNR01",
+        "bot_id": "B0SUPVLNR01",
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "linear"
+    },
+    {
+      "name": "linear_by_app_id",
+      "sender": {
+        "sender_class": "app",
+        "sender_id": "A0SUPVLNR01",
+        "bot_id": null,
+        "app_id": "A0SUPVLNR01",
+        "human_authorized": false
+      },
+      "expect_actor_class": "linear"
+    },
+    {
+      "name": "unknown_bot",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "B0SUPVUNK01",
+        "bot_id": "B0SUPVUNK01",
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "unknown_automation"
+    },
+    {
+      "name": "unknown_app",
+      "sender": {
+        "sender_class": "app",
+        "sender_id": "A0SUPVUNK01",
+        "bot_id": null,
+        "app_id": "A0SUPVUNK01",
+        "human_authorized": false
+      },
+      "expect_actor_class": "unknown_automation"
+    },
+    {
+      "name": "system_lifecycle",
+      "sender": {
+        "sender_class": "system",
+        "sender_id": "U0SUPVUSER2",
+        "bot_id": null,
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "system"
+    }
+  ],
+  "precedence_traps": [
+    {
+      "name": "gist_beats_trusted_bot_match",
+      "note": "identity.md §1.1 rule 1 — the shortest loop is Gist replying to itself, so gist_self must win even when the event also carries a configured Kilo bot ID.",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "U0SUPVGIST1",
+        "bot_id": "B0SUPVKILO1",
+        "app_id": "A0SUPVKILO1",
+        "human_authorized": false
+      },
+      "expect_actor_class": "gist_self",
+      "must_not_be": "kilo"
+    },
+    {
+      "name": "gist_by_bot_id_beats_generic_bot",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "B0SUPVGIST1",
+        "bot_id": "B0SUPVGIST1",
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "gist_self",
+      "must_not_be": "unknown_automation"
+    },
+    {
+      "name": "kilo_beats_linear_on_ordered_match",
+      "note": "Rules 2 and 3 are ordered. A single event carrying both configured identities resolves to kilo deterministically rather than by iteration order.",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "B0SUPVKILO1",
+        "bot_id": "B0SUPVKILO1",
+        "app_id": "A0SUPVLNR01",
+        "human_authorized": false
+      },
+      "expect_actor_class": "kilo",
+      "must_not_be": "linear"
+    },
+    {
+      "name": "kilo_sender_class_without_matching_config_is_unknown",
+      "note": "identity.md §1.1 rule 5 — channel-memory classified this as kilo from its own configuration, but the supervisor's TrustedAutomationConfig does not know these IDs. Two configurations disagreeing must fail towards capture-only.",
+      "sender": {
+        "sender_class": "kilo",
+        "sender_id": "B0SUPVUNK01",
+        "bot_id": "B0SUPVUNK01",
+        "app_id": null,
+        "human_authorized": false
+      },
+      "expect_actor_class": "unknown_automation",
+      "must_not_be": "kilo"
+    },
+    {
+      "name": "authorized_flag_alone_cannot_promote_a_bot",
+      "note": "A malformed upstream that marks a bot event authorized must not produce authorized_human; sender_class is checked first.",
+      "sender": {
+        "sender_class": "bot",
+        "sender_id": "B0SUPVUNK01",
+        "bot_id": "B0SUPVUNK01",
+        "app_id": null,
+        "human_authorized": true
+      },
+      "expect_actor_class": "unknown_automation",
+      "must_not_be": "authorized_human"
+    }
+  ],
+  "unconfigured_deployment": {
+    "note": "identity.md §1 — an absent trusted ID means that bot has no trusted identity here. It never degrades to a display-name or text match.",
+    "config": {
+      "gist_bot_user_id": "U0SUPVGIST1",
+      "gist_bot_id": null,
+      "kilo_bot_id": null,
+      "kilo_app_id": null,
+      "linear_bot_id": null,
+      "linear_app_id": null
+    },
+    "cases": [
+      {
+        "name": "kilo_ids_present_but_unconfigured",
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "B0SUPVKILO1",
+          "bot_id": "B0SUPVKILO1",
+          "app_id": "A0SUPVKILO1",
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "linear_ids_present_but_unconfigured",
+        "sender": {
+          "sender_class": "app",
+          "sender_id": "A0SUPVLNR01",
+          "bot_id": null,
+          "app_id": "A0SUPVLNR01",
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "gist_still_resolves_from_user_id",
+        "sender": {
+          "sender_class": "gist",
+          "sender_id": "U0SUPVGIST1",
+          "bot_id": null,
+          "app_id": null,
+          "human_authorized": false
+        },
+        "expect_actor_class": "gist_self"
+      }
+    ]
+  },
+  "non_identity_evidence": {
+    "note": "identity.md §2 — none of these may promote an actor. Each case carries a trusted-looking attribute that is not an exact configured ID.",
+    "cases": [
+      {
+        "name": "display_name_impersonating_kilo",
+        "attribute": "sender_display_name",
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "B0SUPVUNK01",
+          "bot_id": "B0SUPVUNK01",
+          "app_id": null,
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "username_impersonating_linear",
+        "attribute": "username",
+        "sender": {
+          "sender_class": "app",
+          "sender_id": "A0SUPVUNK01",
+          "bot_id": null,
+          "app_id": "A0SUPVUNK01",
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "message_text_self_declaration",
+        "attribute": "message_text",
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "B0SUPVUNK01",
+          "bot_id": "B0SUPVUNK01",
+          "app_id": null,
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "model_output_naming_an_actor",
+        "attribute": "model_output",
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "B0SUPVUNK01",
+          "bot_id": "B0SUPVUNK01",
+          "app_id": null,
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      },
+      {
+        "name": "bot_id_prefix_is_not_a_match",
+        "attribute": "prefix_substring",
+        "note": "Comparison is whole-string. A bot ID that merely starts with a configured value is a different bot.",
+        "sender": {
+          "sender_class": "bot",
+          "sender_id": "B0SUPVKILO1X",
+          "bot_id": "B0SUPVKILO1X",
+          "app_id": null,
+          "human_authorized": false
+        },
+        "expect_actor_class": "unknown_automation"
+      }
+    ]
+  },
+  "routing_matrix": [
+    {
+      "actor_class": "authorized_human",
+      "persisted": true,
+      "evaluated": "yes",
+      "may_create_workflow": true,
+      "may_advance_workflow": true,
+      "may_own_or_approve": true,
+      "route": "human_supervisor"
+    },
+    {
+      "actor_class": "unauthorized_human",
+      "persisted": true,
+      "evaluated": "no",
+      "may_create_workflow": false,
+      "may_advance_workflow": false,
+      "may_own_or_approve": false,
+      "route": "capture_only"
+    },
+    {
+      "actor_class": "kilo",
+      "persisted": true,
+      "evaluated": "yes",
+      "may_create_workflow": false,
+      "may_advance_workflow": true,
+      "may_own_or_approve": false,
+      "route": "trusted_automation"
+    },
+    {
+      "actor_class": "linear",
+      "persisted": true,
+      "evaluated": "yes",
+      "may_create_workflow": false,
+      "may_advance_workflow": true,
+      "may_own_or_approve": false,
+      "route": "trusted_automation"
+    },
+    {
+      "actor_class": "gist_self",
+      "persisted": true,
+      "evaluated": "never",
+      "may_create_workflow": false,
+      "may_advance_workflow": false,
+      "may_own_or_approve": false,
+      "route": "capture_only"
+    },
+    {
+      "actor_class": "unknown_automation",
+      "persisted": true,
+      "evaluated": "no",
+      "may_create_workflow": false,
+      "may_advance_workflow": false,
+      "may_own_or_approve": false,
+      "route": "capture_only"
+    },
+    {
+      "actor_class": "system",
+      "persisted": false,
+      "evaluated": "no",
+      "may_create_workflow": false,
+      "may_advance_workflow": false,
+      "may_own_or_approve": false,
+      "route": "not_captured"
+    }
+  ]
+}

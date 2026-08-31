@@ -1,0 +1,134 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "frozen_by": "T801",
+  "frozen_at": "2026-09-01",
+  "synthetic": true,
+  "note": "Every identifier here is invented. No real workspace, channel, user, bot, app, message body, URL, token, prompt, model output, or trace appears in this directory (FR-PRV-007, GS-NFR-004, GS-INV-14).",
+  "defines": "docs/architecture/slack-supervisor/",
+  "synthetic_ids": {
+    "workspace": "T0SUPVTEST",
+    "workspace_other": "T0SUPVOTHER",
+    "channel_a": "C0SUPVTESTA",
+    "channel_b": "C0SUPVTESTB",
+    "channel_unenrolled": "C0SUPVUNENR",
+    "channel_external": "C0SUPVEXTSH",
+    "dm_channel": "D0SUPVDM001",
+    "owner_user": "U0SUPVOWNR1",
+    "approver_user": "U0SUPVAPPR1",
+    "other_human_user": "U0SUPVUSER2",
+    "unauthorized_user": "U0SUPVEXTU1",
+    "gist_bot_user": "U0SUPVGIST1",
+    "gist_bot_id": "B0SUPVGIST1",
+    "gist_app_id": "A0SUPVGIST1",
+    "kilo_bot_user": "U0SUPVKILO1",
+    "kilo_bot_id": "B0SUPVKILO1",
+    "kilo_app_id": "A0SUPVKILO1",
+    "linear_bot_user": "U0SUPVLNR01",
+    "linear_bot_id": "B0SUPVLNR01",
+    "linear_app_id": "A0SUPVLNR01",
+    "unknown_bot_user": "U0SUPVUNK01",
+    "unknown_bot_id": "B0SUPVUNK01",
+    "unknown_app_id": "A0SUPVUNK01",
+    "kilo_bot_id_lookalike": "B0SUPVKILO1X",
+    "event_id_prefix": "Ev0SUPVTEST"
+  },
+  "trusted_automation_config": {
+    "note": "identity.md \u00a71 and \u00a72 \u2014 actors are recognised from these exact configured values only, never from a display name, message text, or model output. These are the synthetic values every fixture in this directory assumes.",
+    "gist_bot_user_id": "U0SUPVGIST1",
+    "gist_bot_id": "B0SUPVGIST1",
+    "kilo_bot_id": "B0SUPVKILO1",
+    "kilo_app_id": "A0SUPVKILO1",
+    "linear_bot_id": "B0SUPVLNR01",
+    "linear_app_id": "A0SUPVLNR01"
+  },
+  "synthetic_workflow_ids": {
+    "note": "Workflow and action identifiers are lowercase and deliberately not Slack-shaped, so a workflow ID can never be mistaken for or used as a destination (GS-INV-10).",
+    "workflow_a": "wf_supv_0001",
+    "workflow_b": "wf_supv_0002",
+    "workflow_terminal": "wf_supv_0003",
+    "action_a": "act_supv_0001",
+    "action_b": "act_supv_0002",
+    "continuation_a": "cont:wf_supv_0001:1",
+    "continuation_b": "cont:wf_supv_0001:2"
+  },
+  "files": [
+    {
+      "file": "identity.v1.json",
+      "defines": "identity.md",
+      "consumers": [
+        "T902",
+        "T905",
+        "T803"
+      ]
+    },
+    {
+      "file": "events.v1.json",
+      "defines": "events.md",
+      "consumers": [
+        "T902",
+        "T905"
+      ]
+    },
+    {
+      "file": "workflow.v1.json",
+      "defines": "workflow-state.md \u00a71\u2013\u00a76",
+      "consumers": [
+        "T901",
+        "T905"
+      ]
+    },
+    {
+      "file": "actions.v1.json",
+      "defines": "actions.md",
+      "consumers": [
+        "T903",
+        "T904"
+      ]
+    },
+    {
+      "file": "approvals.v1.json",
+      "defines": "approvals.md",
+      "consumers": [
+        "T904",
+        "T1001"
+      ]
+    },
+    {
+      "file": "dispatch.v1.json",
+      "defines": "dispatch.md",
+      "consumers": [
+        "T903",
+        "T905",
+        "T906"
+      ]
+    },
+    {
+      "file": "limits.v1.json",
+      "defines": "workflow-state.md \u00a77",
+      "consumers": [
+        "T901",
+        "T906"
+      ]
+    },
+    {
+      "file": "compatibility.v1.json",
+      "defines": "compatibility.md",
+      "consumers": [
+        "T802",
+        "T803"
+      ]
+    },
+    {
+      "file": "continuation.v1.json",
+      "defines": "actions.md \u00a72.1\u2013\u00a72.3, events.md \u00a72.1, workflow-state.md \u00a73.4",
+      "consumers": [
+        "T901",
+        "T902",
+        "T904",
+        "T905"
+      ]
+    }
+  ],
+  "usage": "Tests MUST pin contract_version and fail on a major bump rather than silently adopting new semantics. T802 fills compatibility.v1.json shapes with measured values in its own branch; it must not widen an enum to fit an observation."
+}

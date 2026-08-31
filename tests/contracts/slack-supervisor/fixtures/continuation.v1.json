@@ -1,0 +1,553 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/actions.md §2.1–§2.3, events.md §2.1, workflow-state.md §3.4",
+  "note": "A continuation is a durable runtime-owned turn. It exists so a clear authorized assignment reaches dispatch without a second Slack message (GS-FR-006, PRD acceptance scenario 1).",
+  "record_required_fields": [
+    "contract_version",
+    "source",
+    "event_key",
+    "workflow_id",
+    "continuation_seq",
+    "origin_event_key",
+    "root_message_key",
+    "enqueued_at"
+  ],
+  "record_forbidden_fields": [
+    "text",
+    "message_text",
+    "objective",
+    "instruction",
+    "sender_id",
+    "actor_id",
+    "actor_class",
+    "delivery_event_id",
+    "boundary_id",
+    "thread_id",
+    "channel_id",
+    "workspace_id",
+    "thread_root_ts",
+    "message_ts",
+    "is_thread_reply",
+    "addressed_to_gist",
+    "sent_at",
+    "prompt",
+    "model_output",
+    "raw_event"
+  ],
+  "sample_record": {
+    "contract_version": "1.0.0",
+    "source": "continuation",
+    "event_key": "cont:wf_supv_0001:1",
+    "workflow_id": "wf_supv_0001",
+    "continuation_seq": 1,
+    "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+    "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+    "enqueued_at": "2026-09-01T00:00:01.000Z"
+  },
+  "gist_expected_states": [
+    "draft",
+    "ready",
+    "changes_requested"
+  ],
+  "event_keys": [
+    {
+      "name": "first_turn",
+      "workflow_id": "wf_supv_0001",
+      "sequence": 1,
+      "expect_key": "cont:wf_supv_0001:1"
+    },
+    {
+      "name": "second_turn",
+      "workflow_id": "wf_supv_0001",
+      "sequence": 2,
+      "expect_key": "cont:wf_supv_0001:2"
+    },
+    {
+      "name": "other_workflow",
+      "workflow_id": "wf_supv_0002",
+      "sequence": 1,
+      "expect_key": "cont:wf_supv_0002:1"
+    }
+  ],
+  "enqueue": [
+    {
+      "name": "creation_into_draft_enqueues",
+      "committed": true,
+      "next_state": "draft",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "draft_to_ready_enqueues",
+      "committed": true,
+      "next_state": "ready",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "changes_requested_enqueues",
+      "committed": true,
+      "next_state": "changes_requested",
+      "continuation_pending": false,
+      "expect_enqueued": true
+    },
+    {
+      "name": "clarifying_waits_for_the_human_instead",
+      "committed": true,
+      "next_state": "clarifying",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "waiting_human_waits_for_the_human_instead",
+      "committed": true,
+      "next_state": "waiting_human",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "dispatched_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "dispatched",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "waiting_bot_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "waiting_bot",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "reviewing_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "reviewing",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "running_waits_for_the_bot_instead",
+      "committed": true,
+      "next_state": "running",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "terminal_completed_enqueues_nothing",
+      "committed": true,
+      "next_state": "completed",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "terminal_cancelled_enqueues_nothing",
+      "committed": true,
+      "next_state": "cancelled",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "a_rejected_transition_enqueues_nothing",
+      "note": "A failed dispatch commits no state change, so it produces no continuation. Retry is dispatch.md §3.3, not an internal turn loop.",
+      "committed": false,
+      "next_state": "ready",
+      "continuation_pending": false,
+      "expect_enqueued": false
+    },
+    {
+      "name": "one_pending_at_a_time",
+      "committed": true,
+      "next_state": "ready",
+      "continuation_pending": true,
+      "expect_enqueued": false
+    }
+  ],
+  "clear_assignment_walk": {
+    "note": "GS-FR-006 and PRD acceptance scenario 1 — one human message reaches a dispatched instruction with no confirmation asked and no second Slack event.",
+    "steps": [
+      {
+        "step": 1,
+        "source": "slack",
+        "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "from_state": null,
+        "to_state": "draft",
+        "expect_enqueues_continuation": true,
+        "expect_visible_actions": 0,
+        "expect_slack_effects": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 2,
+        "source": "continuation",
+        "event_key": "cont:wf_supv_0001:1",
+        "from_state": "draft",
+        "to_state": "ready",
+        "expect_enqueues_continuation": true,
+        "expect_visible_actions": 0,
+        "expect_slack_effects": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 3,
+        "source": "continuation",
+        "event_key": "cont:wf_supv_0001:2",
+        "from_state": "ready",
+        "to_state": null,
+        "command_state": "pending",
+        "continuation_state": "completed",
+        "expect_enqueues_continuation": false,
+        "expect_visible_actions": 1,
+        "expect_slack_effects": 0,
+        "expect_asks_human": false
+      },
+      {
+        "step": 4,
+        "source": "outbox",
+        "event_key": "cont:wf_supv_0001:2",
+        "from_state": "ready",
+        "to_state": "dispatched",
+        "command_state": "delivered",
+        "expect_enqueues_continuation": false,
+        "expect_visible_actions": 0,
+        "expect_slack_effects": 1,
+        "expect_asks_human": false
+      }
+    ],
+    "expect_additional_slack_events_required": 0,
+    "expect_total_visible_actions": 1,
+    "expect_final_state": "dispatched",
+    "expect_total_slack_effects": 1
+  },
+  "chain_bounds": {
+    "note": "actions.md §2.2 rule 3 — restricted to the three Gist-expected states the legal edges are exactly draft→ready and changes_requested→ready, and `ready` has none, so the subgraph is acyclic with `ready` as its only sink. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations fired from that state is one more than that.",
+    "expect_longest_chain": {
+      "draft": 1,
+      "ready": 0,
+      "changes_requested": 1
+    },
+    "expect_any_cycle": false,
+    "expect_max_chain_overall": 1,
+    "expect_max_continuations_from_draft": 2,
+    "expect_gist_expected_edges": [
+      "draft->ready",
+      "changes_requested->ready"
+    ],
+    "expect_ready_has_no_gist_expected_successor": true
+  },
+  "outcomes": [
+    {
+      "name": "state_unchanged_so_it_evaluates",
+      "current_state": "draft",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "evaluated",
+      "processing_state": "processing"
+    },
+    {
+      "name": "human_cancelled_while_it_waited",
+      "note": "events.md §5 rule 2 — a queued event re-reads durable state before acting.",
+      "current_state": "cancelled",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "superseded",
+      "processing_state": "processing"
+    },
+    {
+      "name": "workflow_moved_on_while_it_waited",
+      "current_state": "waiting_human",
+      "enqueued_for_state": "ready",
+      "expect_outcome": "superseded",
+      "processing_state": "processing"
+    },
+    {
+      "name": "replayed_after_restart",
+      "note": "A continuation whose durable processing state is `completed` has a recorded outcome, so it is genuinely done; a crash mid-run leaves `processing` instead and is resumed.",
+      "current_state": "ready",
+      "enqueued_for_state": "ready",
+      "expect_outcome": "already_processed",
+      "processing_state": "completed"
+    },
+    {
+      "name": "claim_held_wins_over_a_state_match",
+      "current_state": "draft",
+      "enqueued_for_state": "draft",
+      "expect_outcome": "already_processed",
+      "processing_state": "completed"
+    }
+  ],
+  "turn_accounting": {
+    "note": "actions.md §2.2 rule 4 — a continuation is a new supervisor event and consumes a turn, so max_turns bounds the internal path as tightly as Slack traffic.",
+    "transition": {
+      "committed": true,
+      "source_event_is_new": true,
+      "next_state": "ready"
+    },
+    "turn_count_before": 4,
+    "consecutive_failures_before": 0,
+    "expect_turn_count": 5
+  },
+  "not_self_evaluation": {
+    "note": "GS-INV-05 — a continuation is a state-machine step, not Gist reading its own message.",
+    "expect_has_actor_class": false,
+    "expect_carries_message_content": false,
+    "forbidden_origins": [
+      "gist_slack_message",
+      "trusted_bot_content",
+      "unknown_bot_content",
+      "model_output",
+      "channel_summary",
+      "channel_observation"
+    ],
+    "expect_carries_slack_only_fields": false
+  },
+  "claims": {
+    "note": "dispatch.md §2 — when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is one of the two effect guards; whether the continuation has been handled is its processing state (actions.md §2.4).",
+    "cases": [
+      {
+        "name": "continuation_claims_on_its_own_key",
+        "source_event_key": "cont:wf_supv_0001:1",
+        "expect_action_claim_key": "ev:cont:wf_supv_0001:1"
+      },
+      {
+        "name": "slack_event_claims_on_its_message_key",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684800.000100"
+      }
+    ]
+  },
+  "origin_typing": {
+    "note": "actions.md §2.1 — the immediate origin is a SourceEventKey because a chain's later steps descend from another continuation, not from a message. root_message_key keeps the provenance a MessageKey genuinely answers.",
+    "chain": [
+      {
+        "name": "first_continuation_descends_from_the_human_message",
+        "continuation_seq": 1,
+        "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_origin_is_message_key": true
+      },
+      {
+        "name": "second_continuation_descends_from_the_first",
+        "note": "The defect this fixes: typing origin_event_key as a MessageKey was wrong for every step after the first.",
+        "continuation_seq": 2,
+        "origin_event_key": "cont:wf_supv_0001:1",
+        "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_origin_is_message_key": false
+      }
+    ],
+    "expect_root_constant_along_the_chain": true
+  },
+  "processing": {
+    "note": "actions.md §2.4 — at-least-once and recoverable. A one-time marker taken before evaluation would strand a workflow whenever a run died between taking it and committing anything durable.",
+    "states": [
+      "pending",
+      "processing",
+      "completed"
+    ],
+    "transitions": {
+      "pending": [
+        "processing"
+      ],
+      "processing": [
+        "completed",
+        "pending"
+      ],
+      "completed": []
+    },
+    "illegal_transitions": [
+      {
+        "name": "pending_cannot_complete_without_processing",
+        "from": "pending",
+        "to": "completed"
+      },
+      {
+        "name": "completed_is_terminal",
+        "from": "completed",
+        "to": "pending"
+      },
+      {
+        "name": "completed_cannot_reprocess",
+        "from": "completed",
+        "to": "processing"
+      }
+    ],
+    "lease_keys": [
+      {
+        "name": "first_turn",
+        "workflow_id": "wf_supv_0001",
+        "sequence": 1,
+        "expect_key": "cont-lease:wf_supv_0001:1"
+      },
+      {
+        "name": "second_turn",
+        "workflow_id": "wf_supv_0001",
+        "sequence": 2,
+        "expect_key": "cont-lease:wf_supv_0001:2"
+      }
+    ],
+    "current_run_id": "run_supv_b",
+    "now": "2026-09-01T00:10:00.000Z",
+    "recovery": [
+      {
+        "name": "crash_after_lease_before_any_durable_write_resumes",
+        "note": "The defect this fixes. A one-time claim would have said 'handled' over a workflow where nothing happened, and restart would have dropped it, stranding a Gist-expected state with nothing scheduled.",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_a",
+          "lease_expires_at": "2026-09-01T00:05:00.000Z"
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "processing_with_no_lease_expiry_resumes",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_a",
+          "lease_expires_at": null
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "pending_resumes",
+        "record": {
+          "processing_state": "pending",
+          "lease_owner": null,
+          "lease_expires_at": null
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "our_own_stale_lease_resumes",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_b",
+          "lease_expires_at": "2026-09-01T00:20:00.000Z"
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "a_live_lease_held_elsewhere_is_left_alone",
+        "note": "Liveness only: it stops two live runs racing the same continuation.",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_c",
+          "lease_expires_at": "2026-09-01T00:20:00.000Z"
+        },
+        "expect_action": "leave_to_live_owner"
+      },
+      {
+        "name": "completed_is_skipped",
+        "record": {
+          "processing_state": "completed",
+          "lease_owner": null,
+          "lease_expires_at": null
+        },
+        "expect_action": "skip_completed"
+      }
+    ],
+    "completion_evidence": [
+      {
+        "name": "committed_transition",
+        "evidence": "committed_transition",
+        "expect_may_complete": true
+      },
+      {
+        "name": "durable_pending_outbox_intent",
+        "evidence": "durable_outbox_intent",
+        "expect_may_complete": true
+      },
+      {
+        "name": "durable_superseded_outcome",
+        "evidence": "superseded_outcome",
+        "expect_may_complete": true,
+        "note": "A superseded continuation commits no transition; without a durable outcome for that case it would be resumed forever."
+      },
+      {
+        "name": "nothing_durable_yet",
+        "evidence": null,
+        "expect_may_complete": false,
+        "note": "'I started' and 'it happened' are different durable facts, and only the second ends the work."
+      }
+    ],
+    "at_least_once": {
+      "note": "A crash can cause a second evaluation, and this contract does not claim otherwise. What cannot repeat is an effect.",
+      "expect_duplicate_evaluation_possible": true,
+      "expect_duplicate_effect_possible": false,
+      "expect_claims_exactly_once_evaluation": false,
+      "effect_guards": [
+        "transition_compare_and_set",
+        "external_action_claim"
+      ]
+    },
+    "duplicate_effect": [
+      {
+        "name": "transition_cas_converges_a_second_evaluation",
+        "stored": {
+          "state": "ready",
+          "pending_action_version": null,
+          "committed_source_events": [
+            "cont:wf_supv_0001:1"
+          ]
+        },
+        "request": {
+          "expected_state": "draft",
+          "expected_action_version": null,
+          "next_state": "ready",
+          "source_event_key": "cont:wf_supv_0001:1"
+        },
+        "action_claim_held": false,
+        "expect_prevented": true
+      },
+      {
+        "name": "action_claim_converges_a_second_visible_action",
+        "note": "The first pass posted before dying; the second finds the claim held and posts nothing.",
+        "stored": {
+          "state": "ready",
+          "pending_action_version": 1,
+          "committed_source_events": []
+        },
+        "request": {
+          "expected_state": "ready",
+          "expected_action_version": 1,
+          "next_state": "dispatched",
+          "source_event_key": "cont:wf_supv_0001:2"
+        },
+        "action_claim_held": true,
+        "expect_prevented": true
+      },
+      {
+        "name": "a_genuine_first_pass_is_allowed_to_act",
+        "stored": {
+          "state": "draft",
+          "pending_action_version": null,
+          "committed_source_events": []
+        },
+        "request": {
+          "expected_state": "draft",
+          "expected_action_version": null,
+          "next_state": "ready",
+          "source_event_key": "cont:wf_supv_0001:1"
+        },
+        "action_claim_held": false,
+        "expect_prevented": false
+      }
+    ],
+    "silent_continuation": {
+      "note": "draft → ready produces no visible action, so no action claim is ever taken; its processing state is what records that it was handled.",
+      "event_key": "cont:wf_supv_0001:1",
+      "visible_actions": 0,
+      "expect_action_claim_taken": false,
+      "expect_completed_with": "committed_transition"
+    },
+    "outbox_completion": {
+      "note": "Continuation completion and the event-global action claim commit with one pending outbox intent. The outbox owns delivery after that commit.",
+      "continuation_state": "completed",
+      "delivery_state": "pending",
+      "slack_call_started": false,
+      "expect_restart_action": "resume_pending_first_send",
+      "expect_eventual_slack_effects": 1,
+      "expect_duplicate_evaluation": false,
+      "expect_duplicate_send": false
+    }
+  }
+}

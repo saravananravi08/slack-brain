@@ -1,8 +1,8 @@
 # T801 — Freeze Slack supervisor contracts
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
-- **Owner:** Unassigned
+- **Owner:** claude-opus5
 - **Branch:** `task/T801-freeze-slack-supervisor-contracts`
 - **Parallel group:** PG-08A
 - **Depends on:** D023–D029; channel-memory/context/proactive baseline `5fdf8e2`
@@ -60,16 +60,22 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] All GS requirements are mapped exactly once to implementation/validation ownership.
-- [ ] Contracts prohibit model-controlled Slack IDs and bot-text authority.
-- [ ] Gist self is persist-only; trusted bots are evaluate-eligible; unknown bots are capture-only.
-- [ ] One event/one checkpointed external-action invariant is executable.
-- [ ] State transition, approval, duplicate, restart, and wrong-boundary cases are executable.
-- [ ] No production data or identifiers appear.
+- [x] All GS requirements are mapped exactly once to implementation/validation ownership.
+- [x] Contracts prohibit model-controlled Slack IDs and bot-text authority.
+- [x] Gist self is persist-only; trusted bots are evaluate-eligible; unknown bots are capture-only.
+- [x] One event/one checkpointed external-action invariant is executable.
+- [x] State transition, approval, duplicate, restart, and wrong-boundary cases are executable.
+- [x] No production data or identifiers appear.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `df23b00eb10b9874aeafd0f9063bba4b6519a201`
+- Review fix commit: `3a05f73d93c4a82de67f88f784020bdd2d499d3e` (closes the five integration-review defects; contract set stays at 1.0.0, pre-merge)
+- Second review correction commit: `974a586c86be8e16f18820b8c440014c5f8763aa` (resolves seven contradictions found in the fix pack; contract set stays at 1.0.0, pre-merge)
+- Third review correction commit: `07217e9c42a17785bba21814a6d3a0505a1fd1c3` (continuation crash-safety plus two stale contradictions; contract set stays at 1.0.0, pre-merge)
+- Architecture correction commit: `b483552e8d869db6b76f3e15fe2e99c318dc2de1` (one durable command/outbox protocol; strict action schemas; bounded limit control; bound/unbound checkpoints; target identity alternatives; serial retries; complete compatibility outcome evidence)
+- Focused re-review correction commit: `c0fa9afc1287019d67016edc5b826feeae7685f1` (intent-specific limit authority; full checkpoint schema validation; strict compatibility count shape; reopen unsupported pending product-owner decision)
+- Final focused correction commit: `1a81af9a58b00f618e2609a6fa1af1bbf20daf28` (configured approvers cannot redirect; checkpoint failure/key/destination semantics closed)
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —

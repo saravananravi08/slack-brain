@@ -1,0 +1,587 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/workflow-state.md",
+  "record_required_fields": [
+    "workflow_id",
+    "contract_version",
+    "owner_user_id",
+    "workspace_id",
+    "channel_id",
+    "thread_root_ts",
+    "boundary_id",
+    "thread_id",
+    "objective_message_key",
+    "state",
+    "expected_actor",
+    "pending_action_id",
+    "pending_action_version",
+    "approval_state",
+    "turn_count",
+    "consecutive_failures",
+    "limits",
+    "created_at",
+    "updated_at",
+    "last_activity_at",
+    "timeout_at",
+    "completed_at",
+    "outcome_class"
+  ],
+  "record_forbidden_fields": [
+    "objective_text",
+    "text",
+    "message_text",
+    "instruction_text",
+    "bot_reply_text",
+    "summary",
+    "observations",
+    "owner_display_name",
+    "prompt",
+    "model_output",
+    "raw_event"
+  ],
+  "sample_record": {
+    "workflow_id": "wf_supv_0001",
+    "contract_version": "1.0.0",
+    "owner_user_id": "U0SUPVOWNR1",
+    "workspace_id": "T0SUPVTEST",
+    "channel_id": "C0SUPVTESTA",
+    "thread_root_ts": "1756684800.000100",
+    "boundary_id": "ch:T0SUPVTEST:C0SUPVTESTA",
+    "thread_id": "ch:T0SUPVTEST:C0SUPVTESTA#1756684800.000100",
+    "objective_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+    "state": "waiting_bot",
+    "expected_actor": "kilo",
+    "pending_action_id": "act_supv_0001",
+    "pending_action_version": 1,
+    "approval_state": "none",
+    "turn_count": 3,
+    "consecutive_failures": 0,
+    "limits": {
+      "max_turns": 40,
+      "max_consecutive_failures": 3,
+      "inactivity_timeout_ms": 3600000,
+      "absolute_lifetime_ms": 86400000,
+      "max_in_flight_actions": 1
+    },
+    "created_at": "2026-09-01T00:00:00.000Z",
+    "updated_at": "2026-09-01T00:03:00.000Z",
+    "last_activity_at": "2026-09-01T00:03:00.000Z",
+    "timeout_at": "2026-09-01T01:03:00.000Z",
+    "completed_at": null,
+    "outcome_class": null
+  },
+  "states": [
+    "draft",
+    "clarifying",
+    "ready",
+    "dispatched",
+    "running",
+    "waiting_human",
+    "waiting_bot",
+    "reviewing",
+    "changes_requested",
+    "completed",
+    "failed",
+    "cancelled",
+    "timed_out"
+  ],
+  "terminal_states": [
+    "completed",
+    "failed",
+    "cancelled",
+    "timed_out"
+  ],
+  "expected_actors": [
+    "gist",
+    "human",
+    "kilo",
+    "linear",
+    "none"
+  ],
+  "transitions": {
+    "draft": [
+      "clarifying",
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "clarifying": [
+      "clarifying",
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "ready": [
+      "dispatched",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "dispatched": [
+      "running",
+      "waiting_bot",
+      "reviewing",
+      "waiting_human",
+      "completed",
+      "failed",
+      "cancelled",
+      "timed_out"
+    ],
+    "running": [
+      "running",
+      "waiting_bot",
+      "reviewing",
+      "waiting_human",
+      "completed",
+      "failed",
+      "cancelled",
+      "timed_out"
+    ],
+    "waiting_bot": [
+      "running",
+      "waiting_bot",
+      "reviewing",
+      "waiting_human",
+      "completed",
+      "failed",
+      "cancelled",
+      "timed_out"
+    ],
+    "reviewing": [
+      "reviewing",
+      "changes_requested",
+      "waiting_human",
+      "completed",
+      "failed",
+      "cancelled",
+      "timed_out"
+    ],
+    "changes_requested": [
+      "ready",
+      "waiting_human",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "waiting_human": [
+      "ready",
+      "clarifying",
+      "running",
+      "waiting_bot",
+      "reviewing",
+      "completed",
+      "cancelled",
+      "failed",
+      "timed_out"
+    ],
+    "completed": [],
+    "failed": [],
+    "cancelled": [],
+    "timed_out": []
+  },
+  "illegal_transitions": [
+    {
+      "name": "draft_cannot_dispatch_directly",
+      "from": "draft",
+      "to": "dispatched",
+      "note": "Every path to an external instruction goes through `ready` so the dispatch gate has one place to enforce the checkpoint."
+    },
+    {
+      "name": "ready_has_no_self_transition",
+      "from": "ready",
+      "to": "ready",
+      "note": "A failed dispatch is recorded as a failure, not as a transition."
+    },
+    {
+      "name": "changes_requested_cannot_dispatch_directly",
+      "from": "changes_requested",
+      "to": "dispatched",
+      "note": "A fix is a new action version and re-enters the same gate."
+    },
+    {
+      "name": "reviewing_cannot_return_to_running",
+      "from": "reviewing",
+      "to": "running"
+    },
+    {
+      "name": "completed_cannot_reopen",
+      "from": "completed",
+      "to": "running"
+    },
+    {
+      "name": "cancelled_cannot_reopen",
+      "from": "cancelled",
+      "to": "ready"
+    },
+    {
+      "name": "timed_out_cannot_reopen",
+      "from": "timed_out",
+      "to": "waiting_human"
+    },
+    {
+      "name": "failed_cannot_complete",
+      "from": "failed",
+      "to": "completed"
+    },
+    {
+      "name": "dispatched_cannot_return_to_ready",
+      "from": "dispatched",
+      "to": "ready"
+    },
+    {
+      "name": "clarifying_cannot_dispatch_directly",
+      "from": "clarifying",
+      "to": "dispatched"
+    }
+  ],
+  "state_accepts_actor": {
+    "draft": [
+      "human"
+    ],
+    "clarifying": [
+      "human"
+    ],
+    "ready": [
+      "human"
+    ],
+    "dispatched": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "running": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "waiting_bot": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "reviewing": [
+      "human",
+      "kilo",
+      "linear"
+    ],
+    "changes_requested": [
+      "human"
+    ],
+    "waiting_human": [
+      "human"
+    ],
+    "completed": [],
+    "failed": [],
+    "cancelled": [],
+    "timed_out": []
+  },
+  "compare_and_set": [
+    {
+      "name": "clean_transition_commits",
+      "stored": {
+        "state": "ready",
+        "pending_action_version": 1,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "ready",
+        "expected_action_version": 1,
+        "next_state": "dispatched",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "committed",
+      "expect_reason": null
+    },
+    {
+      "name": "state_mismatch_rejects",
+      "stored": {
+        "state": "waiting_bot",
+        "pending_action_version": 1,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "ready",
+        "expected_action_version": 1,
+        "next_state": "dispatched",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "rejected",
+      "expect_reason": "state_mismatch"
+    },
+    {
+      "name": "version_mismatch_rejects_a_stale_decision",
+      "stored": {
+        "state": "ready",
+        "pending_action_version": 2,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "ready",
+        "expected_action_version": 1,
+        "next_state": "dispatched",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "rejected",
+      "expect_reason": "version_mismatch"
+    },
+    {
+      "name": "illegal_transition_rejects",
+      "stored": {
+        "state": "draft",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "draft",
+        "expected_action_version": null,
+        "next_state": "dispatched",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "rejected",
+      "expect_reason": "illegal_transition"
+    },
+    {
+      "name": "terminal_workflow_rejects",
+      "stored": {
+        "state": "completed",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "completed",
+        "expected_action_version": null,
+        "next_state": "running",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "rejected",
+      "expect_reason": "terminal_workflow"
+    },
+    {
+      "name": "replayed_source_event_is_idempotent",
+      "note": "GS-FR-014 and GS-FR-020 — the same event applied twice converges on one transition, and the second attempt is a success the caller can observe rather than an error it must recover from.",
+      "stored": {
+        "state": "dispatched",
+        "pending_action_version": 1,
+        "committed_source_events": [
+          "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+        ]
+      },
+      "request": {
+        "expected_state": "ready",
+        "expected_action_version": 1,
+        "next_state": "dispatched",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+      },
+      "expect_outcome": "idempotent",
+      "expect_reason": "duplicate_source_event"
+    },
+    {
+      "name": "null_version_expectation_matches_null_stored",
+      "stored": {
+        "state": "draft",
+        "pending_action_version": null,
+        "committed_source_events": []
+      },
+      "request": {
+        "expected_state": "draft",
+        "expected_action_version": null,
+        "next_state": "clarifying",
+        "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684870.000210"
+      },
+      "expect_outcome": "committed",
+      "expect_reason": null
+    }
+  ],
+  "requester_authority": [
+    {
+      "name": "owner_may_cancel",
+      "transition_class": "cancel",
+      "actor_class": "authorized_human",
+      "is_owner": true,
+      "is_approver": false,
+      "expect_allowed": true
+    },
+    {
+      "name": "approver_may_cancel",
+      "transition_class": "cancel",
+      "actor_class": "authorized_human",
+      "is_owner": false,
+      "is_approver": true,
+      "expect_allowed": true
+    },
+    {
+      "name": "other_authorized_human_may_not_cancel",
+      "transition_class": "cancel",
+      "actor_class": "authorized_human",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "kilo_may_not_cancel",
+      "transition_class": "cancel",
+      "actor_class": "kilo",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "linear_may_not_redirect",
+      "transition_class": "material_redirect",
+      "actor_class": "linear",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "only_owner_may_materially_redirect",
+      "transition_class": "material_redirect",
+      "actor_class": "authorized_human",
+      "is_owner": false,
+      "is_approver": true,
+      "expect_allowed": false
+    },
+    {
+      "name": "owner_may_materially_redirect",
+      "transition_class": "material_redirect",
+      "actor_class": "authorized_human",
+      "is_owner": true,
+      "is_approver": false,
+      "expect_allowed": true
+    },
+    {
+      "name": "unknown_automation_may_not_transfer_ownership",
+      "transition_class": "ownership_transfer",
+      "actor_class": "unknown_automation",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "gist_self_may_not_request_anything",
+      "transition_class": "cancel",
+      "actor_class": "gist_self",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "unauthorized_human_may_not_cancel",
+      "transition_class": "cancel",
+      "actor_class": "unauthorized_human",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": false
+    },
+    {
+      "name": "gist_drives_ordinary_transitions",
+      "transition_class": "supervisor_step",
+      "actor_class": "authorized_human",
+      "is_owner": true,
+      "is_approver": false,
+      "expect_allowed": true
+    },
+    {
+      "name": "trusted_bot_event_causes_but_does_not_request",
+      "note": "A trusted bot reply causes Gist to request a transition; the recorded requester is Gist, never the bot.",
+      "transition_class": "supervisor_step",
+      "actor_class": "kilo",
+      "is_owner": false,
+      "is_approver": false,
+      "expect_allowed": true,
+      "expect_recorded_requester": "gist"
+    }
+  ],
+  "outcome_classes": [
+    "accepted",
+    "rejected_by_human",
+    "cancelled_by_human",
+    "bot_failure",
+    "dispatch_failure",
+    "limit_turns",
+    "limit_failures",
+    "timeout_inactivity",
+    "timeout_lifetime",
+    "compatibility_blocked",
+    "internal_error"
+  ],
+  "transition_record_required_fields": [
+    "transition_id",
+    "workflow_id",
+    "prior_state",
+    "next_state",
+    "prior_expected_actor",
+    "next_expected_actor",
+    "event_class",
+    "actor_class",
+    "action_class",
+    "action_id",
+    "action_version",
+    "reason_class",
+    "outcome",
+    "occurred_at"
+  ],
+  "review_lifecycle": [
+    {
+      "name": "pr_result_does_not_complete",
+      "from": "running",
+      "signal": "pr_created",
+      "expect_next_state": "waiting_bot",
+      "expect_completes": false
+    },
+    {
+      "name": "fresh_review_is_a_new_action_version",
+      "from": "ready",
+      "signal": "review_dispatch_delivered",
+      "expect_next_state": "dispatched",
+      "expect_new_action_version": true
+    },
+    {
+      "name": "findings_route_to_changes_requested",
+      "from": "reviewing",
+      "signal": "review_findings",
+      "expect_next_state": "changes_requested",
+      "expect_completes": false
+    },
+    {
+      "name": "fix_re_enters_the_dispatch_gate",
+      "from": "changes_requested",
+      "signal": "fix_prepared",
+      "expect_next_state": "ready",
+      "expect_new_action_version": true
+    },
+    {
+      "name": "acceptance_completes",
+      "from": "reviewing",
+      "signal": "review_accepted",
+      "expect_next_state": "completed",
+      "expect_completes": true
+    }
+  ],
+  "reopen": {
+    "note": "workflow-state.md §2.4 — product-owner decision pending; no reopen behavior is supported.",
+    "decision_state": "pending_product_owner",
+    "supported": false,
+    "terminal_record": {
+      "workflow_id": "wf_supv_0003",
+      "state": "cancelled",
+      "outcome_class": "cancelled_by_human"
+    },
+    "forbidden_until_decision": [
+      "linked_new_record",
+      "terminal_reactivation"
+    ],
+    "blocked_consumers": [
+      "T901",
+      "T904"
+    ],
+    "expect_terminal_state_unchanged": "cancelled"
+  }
+}

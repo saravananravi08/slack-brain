@@ -1,0 +1,458 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/events.md",
+  "binding": {
+    "workspace_id": "T0SUPVTEST",
+    "channel_id": "C0SUPVTESTA",
+    "thread_root_ts": "1756684800.000100",
+    "owner_user_id": "U0SUPVOWNR1",
+    "workflow_id": "wf_supv_0001"
+  },
+  "event_record_required_fields": [
+    "source",
+    "contract_version",
+    "event_key",
+    "delivery_event_id",
+    "boundary_id",
+    "thread_id",
+    "workspace_id",
+    "channel_id",
+    "thread_root_ts",
+    "message_ts",
+    "actor_class",
+    "actor_id",
+    "is_thread_reply",
+    "addressed_to_gist",
+    "sent_at"
+  ],
+  "event_record_forbidden_fields": [
+    "text",
+    "message_text",
+    "body",
+    "files",
+    "links",
+    "sender_display_name",
+    "username",
+    "summary",
+    "observations",
+    "prompt",
+    "model_output",
+    "raw_event"
+  ],
+  "sample_event": {
+    "contract_version": "1.0.0",
+    "source": "slack",
+    "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+    "delivery_event_id": "Ev0SUPVTEST0001",
+    "boundary_id": "ch:T0SUPVTEST:C0SUPVTESTA",
+    "thread_id": "ch:T0SUPVTEST:C0SUPVTESTA#1756684800.000100",
+    "workspace_id": "T0SUPVTEST",
+    "channel_id": "C0SUPVTESTA",
+    "thread_root_ts": "1756684800.000100",
+    "message_ts": "1756684860.000200",
+    "actor_class": "kilo",
+    "actor_id": "B0SUPVKILO1",
+    "is_thread_reply": true,
+    "addressed_to_gist": false,
+    "sent_at": "2026-09-01T00:01:00.000Z"
+  },
+  "admission_order": [
+    "persist_exact_message",
+    "resolve_actor_class",
+    "check_boundary",
+    "route_by_actor",
+    "deduplicate",
+    "correlate",
+    "serialize",
+    "evaluate"
+  ],
+  "eligibility": [
+    {
+      "name": "authorized_human_addressed",
+      "actor_class": "authorized_human",
+      "addressed_to_gist": true,
+      "in_active_workflow_thread": false,
+      "expect_reaches_evaluation": true,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "authorized_human_in_active_workflow_thread",
+      "actor_class": "authorized_human",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": true,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "authorized_human_unaddressed_no_workflow",
+      "actor_class": "authorized_human",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": false,
+      "expect_reaches_evaluation": true,
+      "expect_subject_to_proactive_gate": true
+    },
+    {
+      "name": "trusted_kilo_reply",
+      "actor_class": "kilo",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": true,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "trusted_linear_reply",
+      "actor_class": "linear",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": true,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "gist_echo_in_workflow_thread",
+      "actor_class": "gist_self",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": false,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "unknown_bot_in_workflow_thread",
+      "actor_class": "unknown_automation",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": false,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "unauthorized_human_addressed",
+      "actor_class": "unauthorized_human",
+      "addressed_to_gist": true,
+      "in_active_workflow_thread": true,
+      "expect_reaches_evaluation": false,
+      "expect_subject_to_proactive_gate": false
+    },
+    {
+      "name": "system_event",
+      "actor_class": "system",
+      "addressed_to_gist": false,
+      "in_active_workflow_thread": false,
+      "expect_reaches_evaluation": false,
+      "expect_subject_to_proactive_gate": false
+    }
+  ],
+  "correlation": [
+    {
+      "name": "expected_kilo_reply_matches",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": null
+    },
+    {
+      "name": "wrong_workspace",
+      "event": {
+        "workspace_id": "T0SUPVOTHER",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": "wrong_workspace"
+    },
+    {
+      "name": "wrong_channel",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTB",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": "wrong_channel"
+    },
+    {
+      "name": "wrong_thread",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756685000.000900",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": "wrong_thread"
+    },
+    {
+      "name": "linear_reply_while_kilo_expected",
+      "note": "PRD acceptance scenario 6 \u2014 interleaved trusted replies in one thread. The thread is right and the bot is trusted; check 4 still fails.",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "linear"
+      },
+      "workflow": {
+        "state": "waiting_bot",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": "actor_mismatch"
+    },
+    {
+      "name": "kilo_reply_while_human_expected",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "waiting_human",
+        "expected_actor": "human"
+      },
+      "expect_failure": "actor_mismatch"
+    },
+    {
+      "name": "kilo_reply_into_terminal_workflow",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "completed",
+        "expected_actor": "kilo"
+      },
+      "expect_failure": "state_rejects_actor"
+    },
+    {
+      "name": "kilo_reply_while_workflow_still_ready",
+      "note": "Nothing was confirmed delivered yet, so a bot reply cannot belong to this workflow's current action.",
+      "event": {
+        "workspace_id": "T0SUPVTEST",
+        "channel_id": "C0SUPVTESTA",
+        "thread_root_ts": "1756684800.000100",
+        "actor_class": "kilo"
+      },
+      "workflow": {
+        "state": "ready",
+        "expected_actor": "gist"
+      },
+      "expect_failure": "actor_mismatch"
+    }
+  ],
+  "unmatched_trusted_event": {
+    "note": "events.md \u00a74.3 \u2014 permitted outcomes for a trusted bot event with no valid workflow match.",
+    "allowed_action_classes": [
+      "no_action",
+      "reply_user"
+    ],
+    "forbidden_effects": [
+      "create_workflow",
+      "mutate_workflow",
+      "advance_state",
+      "dispatch",
+      "refresh_approval",
+      "reset_limit_counter"
+    ]
+  },
+  "boundary_drops": [
+    {
+      "name": "unapproved_workspace",
+      "expect_reason_class": "wrong_workspace"
+    },
+    {
+      "name": "unenrolled_channel",
+      "expect_reason_class": "unenrolled_channel"
+    },
+    {
+      "name": "external_shared_channel",
+      "expect_reason_class": "external_channel"
+    },
+    {
+      "name": "direct_message",
+      "expect_reason_class": "direct_message"
+    }
+  ],
+  "duplicates": [
+    {
+      "name": "slack_retry_same_delivery_id",
+      "delivery_event_id": "Ev0SUPVTEST0001",
+      "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_seen_delivery": true,
+      "already_supervised_event": false,
+      "expect_reason_class": "duplicate_delivery",
+      "expect_actions": 0
+    },
+    {
+      "name": "second_envelope_same_message",
+      "delivery_event_id": "Ev0SUPVTEST0002",
+      "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_seen_delivery": false,
+      "already_supervised_event": true,
+      "expect_reason_class": "duplicate_event",
+      "expect_actions": 0
+    },
+    {
+      "name": "replayed_bot_completion",
+      "delivery_event_id": "Ev0SUPVTEST0003",
+      "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+      "already_seen_delivery": false,
+      "already_supervised_event": true,
+      "expect_reason_class": "duplicate_event",
+      "expect_actions": 0
+    },
+    {
+      "name": "distinct_message_identical_text",
+      "note": "Duplicate suppression keys on identity, never on content. Two distinct bot messages are two events.",
+      "delivery_event_id": "Ev0SUPVTEST0004",
+      "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684980.000400",
+      "already_seen_delivery": false,
+      "already_supervised_event": false,
+      "expect_reason_class": null,
+      "expect_actions": 1
+    },
+    {
+      "name": "gist_echo_of_its_own_instruction",
+      "delivery_event_id": "Ev0SUPVTEST0005",
+      "event_key": "T0SUPVTEST/C0SUPVTESTA/1756684840.000150",
+      "already_seen_delivery": false,
+      "already_supervised_event": false,
+      "actor_class": "gist_self",
+      "expect_reason_class": "gist_self",
+      "expect_actions": 0
+    }
+  ],
+  "serialization": {
+    "note": "events.md \u00a75 \u2014 concurrent trusted replies for one workflow are ordered, continuations share that queue, and a queued event re-reads state before acting.",
+    "concurrent_arrivals": [
+      {
+        "name": "first_reply_transitions_to_running",
+        "event_key": "T0SUPVTEST/C0SUPVTESTA/1756685040.000500",
+        "arrival_order": 1,
+        "state_on_arrival": "waiting_bot",
+        "state_when_dequeued": "waiting_bot",
+        "expect_applied": true
+      },
+      {
+        "name": "second_reply_rechecks_and_finds_cancelled",
+        "note": "GS-FR-041 \u2014 the human cancelled while this event waited. Acting on the state seen at arrival would be a stale-state write.",
+        "event_key": "T0SUPVTEST/C0SUPVTESTA/1756685041.000600",
+        "arrival_order": 2,
+        "state_on_arrival": "waiting_bot",
+        "state_when_dequeued": "cancelled",
+        "expect_applied": false,
+        "expect_reason_class": "terminal_workflow"
+      }
+    ],
+    "cooldown": [
+      {
+        "name": "workflow_continuation_ignores_cooldown",
+        "in_active_workflow": true,
+        "cooldown_active": true,
+        "expect_suppressed": false
+      },
+      {
+        "name": "unsolicited_commentary_respects_cooldown",
+        "in_active_workflow": false,
+        "cooldown_active": true,
+        "expect_suppressed": true
+      },
+      {
+        "name": "unsolicited_commentary_outside_cooldown",
+        "in_active_workflow": false,
+        "cooldown_active": false,
+        "expect_suppressed": false
+      }
+    ],
+    "continuation_shares_the_queue": true
+  },
+  "reason_classes": [
+    "not_captured",
+    "unauthorized_human",
+    "unknown_automation",
+    "gist_self",
+    "wrong_workspace",
+    "unenrolled_channel",
+    "external_channel",
+    "direct_message",
+    "duplicate_delivery",
+    "duplicate_event",
+    "no_workflow_match",
+    "actor_mismatch",
+    "state_rejects_actor",
+    "terminal_workflow",
+    "limit_reached",
+    "continuation_superseded",
+    "continuation_already_processed"
+  ],
+  "continuation_admission": {
+    "note": "events.md \u00a71.2, \u00a72.1 \u2014 a continuation is the other member of the union. Steps 1\u20134 do not merely skip: it has no field for them to read.",
+    "entry_step": 6,
+    "skipped_steps": [
+      "persist_exact_message",
+      "resolve_actor_class",
+      "check_boundary",
+      "route_by_actor"
+    ],
+    "required_steps": [
+      "correlate",
+      "serialize",
+      "evaluate"
+    ],
+    "expect_only_continuations_may_enter_below_step_4": true,
+    "sample_event": {
+      "contract_version": "1.0.0",
+      "source": "continuation",
+      "event_key": "cont:wf_supv_0001:1",
+      "workflow_id": "wf_supv_0001",
+      "continuation_seq": 1,
+      "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+      "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+      "enqueued_at": "2026-09-01T00:00:01.000Z"
+    },
+    "expect_carries_slack_only_fields": false
+  },
+  "event_union": {
+    "note": "events.md \u00a71 \u2014 a discriminated union on `source`, not one record with optional halves.",
+    "members": [
+      "slack",
+      "continuation"
+    ],
+    "slack_only_fields": [
+      "delivery_event_id",
+      "boundary_id",
+      "thread_id",
+      "workspace_id",
+      "channel_id",
+      "thread_root_ts",
+      "message_ts",
+      "actor_class",
+      "actor_id",
+      "is_thread_reply",
+      "addressed_to_gist",
+      "sent_at"
+    ],
+    "entry_steps": {
+      "slack": 1,
+      "continuation": 6
+    }
+  }
+}
