@@ -373,3 +373,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Gates: typecheck OK; full 1033 passed / 5 skipped; e2e 35 passed / 4 skipped; build OK.
 - P07 remains OPEN pending the operator live checklist in docs/reports/channel-context-validation.md (13 steps).
 - All P06/P07 code merged and offline-verified. Remaining: operator live runs for P06 (T607 report) and P07 (T706 report).
+
+### 2026-08-31 — T608 completed (operator-approved D019)
+
+- Task: T608 edit-to-mention response trigger; worker: pi-coder-26; branch: task/T608-edit-mention-response-trigger.
+- Implementation `86e33df`; handoff `5fb4add`; merge `f2f1c15`.
+- Verification: focused runtime 26 passed; live-ingestion 31 passed; full 1039 passed / 5 skipped; typecheck OK; build OK; scope clean (slack.ts, slack-runtime.test.ts, log only).
+- Result: merged GO. Live Gist restarted to pick up the build.
