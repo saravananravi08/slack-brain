@@ -64,6 +64,7 @@ interface SlackDeliveryContext {
 
 interface CaptureRouteResult {
   readonly responseEligible: boolean;
+  readonly trigger?: 'edit_mention';
 }
 
 interface DispatchableSlackAdapter {
@@ -169,6 +170,25 @@ function stringField(record: Record<string, unknown>, ...fields: string[]): stri
   return null;
 }
 
+function mentionsGist(text: string, botUserId: string): boolean {
+  return text.includes(`<@${botUserId}>`);
+}
+
+function isNewRootHumanMention(
+  event: NormalizedEvent,
+  raw: Record<string, unknown>,
+  botUserId: string,
+): boolean {
+  const previous = asRecord(raw.previous_message);
+  const previousText = previous?.text;
+  return event.mutation?.kind === 'edit'
+    && event.sender_class === 'human'
+    && !event.is_thread_reply
+    && mentionsGist(event.text, botUserId)
+    && typeof previousText === 'string'
+    && !mentionsGist(previousText, botUserId);
+}
+
 function senderId(raw: Record<string, unknown>): string | null {
   if (raw.subtype === 'message_changed') {
     const message = asRecord(raw.message);
@@ -235,16 +255,26 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const ledger = options.idempotencyLedger ?? ledgerFor(options.state);
 
   const capturedRequests = new WeakSet<ChannelRequest>();
+  const authorizedEditRequests = new WeakSet<ChannelRequest>();
   let channel!: GistSlackChannel;
   channel = createSlackChannel({
     ...options,
-    authorize: (request) => capturedRequests.has(request) && options.authorizeCaptured
-      ? options.authorizeCaptured(request)
-      : options.authorize(request),
+    authorize: (request) => {
+      if (authorizedEditRequests.delete(request)) return { allowed: true, reason: null };
+      return capturedRequests.has(request) && options.authorizeCaptured
+        ? options.authorizeCaptured(request)
+        : options.authorize(request);
+    },
     beforeResponse: async (request) => {
       const capture = deliveryContext.getStore()?.capturePromise;
       if (capture) {
-        if (!(await capture).responseEligible) return false;
+        const result = await capture;
+        if (!result.responseEligible) return false;
+        if (result.trigger === 'edit_mention') {
+          const decision = await (options.authorizeCaptured ?? options.authorize)(request);
+          if (!decision.allowed) return false;
+          authorizedEditRequests.add(request);
+        }
         capturedRequests.add(request);
       }
       return options.beforeResponse ? options.beforeResponse(request) : true;
@@ -472,6 +502,14 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
         identity: resolved,
       });
       if (event.mutation?.kind === 'edit') metrics.edit({ outcome: outcome.status });
+      const botUserId = channel.adapter.botUserId;
+      if (
+        outcome.status === 'updated'
+        && botUserId !== undefined
+        && isNewRootHumanMention(event, delivery.rawEvent, botUserId)
+      ) {
+        return { responseEligible: true, trigger: 'edit_mention' };
+      }
       return { responseEligible: false };
     }
 
@@ -789,11 +827,26 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const liveHandlers: LiveIngestionHandlers = {
     onAmbientMessage: async (_thread, message) => ingestMessage(message, false),
     onSubscribedMessage: async (_thread, message) => ingestMessage(message, true),
-    onMessageUpdated: async (_thread, message) => handleMutation(message),
+    onMessageUpdated: async (thread, message) => {
+      if (!p06Enabled) {
+        await handleMutation(message);
+        return;
+      }
+      const capture = deliveryContext.getStore()?.capturePromise;
+      if (!capture) {
+        warnMissingDeliveryContext();
+        return;
+      }
+      if ((await capture).responseEligible) {
+        await channel.handlers.onNewMention(thread, message);
+      }
+    },
     onMessageDeleted: async (event) => handleMutation(event.previousMessage),
   };
 
-  if (!p06Enabled) {
+  if (p06Enabled) {
+    channel.bot.onMessageUpdated(liveHandlers.onMessageUpdated);
+  } else {
     if (!options.ambientPersistence) {
       throw new TypeError('ambientPersistence is required without P06 capture ports.');
     }
