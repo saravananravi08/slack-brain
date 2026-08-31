@@ -1,27 +1,17 @@
 /**
- * F-17 diagnostic — how many copies of one Slack message does the system hold,
- * and does deletion reach all of them?
+ * F-17 diagnostic — both ingestion writers must converge on one Slack message
+ * row. D015 then requires a live channel delete to leave that row and its
+ * embedding unchanged, with no tombstone.
  *
- * The design review claims a subscribed-thread message is stored twice: once
- * by `AmbientPersistenceService` under `id = messageKey`, and once by the
- * agent's own Mastra memory when a turn runs with `memory: { resource, thread }`.
- * `MutationHandler` resolves targets by `messageKey` only, so a delete would
- * reach the first copy and leave the second — text intact and recallable.
+ * Every existing suite stubs `gistAgent.stream`, which removes the agent write
+ * this diagnostic measures. This runs the agent against a hand-rolled fake
+ * model: no provider, network, or API key is involved. Embedding is stubbed the
+ * same way as the other memory suites.
  *
- * Every existing suite stubs `gistAgent.stream`, which removes the very write
- * the finding is about, so none of them can see it. This runs the agent for
- * real against a hand-rolled fake model: `MastraModelConfig` accepts a
- * `LanguageModel` object, so no provider, no network, and no API key are
- * involved. Embedding is stubbed the way every other memory suite stubs it.
- *
- * MEASURED 2026-08-30 @ 9af00e0, before the fix: the agent persisted the user
- * turn under a random UUID while the ambient writer used `messageKey`, so a
- * delete removed one row of two and left the message text in the thread.
- *
- * FIXED by `agentUserTurn` in `src/mastra/index.ts`, which assigns the agent's
- * user turn the same `messageKey` the ingestion writers use, so both converge
- * on one row. These tests now assert the fixed behaviour: one copy, and a
- * delete that reaches it.
+ * MEASURED 2026-08-30 @ 9af00e0, before the F-17 fix: the agent persisted the
+ * user turn under a random UUID while the ambient writer used `messageKey`.
+ * `agentUserTurn` now assigns both paths the same key, so they converge on one
+ * canonical row. D015 deliberately retains that row on channel delete.
  */
 
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -68,6 +58,12 @@ const POLICY: PolicySnapshot = {
   approved_channel_ids: [CHANNEL],
   user_allowlist: [],
   dm_shared_knowledge: false,
+};
+
+const ENROLLMENT = {
+  isEnrolled: (workspaceId: string, channelId: string) =>
+    workspaceId === WORKSPACE && channelId === CHANNEL,
+  captureFloorTs: () => '1735689600.000100',
 };
 
 const directories: string[] = [];
@@ -140,6 +136,7 @@ async function setup() {
   const mutations = new MutationHandler({
     storage: new MastraMutationStorage({ memory, storage }),
     policy: POLICY,
+    enrollment: ENROLLMENT,
   });
   const ambient = new AmbientPersistenceService({
     memory,
@@ -291,7 +288,7 @@ describe('F-17: the agent and the ingestion writers converge on one row', () => 
     expect(copies).toHaveLength(1);
   });
 
-  it('deletes every copy of a subscribed-thread message', async () => {
+  it('ignores channel delete after both writers converge and retains the canonical row', async () => {
     const context = await setup();
     await runAgentTurn(context);
     await context.ambient.persist({
@@ -303,19 +300,20 @@ describe('F-17: the agent and the ingestion writers converge on one row', () => 
       event: deleteEventFor(TURN_TS),
       identity: identityFor(TURN_TS),
     });
-    expect(outcome.status).toBe('deleted');
+    expect(outcome).toMatchObject({ status: 'ignored', derivedInvalidation: [] });
 
     const survivors = (await rowsInThread(context)).filter((row) =>
       textOf(row).includes('rollout window'),
     );
-    // The finding, inverted: nothing carrying the deleted text remains.
-    expect(survivors).toHaveLength(0);
+    expect(survivors).toHaveLength(1);
+    expect(survivors[0]?.id).toBe(toMessageKey({
+      workspace_id: WORKSPACE,
+      channel_id: CHANNEL,
+      message_ts: TURN_TS,
+    }));
   });
 
-  it('deletes the agent copy of an addressed turn that was never ambient', async () => {
-    // The broader half: a mention or DM has no ambient copy, so before the fix
-    // the mutation handler had nothing to resolve and reported a no-op success
-    // against a message the system was in fact holding.
+  it('ignores channel delete for an addressed turn and retains the agent row', async () => {
     const context = await setup();
     await runAgentTurn(context);
 
@@ -323,18 +321,16 @@ describe('F-17: the agent and the ingestion writers converge on one row', () => 
       event: deleteEventFor(TURN_TS),
       identity: identityFor(TURN_TS),
     });
-    expect(outcome.status).toBe('deleted');
+    expect(outcome).toMatchObject({ status: 'ignored', derivedInvalidation: [] });
 
     const survivors = (await rowsInThread(context)).filter((row) =>
       textOf(row).includes('rollout window'),
     );
-    expect(survivors).toHaveLength(0);
+    expect(survivors).toHaveLength(1);
+    expect(textOf(survivors[0]!)).toBe(TURN_TEXT);
   });
 
-  it('leaves no embedding behind for a deleted message', async () => {
-    // INV-9 — the row and its embedding go together. A surviving vector would
-    // keep the deleted text semantically recallable, which is the same leak
-    // F-17 describes wearing a different hat.
+  it('ignores channel delete without changing any embedding index', async () => {
     const context = await setup();
     await runAgentTurn(context);
     await context.ambient.persist({
@@ -350,16 +346,18 @@ describe('F-17: the agent and the ingestion writers converge on one row', () => 
       counts[indexName] = (await vector.describeIndex({ indexName })).count;
     }
 
-    await context.mutations.handle({
+    const outcome = await context.mutations.handle({
       event: deleteEventFor(TURN_TS),
       identity: identityFor(TURN_TS),
     });
+    expect(outcome).toMatchObject({ status: 'ignored', derivedInvalidation: [] });
 
     for (const indexName of await vector.listIndexes()) {
-      const after = (await vector.describeIndex({ indexName })).count;
-      // Every index that held something for this message must hold less now,
-      // and none may have grown.
-      expect(after).toBeLessThanOrEqual(counts[indexName] ?? 0);
+      expect((await vector.describeIndex({ indexName })).count).toBe(counts[indexName]);
     }
+    const survivors = (await rowsInThread(context)).filter((row) =>
+      textOf(row).includes('rollout window'),
+    );
+    expect(survivors).toHaveLength(1);
   });
 });
