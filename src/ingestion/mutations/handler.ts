@@ -3,9 +3,11 @@ import {
   type MessageKey,
 } from '../../mastra/memory/resource-policy.js';
 import { AUTHORIZATION_CONTRACT_VERSION, withAuthorization } from '../../security/index.js';
-import { classifyMutation, retentionPlan } from './policy.js';
+import { classifyMutation, compareMessageTs, retentionPlan } from './policy.js';
 import type {
+  ChannelEnrollmentProbe,
   CheckOriginalInput,
+  DerivedInvalidationSink,
   HandleMutationInput,
   MutationHandlerOptions,
   MutationOutcome,
@@ -14,19 +16,99 @@ import type {
   RetentionResult,
 } from './types.js';
 
+const CLOSED_ENROLLMENT: ChannelEnrollmentProbe = {
+  isEnrolled: () => false,
+  captureFloorTs: () => null,
+};
+
+const NOOP_INVALIDATION_SINK: DerivedInvalidationSink = {
+  emit: () => {},
+};
+
 export class MutationHandler {
   readonly #storage: MutationHandlerOptions['storage'];
   readonly #policy: MutationHandlerOptions['policy'];
+  readonly #enrollment: ChannelEnrollmentProbe;
+  readonly #derivedInvalidationSink: DerivedInvalidationSink;
 
-  constructor({ storage, policy }: MutationHandlerOptions) {
+  constructor({
+    storage,
+    policy,
+    enrollment = CLOSED_ENROLLMENT,
+    derivedInvalidationSink = NOOP_INVALIDATION_SINK,
+  }: MutationHandlerOptions) {
     this.#storage = storage;
     this.#policy = policy;
+    this.#enrollment = enrollment;
+    this.#derivedInvalidationSink = derivedInvalidationSink;
   }
 
-  /** D005: authorization completes before the callback can touch storage. */
+  /** D015/D018 for channels; unchanged v1 authorization for DMs. */
   async handle({ event, identity }: HandleMutationInput): Promise<MutationOutcome> {
     const mutation = classifyMutation(event);
     if (!mutation) return { status: 'malformed' };
+
+    if (event.conversation_type === 'channel') {
+      let key: MessageKey;
+      try {
+        key = messageKey({
+          workspace_id: event.workspace_id,
+          channel_id: event.channel_id,
+          message_ts: mutation.target_ts,
+        });
+        if (
+          identity.contract_version !== '1.0.0' ||
+          identity.conversation_type !== 'channel' ||
+          identity.resource_id !== identity.boundary_id ||
+          identity.boundary_id !== `ch:${event.workspace_id}:${event.channel_id}`
+        ) {
+          return { status: 'malformed' };
+        }
+      } catch (error) {
+        if (error instanceof TypeError) return { status: 'malformed' };
+        throw error;
+      }
+
+      if (event.workspace_id !== this.#policy.approved_workspace_id) {
+        return { status: 'denied', reason: 'unapproved_workspace' };
+      }
+      if (!await this.#enrollment.isEnrolled(event.workspace_id, event.channel_id)) {
+        return { status: 'ignored', message_key: key, derivedInvalidation: [] };
+      }
+
+      // D015: an accepted live channel delete changes no stored or derived state.
+      if (mutation.kind === 'delete') {
+        return { status: 'ignored', message_key: key, derivedInvalidation: [] };
+      }
+
+      const captureFloor = await this.#enrollment.captureFloorTs(
+        event.workspace_id,
+        event.channel_id,
+      );
+      if (captureFloor === null || compareMessageTs(mutation.target_ts, captureFloor) < 0) {
+        return { status: 'ignored', message_key: key, derivedInvalidation: [] };
+      }
+
+      const status = await this.#storage.editMessage({
+        messageKey: key,
+        newText: mutation.new_text!,
+        editedAt: mutation.edited_at,
+        ...(mutation.new_files === undefined ? {} : { newFiles: mutation.new_files }),
+        ...(mutation.new_links === undefined ? {} : { newLinks: mutation.new_links }),
+      });
+      if (status !== 'updated') {
+        return { status, message_key: key, derivedInvalidation: [] };
+      }
+
+      const invalidation = {
+        channelResource: identity.resource_id,
+        messageKey: key,
+        reason: 'message_edited' as const,
+      };
+      const derivedInvalidation = [invalidation] as const;
+      this.#derivedInvalidationSink.emit(derivedInvalidation);
+      return { status, message_key: key, derivedInvalidation };
+    }
 
     const outcome = await withAuthorization(
       {
@@ -50,18 +132,21 @@ export class MutationHandler {
         }
 
         if (mutation.kind === 'edit') {
-          const status = await this.#storage.editMessage(
-            key,
-            mutation.new_text!,
-            mutation.edited_at,
-          );
-          return { status, message_key: key } as const;
+          const status = await this.#storage.editMessage({
+            messageKey: key,
+            newText: mutation.new_text!,
+            editedAt: mutation.edited_at,
+            ...(mutation.new_files === undefined ? {} : { newFiles: mutation.new_files }),
+            ...(mutation.new_links === undefined ? {} : { newLinks: mutation.new_links }),
+          });
+          return { status, message_key: key, derivedInvalidation: [] } as const;
         }
 
         const result = await this.#storage.deleteMessages([key], mutation.edited_at);
         return {
           status: result.deleted > 0 ? 'deleted' : 'unchanged',
           message_key: key,
+          derivedInvalidation: [],
         } as const;
       },
     );

@@ -1,9 +1,9 @@
 # Contract — edit replacement and accepted delete-ignore
 
 - **Contract set:** channel-memory
-- **Contract version:** 1.0.0
-- **Owner:** T601 (frozen); consumers T605, T606
-- **Implements:** D015 (overrides D005 for `ch:` boundaries in P06/P07)
+- **Contract version:** 1.0.1
+- **Owner:** T601 (frozen); D018 clarification authorized to T605; consumers T605, T606
+- **Implements:** D015 and D018 (override D005 for `ch:` boundaries in P06/P07)
 - **Satisfies:** CM-FR-015, CM-FR-016, CM-FR-017, CM-FR-018, CM-FR-019, CM-FR-026 (handoff)
 - **Enforces:** CM-INV-07, CM-INV-10
 
@@ -27,8 +27,8 @@ interface ChannelMutation {
 
   edited_at: string;            // RFC 3339 UTC
   new_text?: string;            // present iff kind === 'edit'
-  new_files?: readonly FileRef[];
-  new_links?: readonly LinkRef[];
+  new_files?: readonly FileRef[]; // omitted = preserve; present = replace wholesale
+  new_links?: readonly LinkRef[]; // omitted = preserve; present = replace wholesale
 }
 ```
 
@@ -36,26 +36,41 @@ The mutation's own event `ts` is **not** identity. Identity is `messageKey(works
 
 Authorization ordering is unchanged from v1 (`authorization.md` §6): enrollment and authorization are evaluated **before** any storage lookup, so a mutation for a channel Gist is not enrolled in cannot be used to probe what Gist has stored. Under this set the enrollment check (`enrollment.md` §2) is the channel gate.
 
+D018 supplies enrollment through an injected read-only interface; the mutations module never imports or owns the registry:
+
+```ts
+interface ChannelEnrollmentProbe {
+  isEnrolled(workspaceId: string, channelId: string): Promise<boolean>;
+  captureFloorTs(workspaceId: string, channelId: string): Promise<string | null>;
+}
+```
+
+The probe is called before storage. `false` enrollment or a missing floor returns `ignored`. For edits, `target_ts` below the returned floor also returns `ignored`; timestamp ordering follows `enrollment.md` §3 and never parses a Slack timestamp as a float. T606 injects the T602 registry adapter.
+
 ## 3. Edit semantics
 
 ```ts
-function applyEdit(m: ChannelMutation): 'updated' | 'inserted' | 'unchanged' | 'ignored';
+function applyEdit(m: ChannelMutation):
+  | 'updated'
+  | 'unchanged'
+  | 'edit_orphan_ignored'
+  | 'ignored';
 ```
 
 | Case | Result | Rule |
 |---|---|---|
-| Target stored, `edited_at` newer than stored | `updated` | Replace text/files/links, set `edited_at`, re-embed (§3.2) |
+| Target stored, `edited_at` newer than stored | `updated` | Replace text and any present files/links, set `edited_at`, re-embed (§3.2) |
 | Target stored, `edited_at` equal or older | `unchanged` | Apply-if-newer (§3.3) — replay and reordering are both no-ops |
-| Target not stored, `target_ts` at or after the capture floor | `inserted` | §3.4 |
+| Target not stored, `target_ts` at or after the capture floor | `edit_orphan_ignored` | D018; insert nothing (§3.4) |
 | Target not stored, `target_ts` before the capture floor | `ignored` | No backfill (CM-FR-006) |
 | Channel not enrolled | `ignored` | Denied before lookup (§2) |
 | Duplicate envelope `event_id` | `unchanged` | CM-INV-05 |
 
-Every row is **success**. A mutation for a message Gist never stored is not an error — it may legitimately predate enrollment.
+Every row is **success**. A mutation for a message Gist never stored is not an error — it may legitimately predate enrollment or have crossed a reconnect gap.
 
 ### 3.1 Preserved fields (CM-FR-016)
 
-An edit replaces `text`, `files`, `links`, and sets `edited_at`. It **must not** change:
+An edit replaces `text` and sets `edited_at`. A present `new_files` or `new_links` array replaces that metadata wholesale, including when the present array is empty. An omitted field preserves the corresponding stored metadata unchanged (D018). It **must not** change:
 
 `message_key` · `boundary_id` · `thread_id` · `thread_root_ts` · `is_thread_reply` · `sender` (all of it, including `sender_class` and `sender_display_name`) · `sent_at` · `message_ts` · `capture_source` · `enrollment_epoch`.
 
@@ -77,24 +92,29 @@ Replaying an edit is `unchanged`. Two edits delivered out of order converge on t
 
 ### 3.4 Edit for an unstored target
 
-When the target is unknown but at or after the capture floor, the edit **inserts** a record built from the mutation payload, with `edited_at` set and `capture_source: 'live_event'`.
+D018 resolves an eligible edit whose target is unknown as `edit_orphan_ignored`: a no-op success that inserts nothing. The mutation payload does not contain enough immutable canonical metadata to construct a complete `ChannelMessageRecord`; writing a partial or guessed record would violate `message-record.md` §3.
 
-The alternative — no-op — loses the message entirely when Slack delivers the edit but not the original (reconnect gaps, CM-FR-014). Inserting is safe because apply-if-newer prevents a late-arriving original from regressing the text: an original delivery is an upsert of the same `message_key`, and `unchanged`/`updated` resolution keeps the newest edit.
+The original delivery may still arrive later and insert normally under its original `message_key`. The ignored orphan edit creates no tombstone and does not suppress that delivery.
 
 ### 3.5 Derived context (CM-FR-026, handoff to P07)
 
-An edit marks the channel's rolling summary and any observation referencing the edited message **stale**:
+A successfully updated edit emits one content-free invalidation:
 
 ```ts
+type DerivedInvalidationReason = 'message_edited';
+
 interface DerivedInvalidation {
-  boundary_id: BoundaryId;
-  message_key: MessageKey;
-  invalidated_at: string;
-  targets: readonly ('summary' | 'observations')[];
+  channelResource: BoundaryId;
+  messageKey: MessageKey;
+  reason: DerivedInvalidationReason;
+}
+
+interface DerivedInvalidationSink {
+  emit(invalidations: readonly DerivedInvalidation[]): void;
 }
 ```
 
-P06 must **emit** this signal; regeneration is P07's (T702/T705). This is the integration rule that keeps CM-FR-026 from falling between phases: without an emitted marker, P07 has no way to know which derived text quotes retracted wording.
+The edit result carries `derivedInvalidation: [invalidation]`, and the mutation module invokes the injected sink synchronously after the exact record/vector update succeeds. `unchanged`, `edit_orphan_ignored`, `ignored`, and delete results carry an empty array and emit nothing. The P06 default sink is a no-op; P06 stores no durable invalidation state. T702/T705 attach consumers through T606 composition (D018).
 
 ## 4. Delete-ignore (CM-FR-019, D015)
 

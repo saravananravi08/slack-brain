@@ -8,11 +8,27 @@ import type {
 } from '../../security/index.js';
 import type { BoundaryId, MessageKey } from '../../mastra/memory/resource-policy.js';
 
+export interface FileRef {
+  readonly file_id: string;
+  readonly name: string;
+  readonly mimetype: string;
+  readonly size_bytes: number;
+}
+
+export interface LinkRef {
+  readonly url: string;
+  readonly domain: string;
+}
+
 export interface MutationDetail {
   readonly kind: 'edit' | 'delete';
   readonly target_ts: string;
   readonly edited_at: string;
   readonly new_text?: string;
+  /** D018: omitted preserves stored metadata; present replaces it wholesale. */
+  readonly new_files?: readonly FileRef[];
+  /** D018: omitted preserves stored metadata; present replaces it wholesale. */
+  readonly new_links?: readonly LinkRef[];
 }
 
 export interface MutationEvent extends AuthorizationEvent {
@@ -27,9 +43,34 @@ export interface OriginalMessageEvent extends AuthorizationEvent {
   readonly message_ts: string;
 }
 
+export interface DerivedInvalidation {
+  readonly channelResource: BoundaryId;
+  readonly messageKey: MessageKey;
+  readonly reason: 'message_edited';
+}
+
+export interface DerivedInvalidationSink {
+  emit(invalidations: readonly DerivedInvalidation[]): void;
+}
+
+export interface ChannelEnrollmentProbe {
+  isEnrolled(workspaceId: string, channelId: string): Promise<boolean> | boolean;
+  captureFloorTs(workspaceId: string, channelId: string): Promise<string | null> | string | null;
+}
+
 export type MutationOutcome =
   | { readonly status: 'denied'; readonly reason: DenyReason }
-  | { readonly status: 'updated' | 'deleted' | 'unchanged'; readonly message_key: MessageKey }
+  | {
+      readonly status:
+        | 'updated'
+        | 'deleted'
+        | 'unchanged'
+        | 'ignored'
+        | 'edit_orphan_ignored';
+      readonly message_key: MessageKey;
+      /** Runtime channel results always populate this; optional for v1 caller compatibility. */
+      readonly derivedInvalidation?: readonly DerivedInvalidation[];
+    }
   | { readonly status: 'malformed' };
 
 export type OriginalSuppressionOutcome =
@@ -68,8 +109,16 @@ export interface RetentionResult extends DeleteResult {
   readonly reconciled: number;
 }
 
+export interface EditMessageInput {
+  readonly messageKey: MessageKey;
+  readonly newText: string;
+  readonly editedAt: string;
+  readonly newFiles?: readonly FileRef[];
+  readonly newLinks?: readonly LinkRef[];
+}
+
 export interface MutationStorage {
-  editMessage(messageKey: MessageKey, newText: string, editedAt: string): Promise<'updated' | 'unchanged'>;
+  editMessage(input: EditMessageInput): Promise<'updated' | 'unchanged' | 'edit_orphan_ignored'>;
   deleteMessages(keys: readonly MessageKey[], deletedAt: string): Promise<DeleteResult>;
   isTombstoned(boundaryId: BoundaryId, messageKey: MessageKey): Promise<boolean>;
   /** Stream one thread's messages at a time so retention never loads the corpus at once. */
@@ -84,6 +133,10 @@ export interface MutationStorage {
 export interface MutationHandlerOptions {
   readonly storage: MutationStorage;
   readonly policy: PolicySnapshot;
+  /** Fail-closed by default until T606 injects the T602 registry adapter. */
+  readonly enrollment?: ChannelEnrollmentProbe;
+  /** Synchronous, content-free P07 handoff; default is a P06 no-op. */
+  readonly derivedInvalidationSink?: DerivedInvalidationSink;
 }
 
 export interface HandleMutationInput {

@@ -11,6 +11,8 @@ import {
   MutationHandler,
   MastraMutationStorage,
   classifyMutation,
+  type ChannelEnrollmentProbe,
+  type DerivedInvalidationSink,
   type MutationEvent,
   type MutationStorage,
   type OriginalMessageEvent,
@@ -44,6 +46,21 @@ const policy: PolicySnapshot = {
   user_allowlist: [],
   dm_shared_knowledge: false,
 };
+
+const enrollment: ChannelEnrollmentProbe = {
+  isEnrolled: (_workspaceId, channelId) => channelId === APPROVED_CHANNEL,
+  captureFloorTs: () => '1735689700.000100',
+};
+
+function createHandler(
+  storage: MutationStorage,
+  options: {
+    readonly enrollment?: ChannelEnrollmentProbe;
+    readonly derivedInvalidationSink?: DerivedInvalidationSink;
+  } = {},
+): MutationHandler {
+  return new MutationHandler({ storage, policy, enrollment, ...options });
+}
 
 const directories: string[] = [];
 const resources: Array<{
@@ -203,16 +220,25 @@ afterEach(async () => {
 });
 
 describe('mutation classification and authorization', () => {
-  it('classifies contract edits/deletes and rejects malformed edits', () => {
+  it('classifies edits/deletes, empty text, and optional file/link replacements', () => {
     expect(classifyMutation(mutationEvent('edit'))?.kind).toBe('edit');
     expect(classifyMutation(mutationEvent('delete'))?.kind).toBe('delete');
     expect(classifyMutation({
       ...mutationEvent('edit'),
-      mutation: { ...mutationEvent('edit').mutation, new_text: '   ' },
+      mutation: {
+        ...mutationEvent('edit').mutation,
+        new_text: '',
+        new_files: [],
+        new_links: [],
+      },
+    })).toMatchObject({ new_text: '', new_files: [], new_links: [] });
+    expect(classifyMutation({
+      ...mutationEvent('edit'),
+      mutation: { ...mutationEvent('edit').mutation, new_files: [{ file_id: 1 }] },
     })).toBeNull();
   });
 
-  it('denies before any storage lookup or write', async () => {
+  it('checks injected enrollment before any storage lookup or write', async () => {
     const storage: MutationStorage = {
       editMessage: vi.fn(),
       deleteMessages: vi.fn(),
@@ -220,32 +246,65 @@ describe('mutation classification and authorization', () => {
       listMessageBatches: async function* () {},
       reconcileTombstones: vi.fn(),
     };
-    const handler = new MutationHandler({ storage, policy });
-    const event = mutationEvent('delete', { channel_id: 'C0UNAPPROV9' });
+    const event = mutationEvent('edit');
+    const handler = createHandler(storage, {
+      enrollment: { isEnrolled: () => false, captureFloorTs: vi.fn() },
+    });
 
     await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
-      status: 'denied',
-      reason: 'unapproved_channel',
+      status: 'ignored',
+      message_key: MESSAGE_KEY,
+      derivedInvalidation: [],
     });
+    expect(storage.editMessage).not.toHaveBeenCalled();
     expect(storage.deleteMessages).not.toHaveBeenCalled();
+  });
+
+  it('ignores an edit below the injected capture floor before storage', async () => {
+    const storage: MutationStorage = {
+      editMessage: vi.fn(),
+      deleteMessages: vi.fn(),
+      isTombstoned: vi.fn(),
+      listMessageBatches: async function* () {},
+      reconcileTombstones: vi.fn(),
+    };
+    const event = mutationEvent('edit');
+    const handler = createHandler(storage, {
+      enrollment: {
+        isEnrolled: () => true,
+        captureFloorTs: () => '1735689900.000100',
+      },
+    });
+
+    await expect(handler.handle({ event, identity: identityFor(event) })).resolves
+      .toMatchObject({ status: 'ignored' });
     expect(storage.editMessage).not.toHaveBeenCalled();
   });
 });
 
-describe('D005 edit/delete propagation', () => {
-  it('re-embeds an edit under one identity and makes replay a no-op', async () => {
+describe('D015/D018 channel mutation policy', () => {
+  it('replaces text/vector under one identity, emits invalidation, and no-ops replays', async () => {
     const context = await setup();
     await seed(context);
-    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const emit = vi.fn();
+    const handler = createHandler(context.mutations, {
+      derivedInvalidationSink: { emit },
+    });
     const event = mutationEvent('edit');
 
     await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
       status: 'updated',
       message_key: MESSAGE_KEY,
+      derivedInvalidation: [{
+        channelResource: BOUNDARY,
+        messageKey: MESSAGE_KEY,
+        reason: 'message_edited',
+      }],
     });
     await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
       status: 'unchanged',
       message_key: MESSAGE_KEY,
+      derivedInvalidation: [],
     });
     const lateRetry = mutationEvent('edit', {
       mutation: {
@@ -258,12 +317,22 @@ describe('D005 edit/delete propagation', () => {
     await expect(handler.handle({
       event: lateRetry,
       identity: identityFor(lateRetry),
-    })).resolves.toMatchObject({ status: 'unchanged' });
+    })).resolves.toMatchObject({ status: 'unchanged', derivedInvalidation: [] });
 
     const store = await context.storage.getStore('memory');
     const saved = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0]!;
+    expect(saved.id).toBe(MESSAGE_KEY);
+    expect(saved.resourceId).toBe(BOUNDARY);
+    expect(saved.threadId).toBe(THREAD);
+    expect(saved.createdAt.toISOString()).toBe('2025-01-01T00:03:20.000Z');
     expect(saved.content.parts).toEqual([{ type: 'text', text: NEW_TEXT }]);
-    expect(saved.content.metadata?.edited_at).toBe('2025-01-01T00:10:00.000Z');
+    expect(saved.content.metadata).toMatchObject({
+      sender_id: USER,
+      sent_at: '2025-01-01T00:03:20.000Z',
+      message_ts: MESSAGE_TS,
+      channel_id: APPROVED_CHANNEL,
+      edited_at: '2025-01-01T00:10:00.000Z',
+    });
     expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
     const vectors = await context.vector.query({
       indexName: 'memory_messages',
@@ -272,30 +341,54 @@ describe('D005 edit/delete propagation', () => {
     });
     expect(vectors).toHaveLength(1);
     expect(vectors[0]?.metadata?.content).toBe(NEW_TEXT);
-    expect(context.embed).toHaveBeenCalledTimes(2);
+    const staleQuery = await context.vector.query({
+      indexName: 'memory_messages',
+      queryVector: vectorFor(OLD_TEXT),
+      topK: 5,
+    });
+    expect(staleQuery[0]?.score).toBeLessThan(vectors[0]?.score ?? 0);
+    expect(context.embed).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledOnce();
   });
 
-  it('hard-deletes message/vector, leaves content-free tombstone, and suppresses late original', async () => {
+  it('ignores live deletes without touching records, vectors, derived state, or tombstones', async () => {
     const context = await setup();
     await seed(context);
-    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const store = await context.storage.getStore('memory');
+    const beforeMessage = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    const beforeVector = await context.vector.query({
+      indexName: 'memory_messages',
+      queryVector: vectorFor(OLD_TEXT),
+      topK: 5,
+    });
+    const beforeResource = await store!.getResourceById({ resourceId: BOUNDARY });
+    const emit = vi.fn();
+    const deleteMessages = vi.spyOn(context.mutations, 'deleteMessages');
+    const handler = createHandler(context.mutations, {
+      derivedInvalidationSink: { emit },
+    });
     const event = mutationEvent('delete');
 
-    await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
-      status: 'deleted',
-      message_key: MESSAGE_KEY,
-    });
-    await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
-      status: 'unchanged',
-      message_key: MESSAGE_KEY,
-    });
+    for (let replay = 0; replay < 2; replay += 1) {
+      await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
+        status: 'ignored',
+        message_key: MESSAGE_KEY,
+        derivedInvalidation: [],
+      });
+    }
 
-    const store = await context.storage.getStore('memory');
-    expect((await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages).toEqual([]);
-    expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(0);
-    const resource = await store!.getResourceById({ resourceId: BOUNDARY });
-    expect(JSON.stringify(resource?.metadata)).toContain(MESSAGE_KEY);
-    expect(JSON.stringify(resource?.metadata)).not.toContain(OLD_TEXT);
+    const afterMessage = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    const afterVector = await context.vector.query({
+      indexName: 'memory_messages',
+      queryVector: vectorFor(OLD_TEXT),
+      topK: 5,
+    });
+    const afterResource = await store!.getResourceById({ resourceId: BOUNDARY });
+    expect(afterMessage).toEqual(beforeMessage);
+    expect(afterVector).toEqual(beforeVector);
+    expect(afterResource).toEqual(beforeResource);
+    expect(deleteMessages).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
 
     const original: OriginalMessageEvent = {
       ...event,
@@ -305,7 +398,7 @@ describe('D005 edit/delete propagation', () => {
     await expect(handler.shouldSuppressOriginal({
       event: original,
       identity: identityFor(original),
-    })).resolves.toEqual({ status: 'allowed', suppressed: true });
+    })).resolves.toEqual({ status: 'allowed', suppressed: false });
   });
 
   it('preserves unrelated resource metadata when adding a tombstone', async () => {
@@ -329,23 +422,17 @@ describe('D005 edit/delete propagation', () => {
     );
   });
 
-  it('restores the message but keeps the tombstone when vector deletion fails', async () => {
-    // Behaviour changed by design review F-02. The tombstone is no longer
-    // rolled back: it is the durable record that a delete was requested, it
-    // keeps the message from being re-ingested meanwhile, and reconciliation
-    // uses it to finish the job. Rolling it back lost the only trace of the
-    // request and left the partial state unrepairable.
+  it('keeps operator deletion recoverable when vector deletion fails', async () => {
     const context = await setup();
     await seed(context);
     vi.spyOn(context.vector, 'deleteVectors').mockRejectedValueOnce(
       new Error('synthetic vector delete failure'),
     );
-    const handler = new MutationHandler({ storage: context.mutations, policy });
-    const event = mutationEvent('delete');
 
-    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow(
-      'synthetic vector delete failure',
-    );
+    await expect(context.mutations.deleteMessages(
+      [MESSAGE_KEY],
+      '2025-01-01T00:12:00.000Z',
+    )).rejects.toThrow('synthetic vector delete failure');
     const store = await context.storage.getStore('memory');
     expect((await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages).toHaveLength(1);
     expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
@@ -355,16 +442,95 @@ describe('D005 edit/delete propagation', () => {
     await expect(context.mutations.isTombstoned(BOUNDARY, MESSAGE_KEY)).resolves.toBe(true);
   });
 
-  it('treats edits and deletes for missing originals as no-op success', async () => {
+  it('returns explicit no-op successes for orphan edits and deletes', async () => {
     const context = await setup();
-    const handler = new MutationHandler({ storage: context.mutations, policy });
-    for (const kind of ['edit', 'delete'] as const) {
-      const event = mutationEvent(kind);
-      await expect(handler.handle({ event, identity: identityFor(event) })).resolves.toEqual({
-        status: 'unchanged',
-        message_key: MESSAGE_KEY,
+    const handler = createHandler(context.mutations);
+    const edit = mutationEvent('edit');
+    await expect(handler.handle({ event: edit, identity: identityFor(edit) })).resolves.toEqual({
+      status: 'edit_orphan_ignored',
+      message_key: MESSAGE_KEY,
+      derivedInvalidation: [],
+    });
+    const deletion = mutationEvent('delete');
+    await expect(handler.handle({
+      event: deletion,
+      identity: identityFor(deletion),
+    })).resolves.toEqual({
+      status: 'ignored',
+      message_key: MESSAGE_KEY,
+      derivedInvalidation: [],
+    });
+  });
+
+  it.each(['human', 'gist', 'kilo', 'bot', 'app'] as const)(
+    'preserves canonical %s sender metadata during edit',
+    async (senderClass) => {
+      const context = await setup();
+      const message = storedMessage({
+        content: {
+          ...storedMessage().content,
+          metadata: {
+            ...storedMessage().content.metadata,
+            sender: {
+              sender_class: senderClass,
+              sender_id: senderClass === 'human' ? USER : `B0${senderClass.toUpperCase()}01`,
+              sender_display_name: `synthetic-${senderClass}`,
+            },
+          },
+        },
       });
-    }
+      await seed(context, message);
+      const event = mutationEvent('edit', {
+        sender_type: senderClass === 'human' ? 'human' : senderClass === 'app' ? 'app' : 'bot',
+      });
+      await expect(createHandler(context.mutations).handle({
+        event,
+        identity: identityFor(event),
+      })).resolves.toMatchObject({ status: 'updated' });
+
+      const store = await context.storage.getStore('memory');
+      const saved = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+      expect(saved?.content.metadata?.sender).toEqual(message.content.metadata?.sender);
+    },
+  );
+
+  it('preserves omitted file/link metadata and replaces present arrays wholesale', async () => {
+    const context = await setup();
+    await seed(context, storedMessage({
+      content: {
+        ...storedMessage().content,
+        metadata: {
+          ...storedMessage().content.metadata,
+          files: [{ file_id: 'F0SYNTH01', name: 'synthetic.txt', mimetype: 'text/plain', size_bytes: 4 }],
+          links: [{ url: 'https://example.invalid/old', domain: 'example.invalid' }],
+        },
+      },
+    }));
+    const handler = createHandler(context.mutations);
+    const first = mutationEvent('edit');
+    await handler.handle({ event: first, identity: identityFor(first) });
+
+    const store = await context.storage.getStore('memory');
+    const preserved = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    expect(preserved?.content.metadata?.files).toHaveLength(1);
+    expect(preserved?.content.metadata?.links).toHaveLength(1);
+
+    const replacement = mutationEvent('edit', {
+      mutation: {
+        kind: 'edit',
+        target_ts: MESSAGE_TS,
+        edited_at: '2025-01-01T00:11:00.000Z',
+        new_text: 'Synthetic second edit.',
+        new_files: [],
+        new_links: [{ url: 'https://example.invalid/new', domain: 'example.invalid' }],
+      },
+    });
+    await handler.handle({ event: replacement, identity: identityFor(replacement) });
+    const replaced = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    expect(replaced?.content.metadata?.files).toEqual([]);
+    expect(replaced?.content.metadata?.links).toEqual([
+      { url: 'https://example.invalid/new', domain: 'example.invalid' },
+    ]);
   });
 });
 
@@ -466,12 +632,10 @@ describe('F-02: interrupted mutations leave no recallable content', () => {
     vi.spyOn(store!, 'deleteMessages').mockRejectedValueOnce(
       new Error('synthetic row delete failure'),
     );
-    const handler = new MutationHandler({ storage: context.mutations, policy });
-    const event = mutationEvent('delete');
-
-    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow(
-      'synthetic row delete failure',
-    );
+    await expect(context.mutations.deleteMessages(
+      [MESSAGE_KEY],
+      '2025-01-01T00:12:00.000Z',
+    )).rejects.toThrow('synthetic row delete failure');
 
     // The embedding is gone first, so the deleted text cannot be reached by
     // semantic recall even though the row survived the interruption.
@@ -486,9 +650,10 @@ describe('F-02: interrupted mutations leave no recallable content', () => {
     vi.spyOn(store!, 'deleteMessages').mockRejectedValueOnce(
       new Error('synthetic row delete failure'),
     );
-    const handler = new MutationHandler({ storage: context.mutations, policy });
-    const event = mutationEvent('delete');
-    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow();
+    await expect(context.mutations.deleteMessages(
+      [MESSAGE_KEY],
+      '2025-01-01T00:12:00.000Z',
+    )).rejects.toThrow();
 
     expect(await context.mutations.reconcileTombstones()).toBe(1);
 
@@ -498,42 +663,49 @@ describe('F-02: interrupted mutations leave no recallable content', () => {
     expect(await context.mutations.reconcileTombstones()).toBe(0);
   });
 
-  it('leaves the row and the embedding agreeing after a failed edit', async () => {
+  it('keeps updated exact text and a recoverable marker when final settle fails', async () => {
     const context = await setup();
     await seed(context);
     const store = await context.storage.getStore('memory');
     const saveMessages = vi.spyOn(store!, 'saveMessages');
-    // Fail the final, pending-clearing write: the row has been marked, the
-    // vector has been replaced, and the mutation is interrupted at the end.
     saveMessages.mockImplementationOnce(saveMessages.getMockImplementation()!);
     saveMessages.mockRejectedValueOnce(new Error('synthetic settle failure'));
 
-    const handler = new MutationHandler({ storage: context.mutations, policy });
+    const handler = createHandler(context.mutations);
     const event = mutationEvent('edit');
-
     await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow();
     saveMessages.mockRestore();
 
-    // Compensation ran, so this is a clean revert to the pre-edit state rather
-    // than a half-applied edit. What slack-event.md §4 forbids is the pre-edit
-    // embedding surviving *alongside* post-edit text; the invariant to hold
-    // here is that the row and the vector describe the same message. The crash
-    // case, where compensation never runs, is covered by the pending-marker
-    // test below.
-    const store2 = await context.storage.getStore('memory');
-    const row = (await store2!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
-    const rowText = row?.content.parts
-      .flatMap((part) => (part.type === 'text' ? [part.text] : []))
-      .join('\n');
-
+    const row = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    expect(row?.content.parts).toContainEqual({ type: 'text', text: NEW_TEXT });
+    expect(row?.content.metadata?.gist_mutation_pending).toBe(true);
     const results = await context.vector.query({
       indexName: 'memory_messages',
-      queryVector: vectorFor(rowText ?? ''),
+      queryVector: vectorFor(NEW_TEXT),
       topK: 5,
     });
-    const stored = results.find((match) => match.metadata?.message_id === MESSAGE_KEY);
-    expect(stored?.metadata?.content).toBe(rowText);
-    expect(row?.content.metadata?.gist_mutation_pending).toBeUndefined();
+    expect(results[0]?.metadata?.content).toBe(NEW_TEXT);
+    expect(await context.mutations.reconcileTombstones()).toBe(1);
+  });
+
+  it('removes the stale vector and queues retry when re-embedding fails', async () => {
+    const context = await setup();
+    await seed(context);
+    context.embed.mockRejectedValueOnce(new Error('synthetic embedding failure'));
+    const handler = createHandler(context.mutations);
+    const event = mutationEvent('edit');
+
+    await expect(handler.handle({ event, identity: identityFor(event) })).rejects.toThrow(
+      'synthetic embedding failure',
+    );
+    const store = await context.storage.getStore('memory');
+    const row = (await store!.listMessagesById({ messageIds: [MESSAGE_KEY] })).messages[0];
+    expect(row?.content.parts).toContainEqual({ type: 'text', text: NEW_TEXT });
+    expect(row?.content.metadata?.gist_mutation_pending).toBe(true);
+    expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(0);
+
+    expect(await context.mutations.reconcileTombstones()).toBe(1);
+    expect((await context.vector.describeIndex({ indexName: 'memory_messages' })).count).toBe(1);
   });
 
   it('repairs a row left marked mid-edit', async () => {

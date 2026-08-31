@@ -8,7 +8,7 @@ import {
   type GistMemory,
 } from '../../mastra/memory/gist-memory.js';
 import type { BoundaryId, MessageKey } from '../../mastra/memory/resource-policy.js';
-import type { DeleteResult, MutationStorage } from './types.js';
+import type { DeleteResult, EditMessageInput, MutationStorage } from './types.js';
 
 const MESSAGE_INDEX = 'memory_messages';
 const TOMBSTONES_METADATA_KEY = 'gist_message_tombstones';
@@ -49,7 +49,7 @@ function metadataOf(message: MastraDBMessage): Record<string, unknown> {
 }
 
 function newerOrEqual(existing: unknown, candidate: string): boolean {
-  return typeof existing === 'string' && Date.parse(existing) >= Date.parse(candidate);
+  return typeof existing === 'string' && existing >= candidate;
 }
 
 export class MastraMutationStorage implements MutationStorage {
@@ -62,47 +62,46 @@ export class MastraMutationStorage implements MutationStorage {
     this.#storage = storage;
   }
 
-  async editMessage(
-    messageKey: MessageKey,
-    newText: string,
-    editedAt: string,
-  ): Promise<'updated' | 'unchanged'> {
+  async editMessage({
+    messageKey,
+    newText,
+    editedAt,
+    newFiles,
+    newLinks,
+  }: EditMessageInput): Promise<'updated' | 'unchanged' | 'edit_orphan_ignored'> {
     return this.#exclusive(async () => {
       const store = await this.#memoryStore();
-      const existing = await this.#message(store, messageKey);
-      if (!existing) return 'unchanged';
-      const metadata = metadataOf(existing);
+      let existing = await this.#message(store, messageKey);
+      if (!existing) return 'edit_orphan_ignored';
+
+      let metadata = metadataOf(existing);
+      if (metadata[MUTATION_PENDING_METADATA_KEY] === true) {
+        existing = await this.#repairPendingEdit(store, existing);
+        metadata = metadataOf(existing);
+        if (newerOrEqual(metadata.edited_at, editedAt)) return 'unchanged';
+      }
       if (newerOrEqual(metadata.edited_at, editedAt)) return 'unchanged';
 
-      const oldText = textOf(existing);
-      const [newVector, oldVector] = await Promise.all([
-        this.#embed(newText),
-        this.#embed(oldText),
-      ]);
-
-      // Written before the embedding is replaced, so a crash in between leaves
-      // a row that announces its own inconsistency. `reconcileTombstones`
-      // re-embeds it; without the marker the stale pre-edit embedding would
-      // survive undetected, which slack-event.md §4 forbids outright.
-      const pending = this.#withMetadata(existing, newText, {
+      const editedMetadata = {
         ...metadata,
         edited_at: editedAt,
+        ...(newFiles === undefined ? {} : { files: [...newFiles] }),
+        ...(newLinks === undefined ? {} : { links: [...newLinks] }),
+      };
+      const pending = this.#withMetadata(existing, newText, {
+        ...editedMetadata,
         [MUTATION_PENDING_METADATA_KEY]: true,
       });
-      const updated = this.#withMetadata(existing, newText, {
-        ...metadata,
-        edited_at: editedAt,
-      });
+      const updated = this.#withMetadata(existing, newText, editedMetadata);
 
+      // Exact text commits first with an explicit stale-vector marker. The old
+      // vector is then removed before model work, so embedder failure degrades
+      // to exact history instead of silently serving pre-edit wording.
       await store.saveMessages({ messages: [pending] });
-      try {
-        await this.#replaceVector(updated, newText, newVector, editedAt);
-        await store.saveMessages({ messages: [updated] });
-      } catch (error) {
-        await store.saveMessages({ messages: [existing] });
-        await this.#replaceVector(existing, oldText, oldVector, editedAt);
-        throw error;
-      }
+      await this.#deleteVector(messageKey);
+      const newVector = await this.#embed(newText);
+      await this.#replaceVector(updated, newText, newVector, editedAt);
+      await store.saveMessages({ messages: [updated] });
       return 'updated';
     });
   }
@@ -213,15 +212,7 @@ export class MastraMutationStorage implements MutationStorage {
           const metadata = metadataOf(message);
           if (metadata[MUTATION_PENDING_METADATA_KEY] !== true) continue;
 
-          const text = textOf(message);
-          const editedAt = typeof metadata.edited_at === 'string'
-            ? metadata.edited_at
-            : message.createdAt.toISOString();
-          const { [MUTATION_PENDING_METADATA_KEY]: _pending, ...settled } = metadata;
-          const repairedMessage = this.#withMetadata(message, text, settled);
-
-          await this.#replaceVector(repairedMessage, text, await this.#embed(text), editedAt);
-          await store.saveMessages({ messages: [repairedMessage] });
+          await this.#repairPendingEdit(store, message);
           repaired += 1;
         }
       }
@@ -230,16 +221,38 @@ export class MastraMutationStorage implements MutationStorage {
     });
   }
 
+  async #repairPendingEdit(
+    store: MemoryStorage,
+    message: MastraDBMessage,
+  ): Promise<MastraDBMessage> {
+    const metadata = metadataOf(message);
+    const text = textOf(message);
+    const editedAt = typeof metadata.edited_at === 'string'
+      ? metadata.edited_at
+      : message.createdAt.toISOString();
+    const { [MUTATION_PENDING_METADATA_KEY]: _pending, ...settled } = metadata;
+    const repaired = this.#withMetadata(message, text, settled);
+
+    await this.#deleteVector(message.id as MessageKey);
+    await this.#replaceVector(repaired, text, await this.#embed(text), editedAt);
+    await store.saveMessages({ messages: [repaired] });
+    return repaired;
+  }
+
   #withMetadata(
     message: MastraDBMessage,
     text: string,
     metadata: Record<string, unknown>,
   ): MastraDBMessage {
+    const nonTextParts = typeof message.content.content === 'string'
+      ? []
+      : message.content.parts.filter((part) => part.type !== 'text');
     return {
       ...message,
       content: {
+        ...message.content,
         format: 2,
-        parts: [{ type: 'text', text }],
+        parts: [{ type: 'text', text }, ...nonTextParts],
         metadata,
       },
     };
