@@ -25,7 +25,12 @@ export const SYNTHETIC = {
   otherUser: 'U0MEMBER02',
   botUserId: 'U0GISTBOT1',
   botId: 'B0GISTBOT1',
+  kiloUserId: 'U0KILOBOT1',
+  kiloBotId: 'B0KILOBOT1',
+  kiloAppId: 'A0KILOAPP1',
   otherBotId: 'B0OTHERBOT',
+  otherBotUserId: 'U0OTHERBOT1',
+  appId: 'A0SYNTHAPP',
   rootTs: '1735689650.000100',
   replyTs: '1735689700.000100',
   ambientTs: '1735689800.000100',
@@ -39,6 +44,7 @@ export const FULL_MEMBER: SenderAttributes = {
   is_external: false,
   is_guest: false,
   is_deactivated: false,
+  display_name: 'synthetic-member',
 };
 
 /**
@@ -50,6 +56,8 @@ export const FULL_MEMBER: SenderAttributes = {
 export interface ContextOverrides {
   readonly bot_user_id?: string | undefined;
   readonly bot_id?: string | undefined;
+  readonly kilo_bot_id?: string | undefined;
+  readonly kilo_app_id?: string | undefined;
   readonly sender_attributes?: SenderAttributes | undefined;
   readonly subscribed_thread?: boolean | undefined;
   readonly delivery_event_id?: string | undefined;
@@ -59,6 +67,8 @@ export function makeContext(overrides: ContextOverrides = {}): NormalizationCont
   const merged: Record<string, unknown> = {
     bot_user_id: SYNTHETIC.botUserId,
     bot_id: SYNTHETIC.botId,
+    kilo_bot_id: SYNTHETIC.kiloBotId,
+    kilo_app_id: SYNTHETIC.kiloAppId,
     sender_attributes: FULL_MEMBER,
     ...overrides,
   };
@@ -103,6 +113,52 @@ export function channelMessage(
     team: SYNTHETIC.workspace,
     ...overrides,
   };
+}
+
+export function gistMessage(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return channelMessage({
+    user: SYNTHETIC.botUserId,
+    bot_id: SYNTHETIC.botId,
+    app_id: 'A0GISTAPP1',
+    subtype: 'bot_message',
+    ...overrides,
+  });
+}
+
+export function kiloMessage(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return channelMessage({
+    user: SYNTHETIC.kiloUserId,
+    bot_id: SYNTHETIC.kiloBotId,
+    app_id: SYNTHETIC.kiloAppId,
+    subtype: 'bot_message',
+    ...overrides,
+  });
+}
+
+export function botMessage(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return channelMessage({
+    user: SYNTHETIC.otherBotUserId,
+    bot_id: SYNTHETIC.otherBotId,
+    subtype: 'bot_message',
+    ...overrides,
+  });
+}
+
+export function appMessage(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return channelMessage({
+    user: undefined,
+    app_id: SYNTHETIC.appId,
+    username: 'synthetic-app',
+    ...overrides,
+  });
 }
 
 export function directMessage(

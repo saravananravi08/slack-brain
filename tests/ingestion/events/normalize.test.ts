@@ -16,6 +16,7 @@ import {
   isSkip,
   normalize,
   normalizeThreadTs,
+  responsePrecheckDenyReason,
   sentAtFrom,
 } from '../../../src/ingestion/events/index.js';
 import type {
@@ -25,11 +26,15 @@ import type {
 import {
   FULL_MEMBER,
   SYNTHETIC,
+  appMessage,
+  botMessage,
   channelMessage,
   deleteEvent,
   directMessage,
   editEvent,
   envelope,
+  gistMessage,
+  kiloMessage,
   makeContext,
   mentionMessage,
 } from './helpers.js';
@@ -50,17 +55,34 @@ interface Fixture {
   skips: Array<Record<string, unknown>>;
 }
 
-const fixture = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL(
-        '../../../docs/architecture/contracts/fixtures/slack-events.v1.json',
-        import.meta.url,
-      ),
-    ),
-    'utf8',
-  ),
-) as Fixture;
+interface SenderContractFixture {
+  contract_version: string;
+  config: {
+    gist_bot_user_id: string;
+    kilo_bot_id: string;
+    kilo_app_id: string;
+  };
+  cases: Array<{
+    name: string;
+    raw: Record<string, unknown>;
+    expect_sender: Record<string, unknown>;
+    expect_captured: boolean;
+    expect_capture_deny_reason?: string;
+  }>;
+}
+
+function loadJson<T>(relativePath: string): T {
+  return JSON.parse(
+    readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8'),
+  ) as T;
+}
+
+const fixture = loadJson<Fixture>(
+  '../../../docs/architecture/contracts/fixtures/slack-events.v1.json',
+);
+const senderFixture = loadJson<SenderContractFixture>(
+  '../../contracts/channel-memory/fixtures/senders.v1.json',
+);
 
 function expectEvent(result: NormalizationResult): NormalizedEvent {
   if (isSkip(result)) {
@@ -173,6 +195,203 @@ describe('classification (slack-event.md §1)', () => {
   });
 });
 
+describe('all channel sender classes (message-record.md §1–2)', () => {
+  for (const testCase of senderFixture.cases) {
+    it(`normalizes frozen sender fixture: ${testCase.name}`, () => {
+      const expected = testCase.expect_sender;
+      const senderClass = String(expected.sender_class);
+      const senderType =
+        senderClass === 'human' || senderClass === 'app' || senderClass === 'system'
+          ? senderClass
+          : 'bot';
+      const result = normalize(
+        envelope(channelMessage(testCase.raw)),
+        makeContext({
+          bot_user_id: senderFixture.config.gist_bot_user_id,
+          kilo_bot_id: senderFixture.config.kilo_bot_id,
+          kilo_app_id: senderFixture.config.kilo_app_id,
+          sender_attributes: {
+            sender_type: senderType,
+            is_external: Boolean(expected.is_external),
+            is_guest: Boolean(expected.is_guest),
+            is_deactivated: false,
+            display_name: String(expected.sender_display_name),
+          },
+        }),
+      );
+
+      if (!testCase.expect_captured) {
+        expect(result).toEqual({ skip: testCase.expect_capture_deny_reason });
+        return;
+      }
+
+      const event = expectEvent(result);
+      expect(event.sender).toEqual(expected);
+      expect(event.sender_class).toBe(expected.sender_class);
+      expect(event.sender.sender_id).toBe(event.sender_id);
+      expect(event.sender).not.toHaveProperty('respond_allowed');
+    });
+  }
+
+  it('uses user, then bot_id, then app_id for sender identity', () => {
+    const bot = expectEvent(
+      normalize(
+        envelope(botMessage({ user: undefined, username: 'synthetic-hook' })),
+        makeContext({ sender_attributes: undefined }),
+      ),
+    );
+    const app = expectEvent(
+      normalize(envelope(appMessage()), makeContext({ sender_attributes: undefined })),
+    );
+    expect(bot.sender_id).toBe(SYNTHETIC.otherBotId);
+    expect(bot.sender.username).toBe('synthetic-hook');
+    expect(app.sender_id).toBe(SYNTHETIC.appId);
+  });
+
+  it('applies Gist and Kilo ordering before generic bot/app rules', () => {
+    const gist = expectEvent(normalize(envelope(gistMessage()), makeContext()));
+    const kilo = expectEvent(
+      normalize(
+        envelope(kiloMessage({ user: undefined, bot_id: undefined })),
+        makeContext(),
+      ),
+    );
+    expect(gist.sender_class).toBe('gist');
+    expect(kilo.sender_class).toBe('kilo');
+  });
+
+  it('rejects a sender with no user, bot, or app identity', () => {
+    const result = normalize(
+      envelope(channelMessage({ user: undefined, username: 'not-an-identity' })),
+      makeContext(),
+    );
+    expect(result).toEqual({ skip: 'malformed_event' });
+  });
+});
+
+describe('capture and response stay separate (capture-policy.md)', () => {
+  it('preserves syntactic addressing for a bot but denies response precheck', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(botMessage({ text: `<@${SYNTHETIC.botUserId}> deploy complete` })),
+        makeContext(),
+      ),
+    );
+    expect(event.addressed_to_gist).toBe(true);
+    expect(event.class).toBe('addressed');
+    expect(responsePrecheckDenyReason(event)).toBe('non_human_sender');
+  });
+
+  it('denies self-authored traffic before addressing', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(gistMessage({ text: `<@${SYNTHETIC.botUserId}> synthetic self mention` })),
+        makeContext(),
+      ),
+    );
+    expect(event.addressed_to_gist).toBe(true);
+    expect(responsePrecheckDenyReason(event)).toBe('self_authored');
+  });
+
+  it('returns no early denial only for addressed human traffic', () => {
+    const addressed = expectEvent(normalize(envelope(mentionMessage()), makeContext()));
+    const ambient = expectEvent(normalize(envelope(channelMessage()), makeContext()));
+    expect(responsePrecheckDenyReason(addressed)).toBeNull();
+    expect(responsePrecheckDenyReason(ambient)).toBe('not_addressed');
+  });
+
+  it('retains v1 non-human skips for DMs', () => {
+    const bot = normalize(
+      envelope(
+        directMessage({
+          ...botMessage(),
+          channel: SYNTHETIC.dmConversation,
+          channel_type: 'im',
+        }),
+      ),
+      makeContext(),
+    );
+    const gist = normalize(
+      envelope(
+        directMessage({
+          ...gistMessage(),
+          channel: SYNTHETIC.dmConversation,
+          channel_type: 'im',
+        }),
+      ),
+      makeContext(),
+    );
+    expect(bot).toEqual({ skip: 'bot_message' });
+    expect(gist).toEqual({ skip: 'own_message' });
+  });
+});
+
+describe('file and link metadata (CM-FR-009)', () => {
+  it('normalizes attachment-only messages and freezes metadata', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(
+          appMessage({
+            text: '',
+            files: [
+              { id: 'F0SYNTH001', name: 'build.txt', mimetype: 'text/plain', size: 2048 },
+            ],
+            links: [
+              { url: 'https://build.example.invalid/412', domain: 'build.example.invalid' },
+            ],
+          }),
+        ),
+        makeContext(),
+      ),
+    );
+    expect(event.text).toBe('');
+    expect(event.files).toEqual([
+      { file_id: 'F0SYNTH001', name: 'build.txt', mimetype: 'text/plain', size_bytes: 2048 },
+    ]);
+    expect(event.links).toEqual([
+      { url: 'https://build.example.invalid/412', domain: 'build.example.invalid' },
+    ]);
+    expect(Object.isFrozen(event.files)).toBe(true);
+    expect(Object.isFrozen(event.files[0])).toBe(true);
+  });
+
+  it('extracts link metadata from Slack attachments without fetching content', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(
+          channelMessage({
+            attachments: [{ original_url: 'https://status.example.invalid/build/412' }],
+          }),
+        ),
+        makeContext(),
+      ),
+    );
+    expect(event.links).toEqual([
+      { url: 'https://status.example.invalid/build/412', domain: 'status.example.invalid' },
+    ]);
+  });
+
+  it('rejects malformed file or link metadata', () => {
+    const malformedFile = normalize(
+      envelope(channelMessage({ files: [{ id: 'F0SYNTH001', name: 'missing-fields' }] })),
+      makeContext(),
+    );
+    const malformedLink = normalize(
+      envelope(channelMessage({ links: [{ url: 'not-a-url', domain: 'example.invalid' }] })),
+      makeContext(),
+    );
+    expect(malformedFile).toEqual({ skip: 'malformed_event' });
+    expect(malformedLink).toEqual({ skip: 'malformed_event' });
+  });
+
+  it('captures wholly empty channel messages to preserve sequence', () => {
+    const event = expectEvent(normalize(envelope(channelMessage({ text: '' })), makeContext()));
+    expect(event.text).toBe('');
+    expect(event.files).toEqual([]);
+    expect(event.links).toEqual([]);
+  });
+});
+
 describe('identity fields (slack-event.md §2)', () => {
   it('derives sent_at from message_ts without a float round-trip', () => {
     expect(sentAtFrom('1735689600.000100')).toBe('2025-01-01T00:00:00.000Z');
@@ -215,6 +434,10 @@ describe('identity fields (slack-event.md §2)', () => {
 
     expect(absent.thread_ts).toBeNull();
     expect(selfReferential.thread_ts).toBeNull();
+    expect(absent.thread_root_ts).toBe(expect_same_thread_root_ts);
+    expect(selfReferential.thread_root_ts).toBe(expect_same_thread_root_ts);
+    expect(absent.is_thread_reply).toBe(false);
+    expect(selfReferential.is_thread_reply).toBe(false);
     expect(absent.message_ts).toBe(selfReferential.message_ts);
   });
 
@@ -226,6 +449,8 @@ describe('identity fields (slack-event.md §2)', () => {
       ),
     );
     expect(event.thread_ts).toBe(SYNTHETIC.rootTs);
+    expect(event.thread_root_ts).toBe(SYNTHETIC.rootTs);
+    expect(event.is_thread_reply).toBe(true);
   });
 
   it('keeps the timestamp precision pair distinct', () => {
@@ -282,6 +507,35 @@ describe('mutations (slack-event.md §4, D005)', () => {
     expect(event.mutation?.edited_at).toBe(sentAtFrom(SYNTHETIC.mutationTs));
   });
 
+  it('normalizes replacement file/link metadata on edits', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(
+          editEvent({
+            message: {
+              type: 'message',
+              user: SYNTHETIC.user,
+              text: 'replacement metadata',
+              ts: SYNTHETIC.ambientTs,
+              files: [
+                { id: 'F0SYNTH002', name: 'revised.txt', mimetype: 'text/plain', size: 512 },
+              ],
+              links: [
+                { url: 'https://edit.example.invalid/revised', domain: 'edit.example.invalid' },
+              ],
+            },
+          }),
+        ),
+        makeContext(),
+      ),
+    );
+
+    expect(event.mutation?.new_files).toEqual(event.files);
+    expect(event.mutation?.new_links).toEqual(event.links);
+    expect(event.files[0]?.file_id).toBe('F0SYNTH002');
+    expect(event.links[0]?.domain).toBe('edit.example.invalid');
+  });
+
   it('carries no text on a delete, and no new_text', () => {
     // slack-event.md §4 — tombstones hold no message text. Ever.
     const event = expectEvent(normalize(envelope(deleteEvent()), makeContext()));
@@ -318,62 +572,34 @@ describe('mutations (slack-event.md §4, D005)', () => {
     expect(result).toEqual({ skip: 'malformed_event' });
   });
 
-  it('skips an edit from Gist itself', () => {
-    // A streamed reply renders through post-and-edit; re-ingesting those would
-    // feed Gist its own output.
-    const result = normalize(
-      envelope(
-        editEvent({
-          message: {
-            type: 'message',
-            user: SYNTHETIC.botUserId,
-            text: 'edited reply',
-            ts: SYNTHETIC.ambientTs,
-          },
-        }),
+  it('normalizes an edit from Gist without making it response-eligible', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(
+          editEvent({
+            message: {
+              type: 'message',
+              user: SYNTHETIC.botUserId,
+              text: 'edited reply',
+              ts: SYNTHETIC.ambientTs,
+            },
+          }),
+        ),
+        makeContext(),
       ),
-      makeContext(),
     );
-    expect(result).toEqual({ skip: 'own_message' });
+    expect(event.sender_class).toBe('gist');
+    expect(event.mutation?.kind).toBe('edit');
+    expect(responsePrecheckDenyReason(event)).toBe('self_authored');
   });
 });
 
-describe('skips the normalizer owns (slack-event.md §5)', () => {
+describe('channel-memory normalization skips', () => {
   const cases: ReadonlyArray<{
     label: string;
     raw: Record<string, unknown>;
     expected: string;
   }> = [
-    {
-      label: 'bot message by bot_id',
-      raw: channelMessage({ user: undefined, bot_id: SYNTHETIC.otherBotId }),
-      expected: 'bot_message',
-    },
-    {
-      label: 'bot message by subtype',
-      raw: channelMessage({ subtype: 'bot_message' }),
-      expected: 'bot_message',
-    },
-    {
-      label: 'app message by subtype',
-      raw: channelMessage({ subtype: 'app_message' }),
-      expected: 'app_message',
-    },
-    {
-      label: 'app message by app_id',
-      raw: channelMessage({ user: undefined, app_id: 'A0SYNTHAPP' }),
-      expected: 'app_message',
-    },
-    {
-      label: 'own message by user id',
-      raw: channelMessage({ user: SYNTHETIC.botUserId }),
-      expected: 'own_message',
-    },
-    {
-      label: 'own message by bot id',
-      raw: channelMessage({ user: undefined, bot_id: SYNTHETIC.botId }),
-      expected: 'own_message',
-    },
     {
       label: 'slackbot system user',
       raw: channelMessage({ user: 'USLACKBOT' }),
@@ -388,16 +614,6 @@ describe('skips the normalizer owns (slack-event.md §5)', () => {
       label: 'tombstone subtype',
       raw: channelMessage({ subtype: 'tombstone' }),
       expected: 'system_subtype',
-    },
-    {
-      label: 'empty text',
-      raw: channelMessage({ text: '' }),
-      expected: 'empty_text',
-    },
-    {
-      label: 'whitespace-only text',
-      raw: channelMessage({ text: '   \n  ' }),
-      expected: 'empty_text',
     },
     {
       label: 'missing channel',
@@ -467,9 +683,12 @@ describe('skips the normalizer owns (slack-event.md §5)', () => {
     }
   });
 
-  it('covers every skip reason the fixture attributes to the normalizer', () => {
+  it('preserves non-superseded v1 skip reasons', () => {
+    const superseded = new Set(['bot_message', 'app_message', 'own_message', 'empty_text']);
     const normalizerOwned = fixture.skips.filter(
-      (entry) => entry.produced_by !== 'authorization',
+      (entry) =>
+        entry.produced_by !== 'authorization' &&
+        !superseded.has(String(entry.expect_skip)),
     );
     const covered = new Set(cases.map((testCase) => testCase.expected));
     covered.add('duplicate_delivery'); // asserted in dedupe.test.ts
@@ -512,12 +731,15 @@ describe('sender attributes are supplied, never invented', () => {
     expect(event.sender_is_deactivated).toBe(true);
   });
 
-  it('skips when the resolver reports a non-human sender', () => {
-    const result = normalize(
-      envelope(channelMessage()),
-      makeContext({ sender_attributes: { ...FULL_MEMBER, sender_type: 'bot' } }),
+  it('uses a resolved non-human type without suppressing channel capture', () => {
+    const event = expectEvent(
+      normalize(
+        envelope(channelMessage()),
+        makeContext({ sender_attributes: { ...FULL_MEMBER, sender_type: 'bot' } }),
+      ),
     );
-    expect(result).toEqual({ skip: 'bot_message' });
+    expect(event.sender_class).toBe('bot');
+    expect(responsePrecheckDenyReason(event)).toBe('non_human_sender');
   });
 });
 
