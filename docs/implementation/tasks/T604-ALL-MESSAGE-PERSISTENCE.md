@@ -1,6 +1,6 @@
 # T604 — Persist all live channel messages
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** pi coding agent
 - **Branch:** `task/T604-persist-all-live-channel-messages`
@@ -57,6 +57,6 @@ git diff --check
 
 - Implementation commit: `bdf4beb`
 - Handoff commit: this handoff commit
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `a52871d`
+- Integration metadata commit: docs(P06) complete T604 metadata commit
+- Completed at: 2026-08-31

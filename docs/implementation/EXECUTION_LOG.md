@@ -293,3 +293,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `e0832fa`; handoff `a828980`; merge `7dfd075`.
 - Verification: scope audit clean; focused events+contracts 450 passed; post-merge regression 961 passed / 5 skipped; typecheck OK.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T604 completed (P06 Wave 2)
+
+- Task: T604 persist all live channel messages; worker: pi-coder-19; branch: task/T604-persist-all-live-channel-messages.
+- Implementation `bdf4beb`; handoff `4e99e0c`; merge `a52871d`; integrator fix `3554c6b` (TS2308 barrel export ambiguity).
+- Verification: scope clean; diff-check clean; persistence 15/15; focused suites 494 passed; post-merge regression 969 passed / 5 skipped; typecheck OK.
+- Result: merged GO. Blockers: none.

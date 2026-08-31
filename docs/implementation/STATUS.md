@@ -92,7 +92,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T601](./tasks/T601-CHANNEL-MEMORY-CONTRACTS.md) — Freeze channel-memory contracts | P06 | Completed | T406, D013–D015 | PG-06A | claude-opus5 | task/T601-freeze-channel-memory-contracts | 2026-08-31 | d8206d1 |
 | [T602](./tasks/T602-JOINED-CHANNEL-REGISTRY.md) — Implement joined-channel registry | P06 | Completed | T601 | PG-06B | pi-coder-16 | task/T602-implement-joined-channel-registry | 2026-08-31 | 35da11a |
 | [T603](./tasks/T603-ALL-SENDER-NORMALIZATION.md) — Normalize all message senders | P06 | Completed | T601 | PG-06B | pi-coder-17 | task/T603-normalize-all-message-senders | 2026-08-31 | 7dfd075 |
-| [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md) — Persist all live channel messages | P06 | In Progress | T601 | PG-06B | pi-coder-19 | task/T604-persist-all-live-channel-messages | 2026-08-31 | — |
+| [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md) — Persist all live channel messages | P06 | Completed | T601 | PG-06B | pi-coder-19 | task/T604-persist-all-live-channel-messages | 2026-08-31 | a52871d |
 | [T605](./tasks/T605-EDIT-FIDELITY.md) — Enforce edit fidelity and delete-ignore policy | P06 | In Progress | T601 | PG-06B | pi-coder-18 | task/T605-enforce-edit-fidelity | 2026-08-31 | — |
 | [T606](./tasks/T606-MULTI-CHANNEL-CAPTURE-INTEGRATION.md) — Integrate multi-channel capture runtime | P06 | Planned | T602, T603, T604, T605 | PG-06C | Unassigned | task/T606-integrate-multi-channel-capture-runtime | — | — |
 | [T607](./tasks/T607-MULTI-CHANNEL-CAPTURE-VALIDATION.md) — Validate complete multi-channel capture | P06 | Planned | T606 | PG-06D | Unassigned | task/T607-validate-complete-multi-channel-capture | — | — |

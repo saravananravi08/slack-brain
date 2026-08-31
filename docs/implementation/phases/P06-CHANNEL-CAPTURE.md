@@ -26,7 +26,7 @@ T601 freezes contracts. T602, T603, T604, and T605 then run in parallel with dis
 | T601 — Freeze channel-memory contracts | Completed | T406 | PG-06A | claude-opus5 | d8206d1 |
 | T602 — Implement joined-channel registry | Completed | T601 | PG-06B | pi-coder-16 | 35da11a |
 | T603 — Normalize all message senders | Completed | T601 | PG-06B | pi-coder-17 | 7dfd075 |
-| T604 — Persist all live channel messages | Planned | T601 | PG-06B | Unassigned | — |
+| T604 — Persist all live channel messages | Completed | T601 | PG-06B | pi-coder-19 | a52871d |
 | T605 — Enforce edit fidelity and delete-ignore policy | Planned | T601 | PG-06B | Unassigned | — |
 | T606 — Integrate multi-channel capture runtime | Planned | T602, T603, T604, T605 | PG-06C | Unassigned | — |
 | T607 — Validate complete multi-channel capture | Planned | T606 | PG-06D | Unassigned | — |
