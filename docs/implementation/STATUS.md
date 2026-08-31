@@ -7,8 +7,8 @@
 - **Overall:** In Progress
 - **Integration branch:** `integration/mastra-rewrite`
 - **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** Original release work remains in progress on P03/P05. T406 live validation is merged GO. **P06/P07 channel-memory extension is planned on `planning/channel-memory-v2`**: capture every message in every joined internal channel, apply edits, ignore deletes temporarily, enable channel-scoped Observation Memory, inject history/summary/observations, and expose one scoped semantic memory tool. No P06/P07 implementation task is assigned. CI runs typecheck + test + build on push and PR.
-- **Last updated:** 2026-08-31 — T406 merged GO `f9e20de`; P06/P07 channel-memory extension planned on `planning/channel-memory-v2` with 13 tasks and accepted D013–D017. Current pre-plan runtime verification: **582 passing, 5 skipped**; typecheck and build green.
+- **Current phase gate:** Original release work remains in progress on P03/P05. T406 live validation is merged GO. **P06/P07 channel-memory extension is planned on `planning/channel-memory-v2`**: capture every message in every joined internal channel, apply edits, ignore deletes temporarily, enable channel-scoped Observation Memory, inject history/summary/observations, and expose one scoped semantic memory tool. P06 execution began: planning merged to integration at b01315c with green baseline; T601 contracts In Progress under claude-opus5, Wave 1. CI runs typecheck + test + build on push and PR.
+- **Last updated:** 2026-08-31 — P06 started: plan merged b01315c; baseline re-verified green (typecheck, 582 passing, 5 skipped, build); T601 assigned to claude-opus5.
 
 ### Security review status
 
@@ -89,7 +89,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T506](./tasks/T506-PRODUCTION-CUTOVER.md) — Perform production cutover | P05 | Pending operator approval (cutover not run) | T505, Product/technical/security approval | PG-05C | Unassigned | — | — | — |
 | [T507](./tasks/T507-HANDOVER.md) — Complete operator and developer handover | P05 | Merged (documents complete; walkthrough and owner acceptance pending) | T505 | PG-05D | claude-planner-2 | task/T507-complete-operator-and-developer-handover | 2026-08-30 | 67f8e5e |
 | [T508](./tasks/T508-LEGACY-CLEANUP.md) — Remove legacy runtime after rollback window | P05 | Merged (assessment only; deletion blocked on T506 and rollback-window approval) | T506, Rollback-window approval | PG-05D | pi coding agent | task/T508-remove-legacy-runtime-after-rollback-window | 2026-08-30 | f1e856b |
-| [T601](./tasks/T601-CHANNEL-MEMORY-CONTRACTS.md) — Freeze channel-memory contracts | P06 | Planned | T406, D013–D015 | PG-06A | Unassigned | task/T601-freeze-channel-memory-contracts | — | — |
+| [T601](./tasks/T601-CHANNEL-MEMORY-CONTRACTS.md) — Freeze channel-memory contracts | P06 | In Progress | T406, D013–D015 | PG-06A | claude-opus5 | task/T601-freeze-channel-memory-contracts | 2026-08-31 | — |
 | [T602](./tasks/T602-JOINED-CHANNEL-REGISTRY.md) — Implement joined-channel registry | P06 | Planned | T601 | PG-06B | Unassigned | task/T602-implement-joined-channel-registry | — | — |
 | [T603](./tasks/T603-ALL-SENDER-NORMALIZATION.md) — Normalize all message senders | P06 | Planned | T601 | PG-06B | Unassigned | task/T603-normalize-all-message-senders | — | — |
 | [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md) — Persist all live channel messages | P06 | Planned | T601 | PG-06B | Unassigned | task/T604-persist-all-live-channel-messages | — | — |
