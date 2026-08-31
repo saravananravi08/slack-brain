@@ -1,6 +1,6 @@
 # T701 — Build chronological channel history provider
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** T701 agent
 - **Branch:** `task/T701-build-channel-history-provider`
@@ -57,6 +57,6 @@ git diff --check
 
 - Implementation commit: `bb5335c`
 - Handoff commit: this handoff commit
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `e31d0b6`
+- Integration metadata commit: docs(P07) complete T701 metadata commit
+- Completed at: 2026-08-31

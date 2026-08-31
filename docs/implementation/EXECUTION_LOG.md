@@ -333,3 +333,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `f691ddd`; handoff `9b4f4bf`; merge `3fdc67f`. Mastra API proofs recorded in the log (scope/outbound/isolation/edit-refresh all supported).
 - Verification: memory suite 36 passed pre-handoff; post-merge full 1005 passed / 5 skipped; typecheck OK; build OK.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T701 completed (P07 Wave 5)
+
+- Task: T701 chronological channel history provider; worker: pi-coder-23 (rotated from pi-coder-21); branch: task/T701-build-channel-history-provider.
+- Implementation `bb5335c`; handoff `82eadfe`; merge `e31d0b6`.
+- Verification: typecheck OK; 6 history tests; post-merge full 1011 passed / 5 skipped; build OK.
+- Result: merged GO. Blockers: none.

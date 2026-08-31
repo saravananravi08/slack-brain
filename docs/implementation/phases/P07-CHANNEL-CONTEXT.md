@@ -23,7 +23,7 @@ T701, T702, and T703 run in parallel after P06. T704 composes their outputs into
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| T701 — Build chronological channel history provider | Planned | P06 | PG-07A | Unassigned | — |
+| T701 — Build chronological channel history provider | Completed | P06 | PG-07A | pi-coder-23 | e31d0b6 |
 | T702 — Enable channel-scoped Observation Memory | Completed | P06 | PG-07A | pi-coder-22 | 3fdc67f |
 | T703 — Implement scoped semantic memory tool | Planned | P06 | PG-07A | Unassigned | — |
 | T704 — Assemble bounded channel context | Planned | T701, T702, T703 | PG-07B | Unassigned | — |
