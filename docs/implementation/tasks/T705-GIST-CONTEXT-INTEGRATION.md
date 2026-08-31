@@ -1,6 +1,6 @@
 # T705 — Integrate context with Gist agent
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** pi-coder-24
 - **Branch:** `task/T705-integrate-context-with-gist-agent`
@@ -63,6 +63,6 @@ git diff --check
 
 - Implementation commit: `6eb9d17c16b5ce234cb89cab956fd12e1c398a65`
 - Handoff commit: This task/log metadata commit (see branch history).
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `0ab9164`
+- Integration metadata commit: docs(P07) complete T705 metadata commit
+- Completed at: 2026-08-31

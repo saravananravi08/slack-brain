@@ -100,7 +100,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T702](./tasks/T702-OBSERVATIONAL-MEMORY.md) — Enable channel-scoped Observation Memory | P07 | Completed | P06, T605 | PG-07A | pi-coder-22 | task/T702-enable-channel-observation-memory | 2026-08-31 | 3fdc67f |
 | [T703](./tasks/T703-SEMANTIC-MEMORY-TOOL.md) — Implement scoped semantic memory tool | P07 | Completed | P06, D017 | PG-07A | pi-coder-24 | task/T703-implement-semantic-memory-tool | 2026-08-31 | e18fcb1 |
 | [T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) — Assemble bounded channel context | P07 | Completed | T701, T702, T703 | PG-07B | pi-coder-23 | task/T704-assemble-bounded-channel-context | 2026-08-31 | fb7e35c |
-| [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | In Progress | T704, T703 | PG-07C | pi-coder-24 | task/T705-integrate-context-with-gist-agent | 2026-08-31 | — |
+| [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | Completed | T704, T703 | PG-07C | pi-coder-24 | task/T705-integrate-context-with-gist-agent | 2026-08-31 | 0ab9164 |
 | [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md) — Validate channel intelligence end to end | P07 | Planned | T705 | PG-07D | Unassigned | task/T706-validate-channel-intelligence-end-to-end | — | — |
 
 ## Active write locks

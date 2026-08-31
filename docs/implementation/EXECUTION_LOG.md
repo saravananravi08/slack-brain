@@ -354,3 +354,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `d81dfd0`; handoff `63160fa`; merge `fb7e35c`.
 - Verification: typecheck OK; 7 context tests; post-merge full 1023 passed / 5 skipped; build OK.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T705 completed (P07 Wave 7)
+
+- Task: T705 integrate context with Gist agent; worker: pi-coder-24; branch: task/T705-integrate-context-with-gist-agent.
+- Implementation `6eb9d17`; handoff `132b55f`; merge `0ab9164`.
+- Verification: typecheck OK; full 1026 passed / 5 skipped; e2e 28 passed / 4 skipped; build OK; scope/diff-check clean.
+- Result: merged GO. Blockers: none. Follow-up: T706 validation (Wave 8); live P07 gate follows P06 live pattern.
