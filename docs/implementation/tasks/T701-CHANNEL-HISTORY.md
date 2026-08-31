@@ -1,8 +1,8 @@
 # T701 — Build chronological channel history provider
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
-- **Owner:** Unassigned
+- **Owner:** T701 agent
 - **Branch:** `task/T701-build-channel-history-provider`
 - **Parallel group:** PG-07A
 - **Depends on:** P06
@@ -47,16 +47,16 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Roots and replies from one channel are chronological across threads.
-- [ ] Current-thread records remain distinguishable.
-- [ ] Edited text, not stale text, is returned.
-- [ ] Limits are deterministic.
-- [ ] Cross-channel fixtures return no records.
+- [x] Roots and replies from one channel are chronological across threads.
+- [x] Current-thread records remain distinguishable.
+- [x] Edited text, not stale text, is returned.
+- [x] Limits are deterministic.
+- [x] Cross-channel fixtures return no records.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `bb5335c`
+- Handoff commit: this handoff commit
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
