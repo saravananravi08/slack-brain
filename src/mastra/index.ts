@@ -31,7 +31,7 @@ import {
   type SenderResolver,
 } from '../security/index.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
-import { ChannelError } from './channels/index.js';
+import { ChannelError, DurableChannelDedupLedger } from './channels/index.js';
 import {
   createLiveSlackChannel,
   type ChannelMemoryMetrics,
@@ -238,6 +238,7 @@ export async function createFoundationRuntime(
     retention: STORAGE_RETENTION,
   });
   const enrollment = factoryStorage.registerDomain(new JoinedChannelRegistry());
+  const idempotencyLedger = factoryStorage.registerDomain(new DurableChannelDedupLedger());
   await factoryStorage.init();
   // FactoryStorage wraps a LibSQLStore at runtime; current Mastra package types
   // expose the shared instance as the base composite type.
@@ -337,6 +338,7 @@ export async function createFoundationRuntime(
     resolveSender,
     enrollment,
     channelPersistence,
+    idempotencyLedger,
     mutations,
     ...(config.kiloBotId === undefined ? {} : { kiloBotId: config.kiloBotId }),
     ...(config.kiloAppId === undefined ? {} : { kiloAppId: config.kiloAppId }),

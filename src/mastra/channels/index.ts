@@ -176,6 +176,7 @@ export function createSlackChannel(options: SlackChannelOptions): GistSlackChann
   };
 }
 
+export { DurableChannelDedupLedger } from './durable-dedup.js';
 export { createGistSlackAdapter, SlackCredentialsError } from './slack-adapter.js';
 export { createGistHandlers, handleTurn, toChannelRequest } from './handlers.js';
 export type { GistHandlers } from './handlers.js';

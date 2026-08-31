@@ -123,6 +123,8 @@ export interface LiveSlackChannelOptions extends SlackChannelOptions {
   /** P06 ports must be supplied together. */
   readonly enrollment?: LiveChannelEnrollment;
   readonly channelPersistence?: ChannelMessagePersister;
+  /** Required for P06: durable atomic delivery/content claims across restart. */
+  readonly idempotencyLedger?: IdempotencyLedger;
   readonly metrics?: ChannelMemoryMetrics;
   readonly kiloBotId?: string;
   readonly kiloAppId?: string;
@@ -222,12 +224,15 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const logger = options.logger ?? NOOP_LOGGER;
   const metrics = options.metrics ?? NOOP_METRICS;
   const now = options.now ?? (() => new Date());
-  const ledger = ledgerFor(options.state);
   const deliveryContext = new AsyncLocalStorage<SlackDeliveryContext>();
   const p06Enabled = options.enrollment !== undefined && options.channelPersistence !== undefined;
   if ((options.enrollment === undefined) !== (options.channelPersistence === undefined)) {
     throw new TypeError('enrollment and channelPersistence must be supplied together.');
   }
+  if (p06Enabled && !options.idempotencyLedger) {
+    throw new TypeError('P06 capture requires a durable idempotencyLedger.');
+  }
+  const ledger = options.idempotencyLedger ?? ledgerFor(options.state);
 
   const capturedRequests = new WeakSet<ChannelRequest>();
   let channel!: GistSlackChannel;
