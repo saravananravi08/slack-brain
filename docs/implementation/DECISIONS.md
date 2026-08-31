@@ -361,3 +361,14 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
   4. **Omitted file/link metadata preserves; present replaces.** In an edit payload, absent new_files/new_links means keep existing metadata; a present array replaces it wholesale.
 - Consequences: T605 worker is authorized to patch docs/architecture/channel-memory/mutations.md §3.4/§3.5 exactly per this ruling (patch version bump, reference D018) within its branch, then implement. Contract tests under tests/contracts/channel-memory/ must be extended by T605 to pin these four clarifications; that test-dir edit is coordinator-approved for T605 only. Existing delete-ignore and retention semantics are unchanged.
 - Affected tasks/files: T605, T606, T702, T705, docs/architecture/channel-memory/mutations.md, tests/contracts/channel-memory/.
+
+---
+
+## D019 — Edit-to-mention response trigger
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Coordinator (operator-approved)
+- Context: Live validation showed that editing a channel message to newly add an @Gist mention produces no response. This is contract-correct under D015/D018 (edits are in-place mutations; capture never implies response), but the operator requires edits that newly address Gist to be answerable.
+- Decision: A human edit to a ROOT message in an enrolled channel that newly adds an addressed Gist mention (new text mentions Gist, prior text did not) MAY trigger exactly one response via the existing mention handler, subject to delivery dedup and authorization. All other edits (bot/app senders, replies, replays, already-mentioned text, unauthorized) remain mutation-only with responseEligible:false. Storage semantics are unchanged (edit still replaces text+vector in place).
+- Consequences: src/mastra/channels/slack.ts registers the P06 onMessageUpdated path and routes only the qualifying candidate through channel.handlers.onNewMention; regression coverage in tests/integration/live-ingestion/slack-runtime.test.ts for human root edit, bot edit, reply edit, replay, and already-mentioned edit.
+- Affected tasks/files: live runtime (slack.ts), channel handlers, slack-runtime tests. Fixed requirement "Capturing a message must not imply responding to it" is preserved — the edit trigger is response-eligibility evaluation, not capture.
