@@ -1,8 +1,8 @@
 # T702 — Enable channel-scoped Observation Memory
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T702-enable-channel-observation-memory`
 - **Parallel group:** PG-07A
 - **Depends on:** P06, T605
@@ -51,17 +51,17 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Observation Memory is enabled per channel.
-- [ ] Two channels produce isolated summaries/observations.
-- [ ] Bot/app authors remain distinguishable in derived context.
-- [ ] No background observation posts to Slack.
-- [ ] Observation failure leaves exact capture healthy.
-- [ ] Edited source is eventually reflected without known stale quotation.
+- [x] Observation Memory is enabled per channel.
+- [x] Two channels produce isolated summaries/observations.
+- [x] Bot/app authors remain distinguishable in derived context.
+- [x] No background observation posts to Slack.
+- [x] Observation failure leaves exact capture healthy.
+- [x] Edited source is eventually reflected without known stale quotation.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `f691ddd`
+- Handoff commit: this commit (`docs(T702): hand off channel observation memory`)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
