@@ -1,8 +1,8 @@
 # T705 — Integrate context with Gist agent
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
-- **Owner:** Unassigned
+- **Owner:** pi-coder-24
 - **Branch:** `task/T705-integrate-context-with-gist-agent`
 - **Parallel group:** PG-07C
 - **Depends on:** T704, T703
@@ -52,17 +52,17 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Recent questions can be answered without semantic tool invocation.
-- [ ] Older questions can invoke semantic fallback.
-- [ ] Tool and injected context remain current-channel scoped.
-- [ ] Historical claims preserve attribution.
-- [ ] Bot/app capture still triggers no response.
-- [ ] Existing DM isolation remains unchanged.
+- [x] Recent questions can be answered without semantic tool invocation.
+- [x] Older questions can invoke semantic fallback.
+- [x] Tool and injected context remain current-channel scoped.
+- [x] Historical claims preserve attribution.
+- [x] Bot/app capture still triggers no response.
+- [x] Existing DM isolation remains unchanged.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `6eb9d17c16b5ce234cb89cab956fd12e1c398a65`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
