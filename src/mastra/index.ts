@@ -334,9 +334,8 @@ export async function createFoundationRuntime(
     storage: mutationStorage,
     policy,
     enrollment: enrollmentProbe,
-    ...(options.derivedInvalidationSink === undefined
-      ? {}
-      : { derivedInvalidationSink: options.derivedInvalidationSink }),
+    derivedInvalidationSink:
+      options.derivedInvalidationSink ?? memory.channelObservations,
   });
   const channelPersistence = new ChannelMessagePersistenceService({ memory, storage });
 
