@@ -380,3 +380,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `86e33df`; handoff `5fb4add`; merge `f2f1c15`.
 - Verification: focused runtime 26 passed; live-ingestion 31 passed; full 1039 passed / 5 skipped; typecheck OK; build OK; scope clean (slack.ts, slack-runtime.test.ts, log only).
 - Result: merged GO. Live Gist restarted to pick up the build.
+
+### 2026-08-31 — T608b completed (operator-approved D020)
+
+- Task: T608b extend edit-to-mention to thread replies; worker: pi-coder-26; branch: task/T608b-thread-edit-mention.
+- Implementation `135ec48`; handoff `c8fabd6`; merge `81fcb61`.
+- Verification: focused runtime 26 passed; live-ingestion 31 passed; full 1039 passed / 5 skipped; typecheck OK; build OK; scope clean.
+- Result: merged GO. Live Gist restarted.
