@@ -4,11 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type {
   AmbientPersistenceInput,
+  ChannelMessageRecord,
   CheckOriginalInput,
   HandleMutationInput,
 } from '../../../src/ingestion/index.js';
 import { createLiveSlackChannel } from '../../../src/mastra/channels/slack.js';
-import type { ChannelRequest } from '../../../src/mastra/channels/types.js';
+import type {
+  ChannelAuthorizationDecision,
+  ChannelRequest,
+} from '../../../src/mastra/channels/types.js';
 import type { PolicySnapshot, SenderAttributes } from '../../../src/security/index.js';
 import { makeMessage, makeThread } from '../../channels/helpers.js';
 import {
@@ -44,7 +48,13 @@ interface AdapterInternals {
   startTyping(threadId: string): Promise<void>;
 }
 
-function makeHarness(state = makeMemoryState()) {
+interface HarnessOptions {
+  readonly p06?: boolean;
+  readonly authorizeCaptured?: ChannelAuthorizationDecision;
+  readonly mutationStatus?: 'unchanged' | 'updated';
+}
+
+function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
   const posts: Array<{ threadId: string; body: unknown }> = [];
   const logger = {
     debug: vi.fn(),
@@ -57,12 +67,16 @@ function makeHarness(state = makeMemoryState()) {
   const persist = vi.fn(async (_input: AmbientPersistenceInput) => ({
     outcome: 'inserted' as const,
   }));
+  const channelPersist = vi.fn(async (_record: ChannelMessageRecord) => ({
+    outcome: 'inserted' as const,
+    embedding: 'stored' as const,
+  }));
   const shouldSuppressOriginal = vi.fn(async (_input: CheckOriginalInput) => ({
     status: 'allowed' as const,
     suppressed: false,
   }));
   const handleMutation = vi.fn(async (_input: HandleMutationInput) => ({
-    status: 'unchanged' as const,
+    status: options.mutationStatus ?? 'unchanged',
     message_key: `${SYNTHETIC.workspace}/${SYNTHETIC.channel}/${SYNTHETIC.rootTs}` as const,
   }));
 
@@ -76,7 +90,25 @@ function makeHarness(state = makeMemoryState()) {
     policy: POLICY,
     logger,
     resolveSender,
-    ambientPersistence: { persist },
+    ...(options.p06 ? {
+      enrollment: {
+        applyMembershipFact: async () => ({ outcome: 'unchanged' as const, reason: null }),
+        captureEligibilityFor: async () => ({
+          capture: true as const,
+          reason: null,
+          enrollment_epoch: 1,
+        }),
+        enrollmentFor: async () => null,
+      },
+      channelPersistence: { persist: channelPersist },
+      idempotencyLedger: {
+        claim: (key: string, ttlMs: number) => state.setIfNotExists(key, true, ttlMs),
+      },
+      authorizeCaptured: async () => options.authorizeCaptured ?? {
+        allowed: true as const,
+        reason: null,
+      },
+    } : { ambientPersistence: { persist } }),
     mutations: {
       handle: handleMutation,
       shouldSuppressOriginal,
@@ -139,6 +171,7 @@ function makeHarness(state = makeMemoryState()) {
   return {
     adapter,
     channel,
+    channelPersist,
     dispatch,
     drain,
     generation,
@@ -152,6 +185,108 @@ function makeHarness(state = makeMemoryState()) {
     deliver,
   };
 }
+
+function mentionEdit(options: {
+  readonly bot?: boolean;
+  readonly previousMention?: boolean;
+  readonly reply?: boolean;
+} = {}): Record<string, unknown> {
+  const targetTs = options.reply ? SYNTHETIC.replyTs : SYNTHETIC.rootTs;
+  const sender = options.bot
+    ? { bot_id: SYNTHETIC.otherBotId, username: 'Synthetic Bot' }
+    : { user: SYNTHETIC.user, username: `synthetic.${SYNTHETIC.user}` };
+  const thread = options.reply ? { thread_ts: SYNTHETIC.rootTs } : {};
+  return editEvent({
+    message: {
+      type: 'message',
+      ...sender,
+      text: `<@${SYNTHETIC.botUserId}> synthetic edited question`,
+      ts: targetTs,
+      ...thread,
+    },
+    previous_message: {
+      type: 'message',
+      ...sender,
+      text: options.previousMention
+        ? `<@${SYNTHETIC.botUserId}> synthetic prior question`
+        : 'synthetic prior statement',
+      ts: targetTs,
+      ...thread,
+    },
+  });
+}
+
+describe('D019 edit-to-mention response trigger', () => {
+  function p06Harness(authorizeCaptured?: ChannelAuthorizationDecision) {
+    return makeHarness(makeMemoryState(), {
+      p06: true,
+      mutationStatus: 'updated',
+      ...(authorizeCaptured === undefined ? {} : { authorizeCaptured }),
+    });
+  }
+
+  it('responds exactly once when a human root edit newly adds a Gist mention', async () => {
+    const harness = p06Harness();
+
+    await harness.deliver(envelope(mentionEdit()));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('does not respond to a bot edit that adds a Gist mention', async () => {
+    const harness = p06Harness();
+
+    await harness.deliver(envelope(mentionEdit({ bot: true })));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('does not respond to a reply edit that adds a Gist mention', async () => {
+    const harness = p06Harness();
+
+    await harness.deliver(envelope(mentionEdit({ reply: true })));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('does not respond twice when a qualifying edit is replayed', async () => {
+    const harness = p06Harness();
+    const replayed = envelope(mentionEdit());
+
+    await harness.deliver(replayed);
+    await harness.deliver(replayed);
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('does not respond when the previous text already mentioned Gist', async () => {
+    const harness = p06Harness();
+
+    await harness.deliver(envelope(mentionEdit({ previousMention: true })));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('does not respond when edit response authorization fails', async () => {
+    const harness = p06Harness({ allowed: false, reason: 'guest_user' });
+
+    await harness.deliver(envelope(mentionEdit()));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+});
 
 describe('live silent Slack ingestion', () => {
   it('persists an approved ambient message with zero generation calls and zero replies', async () => {
