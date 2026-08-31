@@ -272,17 +272,44 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
         const result = await capture;
         if (!result.responseEligible) return false;
         if (result.trigger === 'edit_mention' || result.trigger === 'proactive') {
-          const decision = await (options.authorizeCaptured ?? options.authorize)(request);
-          if (!decision.allowed) return false;
+          let decision;
+          try {
+            decision = await (options.authorizeCaptured ?? options.authorize)(request);
+          } catch {
+            if (result.trigger === 'proactive') {
+              logger.error('channel.proactive.authorization.failed', {
+                channelAlias: request.channelId,
+              });
+            }
+            return false;
+          }
+          if (!decision.allowed) {
+            if (result.trigger === 'proactive') {
+              logger.info('channel.proactive.authorization.denied', {
+                channelAlias: request.channelId,
+                reason: decision.reason,
+              });
+            }
+            return false;
+          }
           if (result.trigger === 'proactive') {
             try {
               if (!options.proactive) return false;
+              proactiveGateCount += 1;
               logger.info('channel.proactive.gate.evaluated', {
                 channelAlias: request.channelId,
+                count: proactiveGateCount,
               });
-              if (!await options.proactive.evaluate(request)) return false;
+              const act = await options.proactive.evaluate(request);
+              logger.info('channel.proactive.gate.decided', {
+                channelAlias: request.channelId,
+                count: proactiveGateCount,
+                act,
+              });
+              if (!act) return false;
             } catch {
               logger.error('channel.proactive.classification.failed', {
+                channelAlias: request.channelId,
                 errorClass: 'model_unavailable',
               });
               return false;
@@ -305,6 +332,11 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const pending = new Set<Promise<unknown>>();
   const channelQueues = new Map<string, Promise<unknown>>();
   let lastMissingDeliveryContextWarnAt: number | null = null;
+  let proactiveRawCount = 0;
+  let proactiveCaptureCount = 0;
+  let proactiveAmbientCount = 0;
+  let proactiveCandidateCount = 0;
+  let proactiveGateCount = 0;
 
   function track<T>(task: Promise<T>): Promise<T> {
     pending.add(task);
@@ -356,11 +388,28 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       rawEvent,
       workspaceId: stringField(rawEvent, 'team', 'team_id') ?? stringField(payload, 'team_id'),
     };
+    const rawType = stringField(rawEvent, 'type');
+    if (options.proactive && (rawType === 'message' || rawType === 'app_mention')) {
+      proactiveRawCount += 1;
+      logger.info('channel.proactive.path.raw_received', {
+        channelAlias: stringField(rawEvent, 'channel') ?? 'unknown',
+        count: proactiveRawCount,
+      });
+    }
     if (p06Enabled) {
       context.capturePromise = track(enqueueDelivery(context).catch(() => {
         logger.error('ingestion.persistence.failed', { errorClass: 'internal' });
         return { responseEligible: false };
       }));
+      void context.capturePromise.then((result) => {
+        if (!options.proactive || (rawType !== 'message' && rawType !== 'app_mention')) return;
+        proactiveCaptureCount += 1;
+        logger.info('channel.proactive.path.capture_routed', {
+          channelAlias: stringField(rawEvent, 'channel') ?? 'unknown',
+          count: proactiveCaptureCount,
+          trigger: result.trigger ?? 'none',
+        });
+      });
       webhookOptions?.waitUntil?.(context.capturePromise);
     }
 
@@ -585,8 +634,18 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       && event.sender_class === 'human'
       && !event.addressed_to_gist
       && options.proactive !== undefined
-      && await options.proactive.isEnabled(event.workspace_id, event.channel_id)
     ) {
+      if (!await options.proactive.isEnabled(event.workspace_id, event.channel_id)) {
+        logger.info('channel.proactive.candidate.disabled', {
+          channelAlias: event.channel_id,
+        });
+        return { responseEligible: false };
+      }
+      proactiveCandidateCount += 1;
+      logger.info('channel.proactive.candidate.eligible', {
+        channelAlias: event.channel_id,
+        count: proactiveCandidateCount,
+      });
       return { responseEligible: true, trigger: 'proactive' };
     }
     return { responseEligible: false };
@@ -855,6 +914,13 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
         await ingestMessage(message, false);
         return;
       }
+      proactiveAmbientCount += 1;
+      logger.info('channel.proactive.path.ambient_received', {
+        channelAlias: thread.channelId.startsWith('slack:')
+          ? thread.channelId.slice('slack:'.length)
+          : thread.channelId,
+        count: proactiveAmbientCount,
+      });
       const capture = deliveryContext.getStore()?.capturePromise;
       if (!capture) {
         warnMissingDeliveryContext();

@@ -47,6 +47,11 @@ interface AdapterInternals {
   lookupUser(userId: string): Promise<unknown>;
   postMessage(threadId: string, body: unknown): Promise<unknown>;
   processEventPayload(payload: Record<string, unknown>, options?: WebhookOptions): void;
+  routeSocketEvent(
+    body: Record<string, unknown>,
+    eventType: string,
+    ack: () => Promise<void>,
+  ): Promise<void>;
   startTyping(threadId: string): Promise<void>;
 }
 
@@ -347,13 +352,43 @@ describe('D021 proactive action mode', () => {
     expect(harness.posts).toHaveLength(1);
     expect(harness.logger.info).toHaveBeenCalledWith(
       'channel.proactive.gate.evaluated',
-      { channelAlias: SYNTHETIC.channel },
+      { channelAlias: SYNTHETIC.channel, count: 1 },
     );
     const [, fields] = harness.logger.info.mock.calls.find(
       ([event]) => event === 'channel.proactive.gate.evaluated',
     )!;
-    expect(Object.keys(fields as object)).toEqual(['channelAlias']);
+    expect(Object.keys(fields as object).sort()).toEqual(['channelAlias', 'count']);
     expect(JSON.stringify(fields)).not.toContain('synthetic proactive candidate');
+  });
+
+  it('routes a real Socket Mode events_api delivery through ambient and gate stages', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+    const ack = vi.fn(async () => undefined);
+
+    await harness.adapter.routeSocketEvent(
+      envelope(channelMessage()),
+      'events_api',
+      ack,
+    );
+    await harness.drain();
+
+    expect(ack).toHaveBeenCalledOnce();
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    const proactiveLogs = harness.logger.info.mock.calls.filter(
+      ([event]) => event.startsWith('channel.proactive.'),
+    );
+    expect(proactiveLogs.map(([event]) => event)).toEqual(expect.arrayContaining([
+      'channel.proactive.path.raw_received',
+      'channel.proactive.candidate.eligible',
+      'channel.proactive.path.capture_routed',
+      'channel.proactive.path.ambient_received',
+      'channel.proactive.gate.evaluated',
+      'channel.proactive.gate.decided',
+    ]));
+    const serialized = JSON.stringify(proactiveLogs);
+    expect(serialized).not.toContain('the rollout window moved to Tuesday');
+    expect(serialized).not.toContain(SYNTHETIC.user);
   });
 
   it('responds in-thread when an unaddressed human reply is relevant', async () => {
@@ -521,7 +556,7 @@ describe('D021 proactive action mode', () => {
     expect(harness.posts).toEqual([]);
     expect(harness.logger.error).toHaveBeenCalledWith(
       'channel.proactive.classification.failed',
-      { errorClass: 'model_unavailable' },
+      { channelAlias: SYNTHETIC.channel, errorClass: 'model_unavailable' },
     );
     expect(JSON.stringify(harness.logger.error.mock.calls)).not.toContain('rollout window');
   });
