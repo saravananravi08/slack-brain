@@ -1,8 +1,8 @@
 # T703 — Implement scoped semantic memory tool
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
-- **Owner:** Unassigned
+- **Owner:** T703 worker
 - **Branch:** `task/T703-implement-semantic-memory-tool`
 - **Parallel group:** PG-07A
 - **Depends on:** P06, D017 accepted
@@ -48,16 +48,16 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Tool has no channel/workspace/scope input controlled by model.
-- [ ] Results never cross active channel.
-- [ ] Results retain sender/date attribution.
-- [ ] Untrusted retrieved content cannot redefine tool or system policy.
-- [ ] No shell, generic search, or extra agent tool is introduced.
+- [x] Tool has no channel/workspace/scope input controlled by model.
+- [x] Results never cross active channel.
+- [x] Results retain sender/date attribution.
+- [x] Untrusted retrieved content cannot redefine tool or system policy.
+- [x] No shell, generic search, or extra agent tool is introduced.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `0ded46b1c5a4ab4cdeafd26197db4a9b579a9088`
+- Handoff commit: This task/log metadata commit (see branch history).
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
