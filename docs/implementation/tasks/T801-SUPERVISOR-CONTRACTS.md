@@ -71,6 +71,7 @@ git diff --check
 
 - Implementation commit: `df23b00eb10b9874aeafd0f9063bba4b6519a201`
 - Review fix commit: `3a05f73d93c4a82de67f88f784020bdd2d499d3e` (closes the five integration-review defects; contract set stays at 1.0.0, pre-merge)
+- Second review correction commit: `974a586c86be8e16f18820b8c440014c5f8763aa` (resolves seven contradictions found in the fix pack; contract set stays at 1.0.0, pre-merge)
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
