@@ -1,7 +1,7 @@
 import type { MastraDBMessage } from '@mastra/core/agent';
 
 import type { BoundaryId, MessageKey } from '../../mastra/memory/resource-policy.js';
-import type { MutationDetail, RetentionPolicy } from './types.js';
+import type { FileRef, LinkRef, MutationDetail, RetentionPolicy } from './types.js';
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const DM_RETENTION_MS = 90 * DAY_MS;
@@ -10,6 +10,42 @@ const SLACK_TIMESTAMP = /^\d+\.\d+$/;
 
 function validDate(value: unknown): value is string {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+}
+
+function fileRefs(value: unknown): readonly FileRef[] | null {
+  if (!Array.isArray(value)) return null;
+  if (!value.every((file) => (
+    typeof file === 'object' &&
+    file !== null &&
+    typeof file.file_id === 'string' &&
+    typeof file.name === 'string' &&
+    typeof file.mimetype === 'string' &&
+    Number.isSafeInteger(file.size_bytes) &&
+    file.size_bytes >= 0
+  ))) return null;
+  return value as unknown as readonly FileRef[];
+}
+
+function linkRefs(value: unknown): readonly LinkRef[] | null {
+  if (!Array.isArray(value)) return null;
+  if (!value.every((link) => (
+    typeof link === 'object' &&
+    link !== null &&
+    typeof link.url === 'string' &&
+    typeof link.domain === 'string'
+  ))) return null;
+  return value as unknown as readonly LinkRef[];
+}
+
+/** Slack timestamp ordering only; identity always keeps the verbatim string. */
+export function compareMessageTs(a: string, b: string): number {
+  const [aSeconds = '', aFraction = ''] = a.split('.');
+  const [bSeconds = '', bFraction = ''] = b.split('.');
+  const seconds = Number.parseInt(aSeconds, 10) - Number.parseInt(bSeconds, 10);
+  if (seconds !== 0) return seconds < 0 ? -1 : 1;
+  const left = aFraction.padEnd(6, '0');
+  const right = bFraction.padEnd(6, '0');
+  return left === right ? 0 : left < right ? -1 : 1;
 }
 
 /** Pure, total classifier for the frozen mutation contract. */
@@ -25,16 +61,25 @@ export function classifyMutation(event: unknown): MutationDetail | null {
   if (!validDate(mutation.edited_at)) return null;
 
   if (mutation.kind === 'edit') {
-    if (typeof mutation.new_text !== 'string' || mutation.new_text.trim() === '') return null;
+    if (typeof mutation.new_text !== 'string') return null;
+    const files = mutation.new_files === undefined ? undefined : fileRefs(mutation.new_files);
+    const links = mutation.new_links === undefined ? undefined : linkRefs(mutation.new_links);
+    if (files === null || links === null) return null;
     return {
       kind: 'edit',
       target_ts: mutation.target_ts,
       edited_at: mutation.edited_at,
       new_text: mutation.new_text,
+      ...(files === undefined ? {} : { new_files: files }),
+      ...(links === undefined ? {} : { new_links: links }),
     };
   }
 
-  if (mutation.new_text !== undefined) return null;
+  if (
+    mutation.new_text !== undefined ||
+    mutation.new_files !== undefined ||
+    mutation.new_links !== undefined
+  ) return null;
   return {
     kind: 'delete',
     target_ts: mutation.target_ts,

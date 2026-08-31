@@ -109,10 +109,14 @@ describe('embedding and derived context (CM-FR-017)', () => {
       byName(edits, 'edit_stored_message').expect_derived_invalidation,
       'expect_derived_invalidation',
     );
-    for (const field of ['boundary_id', 'message_key', 'invalidated_at', 'targets']) {
-      expect(invalidation).toHaveProperty(field);
-    }
-    expect(invalidation.targets).toEqual(['summary', 'observations']);
+    expect(invalidation).toEqual({
+      channelResource: 'ch:T0CHANTEST:C0CHANTESTA',
+      messageKey: 'T0CHANTEST/C0CHANTESTA/1767603700.000100',
+      reason: 'message_edited',
+    });
+    const testCase = byName(edits, 'edit_stored_message');
+    expect(testCase.expect_invalidation_delivery).toBe('synchronous_in_process');
+    expect(testCase.expect_invalidation_persistence).toBe('none');
   });
 
   it('does not re-embed when nothing changed', () => {
@@ -149,38 +153,56 @@ describe('idempotency and ordering (CM-FR-018)', () => {
   });
 });
 
-describe('edits with no stored target (mutations.md §3.4)', () => {
-  it('inserts when the target is at or after the capture floor', () => {
-    const testCase = byName(edits, 'edit_for_unstored_target_inserts');
+describe('edits with no stored target (D018, mutations.md §3.4)', () => {
+  it('returns edit_orphan_ignored and inserts nothing', () => {
+    const testCase = byName(edits, 'edit_for_unstored_target_is_ignored');
     expect(testCase.target_record).toBeNull();
-    expect(testCase.expect_result).toBe('inserted');
-    expect(testCase.expect_capture_source).toBe('live_event');
-    expect(testCase.expect_record_count).toBe(1);
+    expect(testCase.expect_result).toBe('edit_orphan_ignored');
+    expect(testCase.expect_record_count).toBe(0);
+    expect(testCase.expect_invalidation_count).toBe(0);
   });
 
-  it('does not let a late original regress the inserted text', () => {
-    const late = byName(edits, 'late_original_does_not_regress_inserted_edit');
-    const inserted = asRecord(
-      byName(edits, 'edit_for_unstored_target_inserts').mutation,
-      'mutation',
-    );
-    expect(late.expect_result).toBe('unchanged');
-    expect(late.expect_text).toBe(inserted.new_text);
+  it('writes no tombstone that could suppress a later complete original', () => {
+    const late = byName(edits, 'late_original_after_orphan_edit_is_not_suppressed');
+    expect(late.expect_result).toBe('inserted');
+    expect(late.expect_text).toBe('the pre-edit wording');
     expect(late.expect_record_count).toBe(1);
   });
 
-  it('ignores an edit below the capture floor rather than backfilling', () => {
-    const testCase = byName(edits, 'edit_below_capture_floor_is_ignored');
-    expect(testCase.expect_result).toBe('ignored');
-    expect(testCase.expect_record_count).toBe(0);
+  it('uses the injected enrollment/capture-floor probe before storage', () => {
+    const belowFloor = byName(edits, 'edit_below_capture_floor_is_ignored');
+    expect(belowFloor.expect_result).toBe('ignored');
+    expect(belowFloor.expect_record_count).toBe(0);
+    expect(belowFloor.expect_enrollment_probe).toBe(true);
+    expect(belowFloor.expect_capture_floor_probe).toBe(true);
+
+    const unenrolled = byName(edits, 'edit_in_unenrolled_channel_is_denied_before_lookup');
+    expect(unenrolled.expect_result).toBe('ignored');
+    expect(unenrolled.expect_storage_lookups).toBe(0);
+    expect(unenrolled.expect_enrollment_probe).toBe(true);
+    expect(unenrolled.expect_capture_floor_probe).toBe(false);
+  });
+});
+
+describe('optional file/link replacement (D018)', () => {
+  it('preserves metadata when replacement fields are omitted', () => {
+    const testCase = byName(edits, 'edit_omitted_file_links_preserve');
+    const mutation = asRecord(testCase.mutation, 'mutation');
+    expect(mutation).not.toHaveProperty('new_files');
+    expect(mutation).not.toHaveProperty('new_links');
+    expect(testCase.expect_files).toBe('preserved');
+    expect(testCase.expect_links).toBe('preserved');
   });
 
-  it('denies an unenrolled-channel mutation before any storage lookup', () => {
-    // Ordering matters: a mutation that reaches storage first can be used to
-    // probe what Gist holds (authorization.md §6).
-    const testCase = byName(edits, 'edit_in_unenrolled_channel_is_denied_before_lookup');
-    expect(testCase.expect_result).toBe('ignored');
-    expect(testCase.expect_storage_lookups).toBe(0);
+  it('replaces metadata wholesale when arrays are present', () => {
+    const testCase = byName(edits, 'edit_present_file_links_replace');
+    const mutation = asRecord(testCase.mutation, 'mutation');
+    expect(mutation.new_files).toEqual([]);
+    expect(mutation.new_links).toEqual([
+      { url: 'https://replaced.invalid', domain: 'replaced.invalid' },
+    ]);
+    expect(testCase.expect_files).toBe('replaced');
+    expect(testCase.expect_links).toBe('replaced');
   });
 });
 

@@ -1,8 +1,8 @@
 # T605 — Enforce edit fidelity and delete-ignore policy
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** T605 worker
 - **Branch:** `task/T605-enforce-edit-fidelity`
 - **Parallel group:** PG-06B
 - **Depends on:** T601
@@ -53,6 +53,10 @@ git diff --check
 - [ ] Replayed edits are no-op successes.
 - [ ] Live delete changes no message/vector/derived state.
 - [ ] Retention and operator purge primitives remain available.
+
+## Blocker resolution
+
+Resolved by accepted D018 at integration commit `34bd987`: orphan edits are ignored, enrollment is injected through a read-only probe, derived invalidation is synchronous and content-free, and omitted file/link replacements preserve existing metadata.
 
 ## Completion record
 
