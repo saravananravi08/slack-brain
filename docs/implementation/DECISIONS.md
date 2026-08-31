@@ -394,3 +394,14 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: Add an opt-in per-channel PROACTIVE mode (config GIST_PROACTIVE_CHANNELS, comma-separated channel IDs, empty = off). In an enrolled, authorized, proactive-enabled channel, every LIVE human message (root or reply) that is NOT already addressed (mention path unchanged) is evaluated by a relevance gate: a deterministic, content-safe LLM classification using the existing bounded channel context (T704) that returns act/no-act. act=true routes through the existing response pipeline exactly like a mention (same authorization, thread routing, delivery dedup; no double-response on retries). Guards: bot/app/Gist senders NEVER trigger proactive action (D014 intact); channels not in the proactive list behave exactly as before; DM behavior unchanged; a per-channel cooldown (default 60s between proactive actions) prevents flooding; classifier failures fail closed (no action).
 - Consequences: new relevance-gate module wired into the live runtime response eligibility; config addition GIST_PROACTIVE_CHANNELS; regression tests for act/no-act, bot exclusion, cooldown, dedup, non-proactive channel, classifier failure.
 - Affected tasks/files: src/config.ts, src/mastra/channels/**, tests/channels/**, tests/integration/live-ingestion/**.
+
+---
+
+## D022 — Proactive mode defaults to every enrolled channel
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Coordinator (operator-approved)
+- Context: Operator requires Gist proactive in every channel it is in, not a configured subset; T609 live test also showed the gate never fired with the per-channel list.
+- Decision: Proactive mode is enabled by DEFAULT for every enrolled+authorized channel. GIST_PROACTIVE_CHANNELS, when set to a non-empty list, RESTRICTS proactive mode to those channels; when unset/empty, ALL enrolled channels are proactive. All D021 guards unchanged (human senders only; Gist/bot/app never evaluated; cooldown; fail-closed).
+- Consequences: src/config.ts semantics change (empty list = all enrolled, not off); src/mastra/channels/proactive.ts/slack.ts gate check updates to consult enrollment when list is empty; regression tests updated (unset → proactive in enrolled channel; set list → restricted).
+- Affected tasks/files: src/config.ts, src/mastra/channels/**, src/mastra/index.ts, tests/channels/**, tests/integration/live-ingestion/**.
