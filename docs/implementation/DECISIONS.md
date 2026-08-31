@@ -346,3 +346,18 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Consequences:
 - Affected tasks/files:
 ```
+
+---
+
+## D018 — Channel-memory mutation contract clarifications (T605 blocker resolution)
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Coordinator (implementation coordinator, channel-memory program)
+- Context: T605 blocked on four gaps in the frozen mutations contract (mutations.md §3.4/§3.5): missing-target edits cannot construct a full ChannelMessageRecord; mutation handlers lack an enrollment/capture-floor input; DerivedInvalidation has no sink or persistence semantics; optional file/link edit replacement is unspecified.
+- Decision:
+  1. **Orphan edits are no-op successes.** A message_changed for an eligible but never-captured target returns outcome `edit_orphan_ignored` and inserts nothing; a partial record would violate canonical-identity invariants, and CM-FR-015 governs updating the existing record only.
+  2. **Enrollment is an injected read-only probe.** Mutation handling accepts a `ChannelEnrollmentProbe` interface (isEnrolled + capture-floor lookup by workspace/channel) supplied by composition; the mutations module never imports the registry directly; T606 wires the T602 registry implementation into it.
+  3. **DerivedInvalidation is a synchronous in-process emission.** Edit mutation results carry `derivedInvalidation: [{ channelResource, messageKey, reason }]` (content-free) and the module invokes an injected `DerivedInvalidationSink` (default no-op in P06). No durable storage of derived-invalidation state in P06; T702/T705 attach consumers.
+  4. **Omitted file/link metadata preserves; present replaces.** In an edit payload, absent new_files/new_links means keep existing metadata; a present array replaces it wholesale.
+- Consequences: T605 worker is authorized to patch docs/architecture/channel-memory/mutations.md §3.4/§3.5 exactly per this ruling (patch version bump, reference D018) within its branch, then implement. Contract tests under tests/contracts/channel-memory/ must be extended by T605 to pin these four clarifications; that test-dir edit is coordinator-approved for T605 only. Existing delete-ignore and retention semantics are unchanged.
+- Affected tasks/files: T605, T606, T702, T705, docs/architecture/channel-memory/mutations.md, tests/contracts/channel-memory/.
