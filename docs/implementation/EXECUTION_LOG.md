@@ -395,3 +395,11 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Coordinator scope ruling: src/mastra/index.ts added to scope (D018 precedent, granted mid-task). Operator hard requirement enforced and tested: Gist/bot/app sender classes excluded before classification (no circular self-action; sender-class identity, not text heuristics).
 - Verification: scoped 101 tests; full 1059 passed / 5 skipped; typecheck OK; build OK; scope clean.
 - Result: merged GO.
+
+### 2026-08-31 — T609b completed (operator-approved D022)
+
+- Task: T609b proactive defaults to all enrolled channels; worker: pi-coder-27; branch: task/T609b-proactive-all-channels.
+- Implementation `14f2233`; handoff `cbfd509`; merge `ef30866`.
+- Root cause of live no-fire: ambient message handler was registered only when GIST_PROACTIVE_CHANNELS was non-empty, and the running process lacked the var; fixed — evaluator always registered, empty list = all enrolled channels (enrollment-registry consulted, failures deny).
+- Verification: scoped 103 tests; full 1061 passed / 5 skipped; typecheck OK; build OK; scope clean.
+- Result: merged GO; pushed; live restarted.
