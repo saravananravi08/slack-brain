@@ -1,8 +1,8 @@
 # T606 — Integrate multi-channel capture runtime
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** pi coding agent
 - **Branch:** `task/T606-integrate-multi-channel-capture-runtime`
 - **Parallel group:** PG-06C
 - **Depends on:** T602, T603, T604, T605
@@ -58,17 +58,17 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Two joined channels capture concurrently and remain isolated.
-- [ ] Every sender class is stored.
-- [ ] Only authorized human-addressed input triggers a Gist response.
-- [ ] Gist output is stored exactly once.
-- [ ] No history-backfill service is introduced.
-- [ ] Existing DM boundaries remain unchanged.
+- [x] Two joined channels capture concurrently and remain isolated.
+- [x] Every sender class is stored.
+- [x] Only authorized human-addressed input triggers a Gist response.
+- [x] Gist output is stored exactly once.
+- [x] No history-backfill service is introduced.
+- [x] Existing DM boundaries remain unchanged.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `8403b3e`
+- Handoff commit: this commit (`docs(T606): hand off multi-channel capture runtime`)
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
