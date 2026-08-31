@@ -5,7 +5,7 @@
  * generation). No Slack call, no socket, no network.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createGistHandlers, toChannelRequest } from '../../src/mastra/channels/handlers.js';
 import { USER_FACING_MESSAGE } from '../../src/mastra/channels/errors.js';
@@ -111,6 +111,42 @@ describe('sender filtering (FR-SLK-009)', () => {
       expect(fake.posts).toHaveLength(0);
     });
   }
+});
+
+describe('capture/response ordering (D014)', () => {
+  it('awaits live capture before authorization and generation', async () => {
+    const order: string[] = [];
+    const base = makeOptions();
+    const handlers = createGistHandlers({
+      ...base.options,
+      beforeResponse: async () => { order.push('capture'); return true; },
+      authorize: () => { order.push('authorize'); return { allowed: true, reason: null }; },
+      respond: async () => { order.push('generate'); return 'answer'; },
+    });
+
+    await handlers.onNewMention(makeThread().thread, makeMessage());
+    expect(order).toEqual(['capture', 'authorize', 'generate']);
+  });
+
+  it('silently stops when live capture says the message is ineligible', async () => {
+    const { options, authorizeCalls, respondCalls } = makeOptions();
+    const handlers = createGistHandlers({ ...options, beforeResponse: () => false });
+    const thread = makeThread();
+
+    await handlers.onNewMention(thread.thread, makeMessage());
+    expect(authorizeCalls).toEqual([]);
+    expect(respondCalls).toEqual([]);
+    expect(thread.posts).toEqual([]);
+  });
+
+  it('hands every accepted Slack post result to direct outgoing persistence', async () => {
+    const outgoing = vi.fn();
+    const { options } = makeOptions({ reply: 'answer' });
+    const handlers = createGistHandlers({ ...options, onOutgoingMessage: outgoing });
+
+    await handlers.onNewMention(makeThread().thread, makeMessage());
+    expect(outgoing).toHaveBeenCalledOnce();
+  });
 });
 
 describe('authorization ordering (INV-2)', () => {

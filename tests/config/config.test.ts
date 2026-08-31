@@ -20,6 +20,8 @@ function validEnvironment(): Record<string, string> {
     GIST_APPROVED_WORKSPACE_ID: 'T0SYNTH01',
     GIST_APPROVED_CHANNEL_IDS: 'C0APPROVED1,G0APPROVED2',
     GIST_USER_ALLOWLIST: 'U0MEMBER01,W0MEMBER02',
+    GIST_KILO_BOT_ID: 'B0KILOBOT1',
+    GIST_KILO_APP_ID: 'A0KILOAPP1',
     GIST_DM_SHARED_KNOWLEDGE: 'false',
     GIST_MODEL: 'gpt-4.1',
     EMBEDDING_MODEL: 'openai/text-embedding-3-small',
@@ -48,6 +50,8 @@ describe('parseConfig', () => {
       approvedWorkspaceId: 'T0SYNTH01',
       approvedChannelIds: ['C0APPROVED1', 'G0APPROVED2'],
       userAllowlist: ['U0MEMBER01', 'W0MEMBER02'],
+      kiloBotId: 'B0KILOBOT1',
+      kiloAppId: 'A0KILOAPP1',
       dmSharedKnowledge: false,
       gistModel: 'gpt-4.1',
       embeddingModel: 'openai/text-embedding-3-small',
@@ -70,7 +74,6 @@ describe('parseConfig', () => {
     'SLACK_BOT_TOKEN',
     'SLACK_APP_TOKEN',
     'GIST_APPROVED_WORKSPACE_ID',
-    'GIST_APPROVED_CHANNEL_IDS',
     'EMBEDDING_MODEL',
     'OPENAI_API_KEY',
     'MASTRA_DATABASE_URL',
@@ -91,6 +94,8 @@ describe('parseConfig', () => {
     ['GIST_APPROVED_CHANNEL_IDS', 'D0DIRECT01'],
     ['GIST_APPROVED_CHANNEL_IDS', 'C0APPROVED1,C0APPROVED1'],
     ['GIST_USER_ALLOWLIST', 'guest-one'],
+    ['GIST_KILO_BOT_ID', 'bot-one'],
+    ['GIST_KILO_APP_ID', 'app-one'],
     ['GIST_DM_SHARED_KNOWLEDGE', 'true'],
     ['GIST_MODEL', 'unapproved-model'],
     ['EMBEDDING_MODEL', 'unapproved/embedding-model'],
@@ -111,12 +116,15 @@ describe('parseConfig', () => {
     expect(config.openaiApiKey).toBe('synthetic-openai-credential');
   });
 
-  it('fails closed on an empty approved channel list', () => {
-    const environment = { ...validEnvironment(), GIST_APPROVED_CHANNEL_IDS: '  ' };
+  it('accepts an empty or omitted legacy channel list under D013', () => {
+    expect(parseConfig({
+      ...validEnvironment(),
+      GIST_APPROVED_CHANNEL_IDS: '  ',
+    }).approvedChannelIds).toEqual([]);
 
-    const error = configError(environment);
-
-    expect(error.message).toBe('Invalid configuration: GIST_APPROVED_CHANNEL_IDS');
+    const environment: Record<string, string | undefined> = validEnvironment();
+    delete environment.GIST_APPROVED_CHANNEL_IDS;
+    expect(parseConfig(environment).approvedChannelIds).toEqual([]);
   });
 
   it('accepts the pre-approved generation model step-down', () => {

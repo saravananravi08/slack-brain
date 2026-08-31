@@ -209,6 +209,44 @@ describe('policy denials reach the surface with their reason', () => {
   });
 });
 
+describe('D013 membership-authoritative channel gate', () => {
+  it('allows an enrolled channel absent from the legacy static list', async () => {
+    const isEnrolled = vi.fn(async () => true);
+    const authorizer = makeAuthorizer({
+      policy: makePolicy({ approved_channel_ids: [] }),
+      enrollment: { isEnrolled },
+    });
+
+    await expect(authorizer(CHANNEL_REQUEST)).resolves.toEqual({
+      allowed: true,
+      reason: null,
+    });
+    expect(isEnrolled).toHaveBeenCalledWith(
+      SYNTHETIC.workspaceApproved,
+      SYNTHETIC.channelApproved,
+    );
+  });
+
+  it('denies absent and failed enrollment checks', async () => {
+    for (const isEnrolled of [
+      () => false,
+      () => { throw new Error('registry unavailable'); },
+    ]) {
+      await expect(makeAuthorizer({ enrollment: { isEnrolled } })(CHANNEL_REQUEST))
+        .resolves.toEqual({ allowed: false, reason: 'unapproved_channel' });
+    }
+  });
+
+  it('does not apply channel enrollment to DMs', async () => {
+    const isEnrolled = vi.fn(() => false);
+    await expect(makeAuthorizer({ enrollment: { isEnrolled } })(DM_REQUEST)).resolves.toEqual({
+      allowed: true,
+      reason: null,
+    });
+    expect(isEnrolled).not.toHaveBeenCalled();
+  });
+});
+
 describe('what the adapter passes on and logs', () => {
   it('hands the identity resolver no message text and no display name', async () => {
     let seen: AuthorizationEvent | null = null;

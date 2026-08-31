@@ -1,11 +1,10 @@
 /**
  * Building a `PolicySnapshot` from validated configuration.
  *
- * D001's consequence for the guard is that policy is *passed in*, never read
- * from ambient globals — so that two components can never be looking at
- * different policy, and so every test case is a plain object. This is the one
- * place that projects T102's validated `Config` into that shape, and it is a
- * pure function of its argument: it reads no environment variable itself.
+ * Policy is *passed in*, never read from ambient globals, so components cannot
+ * observe different workspace/user policy. Under D013 the channel list is a
+ * legacy deny-only migration field; T606 projects one T602-confirmed channel
+ * into the pure guard for each live channel request.
  */
 
 import type { Config } from '../config.js';

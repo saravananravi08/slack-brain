@@ -10,7 +10,7 @@
  * errors.md.
  */
 
-import type { StateAdapter } from 'chat';
+import type { SentMessage, StateAdapter } from 'chat';
 
 /** Which Slack surface produced this turn. All three permit generation. */
 export type ChannelSurface = 'dm' | 'channel_mention' | 'subscribed_thread';
@@ -103,6 +103,13 @@ export interface SlackChannelOptions {
   readonly state: StateAdapter;
   readonly authorize: ChannelAuthorizer;
   readonly respond: ChannelResponder;
+  /** Live ingestion barrier. False silently suppresses response eligibility. */
+  readonly beforeResponse?: (request: ChannelRequest) => Promise<boolean> | boolean;
+  /** Called after Slack returns the canonical outgoing message identity. */
+  readonly onOutgoingMessage?: (
+    request: ChannelRequest,
+    message: SentMessage,
+  ) => Promise<void> | void;
   /** Slack display name. Defaults to "Gist" (FR-SLK-001, FR-RSP-001). */
   readonly userName?: string;
   readonly logger?: ChannelLogger;

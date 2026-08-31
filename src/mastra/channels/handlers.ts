@@ -115,20 +115,37 @@ export async function handleTurn(
   turnOptions: TurnOptions = { subscribeOnAccept: false },
 ): Promise<void> {
   const logger = options.logger ?? NOOP_LOGGER;
+  const request = toChannelRequest(surface, thread, message, isDirectMessage);
+
+  // Channel-memory capture owns no outward effect, but must settle before any
+  // response eligibility check. Direct handler tests and DMs have no barrier.
+  if (options.beforeResponse && !await options.beforeResponse(request)) return;
 
   if (isIgnorableSender(message)) {
     logger.debug('channel.turn.ignored', { surface, reason: 'non_human_sender' });
     return;
   }
 
-  const request = toChannelRequest(surface, thread, message, isDirectMessage);
+  const post = async (content: Parameters<Thread['post']>[0]): Promise<void> => {
+    const sent = await thread.post(content);
+    if (!options.onOutgoingMessage) return;
+    try {
+      await options.onOutgoingMessage(request, sent);
+    } catch {
+      // Slack already accepted the post. Persistence failure must not create a
+      // second user-facing reply or leak content into logs.
+      logger.error('channel.outgoing.persistence.failed', {
+        errorClass: 'storage_unavailable',
+      });
+    }
+  };
 
   // INV-2 — authorization precedes retrieval, generation, and any storage read.
   const decision = await options.authorize(request);
   if (!decision.allowed) {
     logger.info('channel.turn.denied', { surface, reason: decision.reason });
     if (shouldReplyOnDeny(decision.reason)) {
-      await thread.post(userFacingMessage(new ChannelError('unauthorized')));
+      await post(userFacingMessage(new ChannelError('unauthorized')));
     }
     return;
   }
@@ -147,13 +164,13 @@ export async function handleTurn(
 
   try {
     const reply = await options.respond(request);
-    await thread.post(reply);
+    await post(reply);
     logger.info('channel.turn.completed', { surface });
   } catch (error) {
     const errorClass = classifyError(error);
     logger.error('channel.turn.failed', { surface, errorClass });
     // The single reply for this turn (FR-SLK-007, FR-RSP-008).
-    await thread.post(userFacingMessage(error));
+    await post(userFacingMessage(error));
   }
 }
 

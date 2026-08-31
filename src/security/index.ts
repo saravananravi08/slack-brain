@@ -35,6 +35,8 @@ export { withAuthorization } from './guard.js';
 export type { GuardOutcome, GuardedOperation } from './guard.js';
 
 export { createChannelAuthorizer } from './channel-authorizer.js';
+export { policyForEnrolledChannel } from './channel-enrollment.js';
+export type { ResponseChannelEnrollmentProbe } from './channel-enrollment.js';
 export type {
   ChannelAuthorizationDecision,
   ChannelAuthorizationInput,

@@ -366,10 +366,10 @@ describe('deny-by-default rules', () => {
     expect(authorize(makeRequest('accept_event', { event })).allowed).toBe(true);
   });
 
-  it('denies when the approved channel list is empty (D001 fail-closed)', () => {
+  it('treats an empty legacy channel list as no projected enrollment under D013', () => {
     const policy = makePolicy({ approved_channel_ids: [] });
     const decision = authorize(makeRequest('accept_event', { policy }));
-    expect(decision).toMatchObject({ allowed: false, reason: 'malformed_request' });
+    expect(decision).toMatchObject({ allowed: false, reason: 'unapproved_channel' });
   });
 
   it('denies a request whose contract version is a different major', () => {
