@@ -1,6 +1,6 @@
 # T706 — Validate channel intelligence end to end
 
-- **Status:** Ready for Integration
+- **Status:** Merged (offline GO; live gate pending operator)
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
 - **Owner:** pi-coder-25
 - **Branch:** `task/T706-validate-channel-intelligence-end-to-end`
@@ -65,6 +65,6 @@ Offline acceptance passes. Live rows remain pending operator execution; current 
 
 - Implementation commit: `ef55108`
 - Handoff commit: this commit
-- Merge commit: —
-- Integration metadata commit: —
+- Merge commit: `58f1cc1`
+- Integration metadata commit: docs(P07) integrate T706 metadata commit
 - Completed at: —

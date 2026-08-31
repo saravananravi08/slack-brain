@@ -1,8 +1,8 @@
 # P07 — Channel Context and Observational Memory
 
-- **Status:** Planned
+- **Status:** Merged (offline GO; live validation pending operator)
 - **Depends on:** P06, accepted D016–D017
-- **Phase integrator:** Unassigned
+- **Phase integrator:** implementation coordinator (Kilo)
 - **PRD coverage:** CM-FR-020…032, CM-NFR-003/005/007
 
 ## Outcome
@@ -11,9 +11,9 @@ Gist answers from a bounded, channel-isolated context containing current thread 
 
 ## Entry criteria
 
-- [ ] P06 is completed.
-- [ ] D016–D017 are accepted.
-- [ ] Exact channel messages and edits are stable enough to serve as observation sources.
+- [x] P06 is completed.
+- [x] D016–D017 are accepted.
+- [x] Exact channel messages and edits are stable enough to serve as observation sources.
 
 ## Parallel execution plan
 
@@ -28,7 +28,7 @@ T701, T702, and T703 run in parallel after P06. T704 composes their outputs into
 | T703 — Implement scoped semantic memory tool | Completed | P06 | PG-07A | pi-coder-24 | e18fcb1 |
 | T704 — Assemble bounded channel context | Completed | T701, T702, T703 | PG-07B | pi-coder-23 | fb7e35c |
 | T705 — Integrate context with Gist agent | Completed | T704 | PG-07C | pi-coder-24 | 0ab9164 |
-| T706 — Validate channel intelligence end to end | Planned | T705 | PG-07D | Unassigned | — |
+| T706 — Validate channel intelligence end to end | Merged (offline GO; live pending operator) | T705 | PG-07D | pi-coder-25 | 58f1cc1 |
 
 ## Integration procedure
 
@@ -40,14 +40,14 @@ T701, T702, and T703 run in parallel after P06. T704 composes their outputs into
 
 ## Exit criteria
 
-- [ ] Current-thread and channel-wide histories are distinct and chronological.
-- [ ] Observation Memory and rolling summaries are isolated per channel.
-- [ ] Observation failure never blocks exact message capture.
-- [ ] Default answers receive history, summary, and observations.
-- [ ] `search_channel_memory` cannot accept or override channel scope.
-- [ ] Older details are recoverable through semantic fallback with attribution.
-- [ ] Cross-channel context leakage tests pass.
-- [ ] Context API is ready for a later orchestrator phase.
+- [x] Current-thread and channel-wide histories are distinct and chronological.
+- [x] Observation Memory and rolling summaries are isolated per channel.
+- [x] Observation failure never blocks exact message capture.
+- [x] Default answers receive history, summary, and observations.
+- [x] `search_channel_memory` cannot accept or override channel scope.
+- [x] Older details are recoverable through semantic fallback with attribution.
+- [x] Cross-channel context leakage tests pass.
+- [x] Context API is ready for a later orchestrator phase.
 
 ## Phase verification
 
@@ -60,6 +60,6 @@ npm run build
 
 ## Completion record
 
-- Gate approved by: —
+- Gate approved by: pending operator live validation (T706 checklist)
 - Gate date: —
-- Commit: —
+- Commit: `58f1cc1` (T706 merge; offline GO)

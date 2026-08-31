@@ -1,8 +1,8 @@
 # P06 — Complete Multi-Channel Capture
 
-- **Status:** Planned
+- **Status:** Merged (offline GO; live validation pending operator)
 - **Depends on:** T406, accepted D013–D015
-- **Phase integrator:** Unassigned
+- **Phase integrator:** implementation coordinator (Kilo)
 - **PRD coverage:** CM-FR-001…019, CM-NFR-001/002/004/006
 
 ## Outcome
@@ -11,8 +11,8 @@ Every message posted after Gist joins any internal Slack channel is persisted on
 
 ## Entry criteria
 
-- [ ] T406 is completed and merged.
-- [ ] D013–D015 are accepted.
+- [x] T406 is completed and merged.
+- [x] D013–D015 are accepted.
 - [ ] Slack test workspace permits adding Gist to at least two internal channels.
 
 ## Parallel execution plan
@@ -41,13 +41,13 @@ T601 freezes contracts. T602, T603, T604, and T605 then run in parallel with dis
 
 ## Exit criteria
 
-- [ ] Joined-channel registry is durable and membership-authoritative.
-- [ ] Two joined channels capture all sender classes without cross-channel leakage.
-- [ ] Capture and response policies are independently tested.
-- [ ] Gist outgoing messages persist exactly once.
-- [ ] Edits replace source text and vectors idempotently.
-- [ ] Delete events leave stored state unchanged, with accepted-risk tests.
-- [ ] No backfill dependency exists.
+- [x] Joined-channel registry is durable and membership-authoritative.
+- [x] Two joined channels capture all sender classes without cross-channel leakage.
+- [x] Capture and response policies are independently tested.
+- [x] Gist outgoing messages persist exactly once.
+- [x] Edits replace source text and vectors idempotently.
+- [x] Delete events leave stored state unchanged, with accepted-risk tests.
+- [x] No backfill dependency exists.
 
 ## Phase verification
 
@@ -60,6 +60,6 @@ npm run build
 
 ## Completion record
 
-- Gate approved by: —
+- Gate approved by: pending operator live validation (T607 checklist)
 - Gate date: —
-- Commit: —
+- Commit: `1a63d5e` (T607 merge; offline GO)

@@ -366,3 +366,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 
 - T706 prep (pi-coder-25) found that createFoundationRuntime never wired MutationHandler.derivedInvalidationSink to memory.channelObservations, so edit invalidation was a no-op by default (edit-refresh would fail CM-AC-08/10).
 - Coordinator fix on integration: default derivedInvalidationSink to memory.channelObservations (which implements DerivedInvalidationSink). Full suite 1026 passed / 5 skipped; typecheck OK.
+
+### 2026-08-31 — T706 integrated; P07 code complete, live gate pending operator
+
+- T706 merged at `58f1cc1` (offline GO: CM-AC-08…11 + recent-history + edit-refresh pass; sink fix f176f31 in base).
+- Gates: typecheck OK; full 1033 passed / 5 skipped; e2e 35 passed / 4 skipped; build OK.
+- P07 remains OPEN pending the operator live checklist in docs/reports/channel-context-validation.md (13 steps).
+- All P06/P07 code merged and offline-verified. Remaining: operator live runs for P06 (T607 report) and P07 (T706 report).
