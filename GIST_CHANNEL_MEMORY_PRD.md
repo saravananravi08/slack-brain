@@ -129,3 +129,22 @@ The whole channel is never copied into one prompt. Exact messages remain durable
 ## 9. Accepted risk
 
 Ignoring delete events means content removed from Slack remains stored and recallable by Gist. This is an explicit temporary product decision for P06/P07, not an implementation omission. Re-enabling hard-delete propagation requires a new approved decision and regression of messages, embeddings, summaries, observations, and backups.
+
+## 10. Contract mapping (P06 Wave 1)
+
+Annotation added by T601. This section records where each requirement is frozen; it does not add, remove, or restate any requirement above.
+
+The channel-memory contract set lives in [`docs/architecture/channel-memory/`](docs/architecture/channel-memory/) at version 1.0.0, with synthetic fixtures and contract tests in `tests/contracts/channel-memory/`.
+
+| Requirements | Frozen in | Covers |
+|---|---|---|
+| CM-FR-001…006 | [`enrollment.md`](docs/architecture/channel-memory/enrollment.md) | Membership-authoritative enrollment, capture floor, no backfill, retention after leave |
+| CM-FR-007, 012, 013 | [`capture-policy.md`](docs/architecture/channel-memory/capture-policy.md) | Capture eligibility, separated from response eligibility |
+| CM-FR-007…011 | [`message-record.md`](docs/architecture/channel-memory/message-record.md) | Canonical sender classes, stored record, outgoing-message persistence, idempotency |
+| CM-FR-015…019 | [`mutations.md`](docs/architecture/channel-memory/mutations.md) | Edit replacement on original identity; accepted delete-ignore and its risk |
+| CM-FR-004, 011, 014 | [`invariants.md`](docs/architecture/channel-memory/invariants.md) | CM-INV-01…12: isolation, idempotency, separation, retention, logging |
+| CM-FR-001…019 (complete map) | [`requirements-map.md`](docs/architecture/channel-memory/requirements-map.md) | Every requirement → contract clause or named integration rule |
+
+CM-FR-020…032 are P07 and are not frozen by T601. CM-FR-026 straddles both: P06 emits the staleness signal (`mutations.md` §3.5), P07 regenerates the affected derived context.
+
+The accepted risk in §9 is pinned by test in `tests/contracts/channel-memory/mutations.test.ts` so the behavior cannot change without a failing suite and a new approved decision.

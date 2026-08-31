@@ -1,8 +1,8 @@
 # T601 — Freeze channel-memory contracts
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
-- **Owner:** Unassigned
+- **Owner:** claude-opus5
 - **Branch:** `task/T601-freeze-channel-memory-contracts`
 - **Parallel group:** PG-06A
 - **Depends on:** T406, D013–D015 accepted
@@ -53,15 +53,15 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Every CM-FR-001…019 requirement maps to a contract or explicit integration rule.
-- [ ] Fixtures cover two channels and every sender/mutation class.
-- [ ] Bot/app capture cannot imply response authorization.
-- [ ] Delete-ignore risk is explicit and tested.
-- [ ] No real Slack IDs or content are committed.
+- [x] Every CM-FR-001…019 requirement maps to a contract or explicit integration rule.
+- [x] Fixtures cover two channels and every sender/mutation class.
+- [x] Bot/app capture cannot imply response authorization.
+- [x] Delete-ignore risk is explicit and tested.
+- [x] No real Slack IDs or content are committed.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `991fc4aaf03ca10700c85cf3a72243fb213c9ff0`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —

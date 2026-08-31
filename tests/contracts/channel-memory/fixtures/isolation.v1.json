@@ -1,0 +1,130 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "invariants.md",
+  "boundaries": {
+    "channel_a": "ch:T0CHANTEST:C0CHANTESTA",
+    "channel_b": "ch:T0CHANTEST:C0CHANTESTB"
+  },
+  "same_ts_two_channels": {
+    "note": "CM-INV-01/02 — the same Slack ts in two channels is two records in two boundaries. Nothing merges them.",
+    "a": {
+      "message_key": "T0CHANTEST/C0CHANTESTA/1767604600.000100",
+      "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+      "text": "channel A wording"
+    },
+    "b": {
+      "message_key": "T0CHANTEST/C0CHANTESTB/1767604600.000100",
+      "boundary_id": "ch:T0CHANTEST:C0CHANTESTB",
+      "text": "channel B wording"
+    },
+    "expect_distinct_message_keys": true,
+    "expect_distinct_boundaries": true,
+    "expect_record_count": 2
+  },
+  "scope_cases": [
+    {
+      "name": "channel_a_request_scope",
+      "note": "CM-INV-01 — exactly one boundary. Not a list, not a default, not an optional filter.",
+      "request_channel_id": "C0CHANTESTA",
+      "expect_scope": ["ch:T0CHANTEST:C0CHANTESTA"],
+      "expect_scope_length": 1
+    },
+    {
+      "name": "channel_b_request_scope",
+      "request_channel_id": "C0CHANTESTB",
+      "expect_scope": ["ch:T0CHANTEST:C0CHANTESTB"],
+      "expect_scope_length": 1
+    }
+  ],
+  "forbidden": [
+    {
+      "name": "channel_a_request_reading_channel_b",
+      "note": "CM-NFR-003 — no query, embedding search, summary, observation, tool call, or answer may cross.",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "attempted_read_boundary": "ch:T0CHANTEST:C0CHANTESTB",
+      "expect_allowed": false
+    },
+    {
+      "name": "scope_containing_two_channels",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "attempted_scope": ["ch:T0CHANTEST:C0CHANTESTA", "ch:T0CHANTEST:C0CHANTESTB"],
+      "expect_allowed": false,
+      "expect_reason": "scope_length_must_be_one"
+    },
+    {
+      "name": "empty_scope",
+      "note": "authorization.md §5 rule 6 — an allowed decision with an empty scope is a contract violation, not an empty search.",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "attempted_scope": [],
+      "expect_allowed": false,
+      "expect_reason": "scope_length_must_be_one"
+    },
+    {
+      "name": "dm_boundary_in_channel_scope",
+      "note": "CM-INV-04 — channel memory has no DM surface at all.",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "attempted_scope": ["dm:T0CHANTEST:U0TESTUSER1"],
+      "expect_allowed": false,
+      "expect_reason": "boundary_prefix_mismatch"
+    },
+    {
+      "name": "unprefixed_channel_id_as_boundary",
+      "note": "identity.md §4 — a bare ID defeats the structural prefix.",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "attempted_scope": ["C0CHANTESTA"],
+      "expect_allowed": false,
+      "expect_reason": "boundary_prefix_mismatch"
+    },
+    {
+      "name": "post_filtering_instead_of_in_query_filter",
+      "note": "storage.md §2 — scoring across boundaries and filtering afterwards is a leak waiting on a LIMIT.",
+      "request_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "vector_query_filter_present": false,
+      "expect_allowed": false,
+      "expect_reason": "boundary_filter_must_be_in_query"
+    }
+  ],
+  "independence": [
+    {
+      "name": "channel_b_embedding_failure_does_not_stop_channel_a",
+      "note": "CM-INV-03 + CM-NFR-002 — one channel's failure is not another channel's outage.",
+      "failing_boundary": "ch:T0CHANTEST:C0CHANTESTB",
+      "failure": "embedding_unavailable",
+      "expect_channel_a_capture": true,
+      "expect_channel_b_capture": true,
+      "expect_channel_b_embedding_marked_stale": true
+    },
+    {
+      "name": "channel_a_left_does_not_affect_channel_b",
+      "note": "CM-INV-10 — a membership change is scoped to its own boundary and deletes nothing anywhere.",
+      "left_boundary": "ch:T0CHANTEST:C0CHANTESTA",
+      "expect_channel_a_capture": false,
+      "expect_channel_a_records_retained": true,
+      "expect_channel_b_capture": true,
+      "expect_delete_primitive_calls": 0
+    },
+    {
+      "name": "malformed_event_in_channel_b_does_not_stop_channel_a",
+      "failing_boundary": "ch:T0CHANTEST:C0CHANTESTB",
+      "failure": "malformed_event",
+      "expect_channel_a_capture": true,
+      "expect_outbound_actions": [],
+      "expect_generation_calls": 0
+    }
+  ],
+  "loggable_reasons": {
+    "note": "CM-INV-11 — every reason string is safe to log and carries no message content.",
+    "capture_deny_reasons": [
+      "channel_not_enrolled",
+      "before_capture_floor",
+      "unapproved_workspace",
+      "not_a_channel",
+      "system_subtype",
+      "malformed_event",
+      "duplicate_delivery"
+    ],
+    "response_deny_reasons_added": ["not_addressed", "non_human_sender", "self_authored"],
+    "mutation_results": ["updated", "inserted", "unchanged", "ignored"]
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "message-record.md §1, §2",
+  "config": {
+    "gist_bot_user_id": "U0GISTBOT01",
+    "kilo_bot_id": "B0KILOBOT01",
+    "kilo_app_id": "A0KILOAPP01"
+  },
+  "cases": [
+    {
+      "name": "human",
+      "note": "Resolution order rule 6 — nothing else matched.",
+      "raw": { "user": "U0TESTUSER1", "bot_id": null, "app_id": null, "subtype": null, "username": null },
+      "expect_sender": {
+        "sender_class": "human",
+        "sender_id": "U0TESTUSER1",
+        "sender_display_name": "test-user-one",
+        "bot_id": null,
+        "app_id": null,
+        "username": null,
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": true
+    },
+    {
+      "name": "gist_self",
+      "note": "Rule 1, before every bot rule. A self-message misclassified as 'bot' loses the shortest loop-stop.",
+      "raw": { "user": "U0GISTBOT01", "bot_id": "B0GISTBOT01", "app_id": "A0GISTAPP01", "subtype": "bot_message", "username": null },
+      "expect_sender": {
+        "sender_class": "gist",
+        "sender_id": "U0GISTBOT01",
+        "sender_display_name": "gist",
+        "bot_id": "B0GISTBOT01",
+        "app_id": "A0GISTAPP01",
+        "username": null,
+        "is_gist_self": true,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "self_authored"
+    },
+    {
+      "name": "kilo",
+      "note": "Rule 2 — matched on configured bot_id, never on display name or text.",
+      "raw": { "user": "U0KILOBOT01", "bot_id": "B0KILOBOT01", "app_id": "A0KILOAPP01", "subtype": "bot_message", "username": null },
+      "expect_sender": {
+        "sender_class": "kilo",
+        "sender_id": "U0KILOBOT01",
+        "sender_display_name": "kilo",
+        "bot_id": "B0KILOBOT01",
+        "app_id": "A0KILOAPP01",
+        "username": null,
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "non_human_sender"
+    },
+    {
+      "name": "other_bot",
+      "note": "Rule 4 — a bot user that is neither Gist nor Kilo.",
+      "raw": { "user": "U0OTHRBOT01", "bot_id": "B0OTHRBOT01", "app_id": null, "subtype": "bot_message", "username": null },
+      "expect_sender": {
+        "sender_class": "bot",
+        "sender_id": "U0OTHRBOT01",
+        "sender_display_name": "deploy-bot",
+        "bot_id": "B0OTHRBOT01",
+        "app_id": null,
+        "username": null,
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "non_human_sender"
+    },
+    {
+      "name": "bot_without_user_id",
+      "note": "message-record.md §2 — sender_id falls back to bot_id. It never falls back to a display name.",
+      "raw": { "user": null, "bot_id": "B0OTHRBOT01", "app_id": null, "subtype": "bot_message", "username": "legacy-webhook" },
+      "expect_sender": {
+        "sender_class": "bot",
+        "sender_id": "B0OTHRBOT01",
+        "sender_display_name": "legacy-webhook",
+        "bot_id": "B0OTHRBOT01",
+        "app_id": null,
+        "username": "legacy-webhook",
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "non_human_sender"
+    },
+    {
+      "name": "app",
+      "note": "Rule 5 — app_id with no bot user. sender_id falls back to app_id.",
+      "raw": { "user": null, "bot_id": null, "app_id": "A0TESTAPP01", "subtype": null, "username": "status-app" },
+      "expect_sender": {
+        "sender_class": "app",
+        "sender_id": "A0TESTAPP01",
+        "sender_display_name": "status-app",
+        "bot_id": null,
+        "app_id": "A0TESTAPP01",
+        "username": "status-app",
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": true,
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "non_human_sender"
+    },
+    {
+      "name": "system_subtype",
+      "note": "Rule 3 — classification is total, but lifecycle noise is not message content and is not captured.",
+      "raw": { "user": "U0TESTUSER2", "bot_id": null, "app_id": null, "subtype": "channel_join", "username": null },
+      "expect_sender": {
+        "sender_class": "system",
+        "sender_id": "U0TESTUSER2",
+        "sender_display_name": "test-user-two",
+        "bot_id": null,
+        "app_id": null,
+        "username": null,
+        "is_gist_self": false,
+        "is_external": false,
+        "is_guest": false
+      },
+      "expect_captured": false,
+      "expect_capture_deny_reason": "system_subtype",
+      "expect_response_eligible_if_addressed": false,
+      "expect_response_deny_reason": "non_human_sender"
+    }
+  ],
+  "ordering_traps": [
+    {
+      "name": "gist_beats_generic_bot",
+      "note": "Gist's own message carries bot_id and subtype bot_message; rule 1 must win over rule 4.",
+      "raw": { "user": "U0GISTBOT01", "bot_id": "B0GISTBOT01", "app_id": "A0GISTAPP01", "subtype": "bot_message", "username": null },
+      "expect_sender_class": "gist",
+      "must_not_be": "bot"
+    },
+    {
+      "name": "kilo_beats_generic_app",
+      "note": "Kilo carries an app_id; rule 2 must win over rule 5.",
+      "raw": { "user": null, "bot_id": "B0KILOBOT01", "app_id": "A0KILOAPP01", "subtype": null, "username": null },
+      "expect_sender_class": "kilo",
+      "must_not_be": "app"
+    },
+    {
+      "name": "display_name_is_never_evidence",
+      "note": "A renamed bot claiming a human's name must still classify as bot.",
+      "raw": { "user": "U0OTHRBOT01", "bot_id": "B0OTHRBOT01", "app_id": null, "subtype": "bot_message", "username": "test-user-one" },
+      "expect_sender_class": "bot",
+      "must_not_be": "human"
+    }
+  ],
+  "malformed": [
+    {
+      "name": "no_identifier_at_all",
+      "note": "message-record.md §2 — no user, bot, or app ID is malformed_event, never a guessed identity.",
+      "raw": { "user": null, "bot_id": null, "app_id": null, "subtype": null, "username": "who" },
+      "expect_capture_deny_reason": "malformed_event",
+      "expect_response_eligible_if_addressed": false,
+      "expect_outbound_actions": []
+    }
+  ]
+}

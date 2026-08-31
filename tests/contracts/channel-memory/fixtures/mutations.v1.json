@@ -1,0 +1,254 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "mutations.md",
+  "edits": [
+    {
+      "name": "edit_stored_message",
+      "note": "CM-FR-015/016 — keyed on the ORIGINAL message identity, not the mutation event's own ts.",
+      "target_record": "channel_a_human_root",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767603700.000100",
+        "event_id": "Ev0CHANTEST0201",
+        "edited_at": "2026-01-05T09:12:00.000Z",
+        "new_text": "starting the rollout checklist (revised)"
+      },
+      "expect_result": "updated",
+      "expect_message_key": "T0CHANTEST/C0CHANTESTA/1767603700.000100",
+      "expect_changed_fields": ["text", "edited_at"],
+      "expect_preserved_fields": {
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767603700.000100",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "thread_id": "ch:T0CHANTEST:C0CHANTESTA#1767603700.000100",
+        "thread_root_ts": "1767603700.000100",
+        "is_thread_reply": false,
+        "sender_id": "U0TESTUSER1",
+        "sender_class": "human",
+        "sender_display_name": "test-user-one",
+        "sent_at": "2026-01-05T09:01:40.000Z",
+        "message_ts": "1767603700.000100",
+        "capture_source": "live_event",
+        "enrollment_epoch": 1
+      },
+      "expect_embedding_replaced": true,
+      "expect_stale_embedding_survives": false,
+      "expect_derived_invalidation": {
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "message_key": "T0CHANTEST/C0CHANTESTA/1767603700.000100",
+        "invalidated_at": "2026-01-05T09:12:00.000Z",
+        "targets": ["summary", "observations"]
+      }
+    },
+    {
+      "name": "replayed_edit_is_idempotent",
+      "note": "CM-FR-018 — same edited_at replayed. Tie goes to the stored record.",
+      "target_record": "channel_a_human_root",
+      "applied_after": "edit_stored_message",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767603700.000100",
+        "event_id": "Ev0CHANTEST0201",
+        "edited_at": "2026-01-05T09:12:00.000Z",
+        "new_text": "starting the rollout checklist (revised)"
+      },
+      "expect_result": "unchanged",
+      "expect_embedding_replaced": false,
+      "expect_record_count": 1
+    },
+    {
+      "name": "out_of_order_older_edit_does_not_regress",
+      "note": "mutations.md §3.3 apply-if-newer — an older edit redelivered after a newer one must not overwrite it.",
+      "target_record": "channel_a_human_root",
+      "applied_after": "edit_stored_message",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767603700.000100",
+        "event_id": "Ev0CHANTEST0202",
+        "edited_at": "2026-01-05T09:11:00.000Z",
+        "new_text": "an earlier wording that must not win"
+      },
+      "expect_result": "unchanged",
+      "expect_text_unchanged": true,
+      "expect_edited_at": "2026-01-05T09:12:00.000Z"
+    },
+    {
+      "name": "edit_for_unstored_target_inserts",
+      "note": "mutations.md §3.4 — Slack delivered the edit but not the original (reconnect gap). Dropping it loses the message.",
+      "target_record": null,
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "target_ts": "1767604300.000100",
+        "event_id": "Ev0CHANTEST0203",
+        "edited_at": "2026-01-05T09:15:00.000Z",
+        "new_text": "text that only ever arrived as an edit"
+      },
+      "expect_result": "inserted",
+      "expect_capture_source": "live_event",
+      "expect_edited_at": "2026-01-05T09:15:00.000Z",
+      "expect_record_count": 1
+    },
+    {
+      "name": "late_original_does_not_regress_inserted_edit",
+      "note": "The paired risk of §3.4: the original arrives afterwards carrying pre-edit text.",
+      "applied_after": "edit_for_unstored_target_inserts",
+      "late_original": {
+        "message_ts": "1767604300.000100",
+        "channel_id": "C0CHANTESTB",
+        "text": "the pre-edit wording",
+        "edited_at": null
+      },
+      "expect_result": "unchanged",
+      "expect_text": "text that only ever arrived as an edit",
+      "expect_record_count": 1
+    },
+    {
+      "name": "edit_below_capture_floor_is_ignored",
+      "note": "CM-FR-006 — an edit must not backfill a message from before enrollment.",
+      "target_record": null,
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767500000.000100",
+        "event_id": "Ev0CHANTEST0204",
+        "edited_at": "2026-01-05T09:16:00.000Z",
+        "new_text": "an edit to a pre-enrollment message"
+      },
+      "expect_result": "ignored",
+      "expect_record_count": 0
+    },
+    {
+      "name": "edit_in_unenrolled_channel_is_denied_before_lookup",
+      "note": "mutations.md §2 — ordering matters: a mutation must not be usable to probe what Gist stores.",
+      "target_record": null,
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTZ",
+        "target_ts": "1767604400.000100",
+        "event_id": "Ev0CHANTEST0205",
+        "edited_at": "2026-01-05T09:17:00.000Z",
+        "new_text": "probe attempt"
+      },
+      "expect_result": "ignored",
+      "expect_storage_lookups": 0
+    },
+    {
+      "name": "edit_preserves_sender_for_bot_message",
+      "note": "An edited bot message must stay a bot message — still captured, still never response-eligible.",
+      "target_record": "channel_b_other_bot_root",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "edit",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "target_ts": "1767604100.000100",
+        "event_id": "Ev0CHANTEST0206",
+        "edited_at": "2026-01-05T09:18:00.000Z",
+        "new_text": "build 412 deployed (rolled back)"
+      },
+      "expect_result": "updated",
+      "expect_preserved_fields": {
+        "sender_class": "bot",
+        "sender_id": "U0OTHRBOT01",
+        "sent_at": "2026-01-05T09:08:20.000Z"
+      },
+      "expect_respond_allowed": false,
+      "expect_response_reason": "non_human_sender"
+    }
+  ],
+  "deletes": [
+    {
+      "name": "delete_is_ignored",
+      "note": "CM-FR-019, D015 — accepted risk. Nothing is deleted and NO tombstone is written.",
+      "target_record": "channel_a_human_reply",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "delete",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767603800.000100",
+        "event_id": "Ev0CHANTEST0301",
+        "edited_at": "2026-01-05T09:20:00.000Z"
+      },
+      "expect_result": "ignored",
+      "expect_record_unchanged": true,
+      "expect_embedding_unchanged": true,
+      "expect_summary_unchanged": true,
+      "expect_observations_unchanged": true,
+      "expect_tombstone_written": false,
+      "expect_delete_primitive_calls": 0,
+      "expect_counter": "mutation_ignored{kind=\"delete\"}"
+    },
+    {
+      "name": "replayed_delete_is_still_ignored",
+      "applied_after": "delete_is_ignored",
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "delete",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "target_ts": "1767603800.000100",
+        "event_id": "Ev0CHANTEST0302",
+        "edited_at": "2026-01-05T09:21:00.000Z"
+      },
+      "expect_result": "ignored",
+      "expect_record_unchanged": true,
+      "expect_delete_primitive_calls": 0
+    },
+    {
+      "name": "delete_then_redelivery_is_not_suppressed",
+      "note": "mutations.md §4 — this is why no tombstone is written. A v1-style tombstone would wrongly suppress this.",
+      "applied_after": "delete_is_ignored",
+      "redelivery": {
+        "message_ts": "1767603800.000100",
+        "channel_id": "C0CHANTESTA",
+        "event_id": "Ev0CHANTEST0303"
+      },
+      "expect_suppressed": false,
+      "expect_upsert_result": "unchanged",
+      "expect_record_count": 1
+    },
+    {
+      "name": "delete_for_unstored_message_is_success",
+      "target_record": null,
+      "mutation": {
+        "contract_version": "1.0.0",
+        "kind": "delete",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "target_ts": "1767604500.000100",
+        "event_id": "Ev0CHANTEST0304",
+        "edited_at": "2026-01-05T09:22:00.000Z"
+      },
+      "expect_result": "ignored",
+      "expect_error": false,
+      "expect_delete_primitive_calls": 0
+    }
+  ],
+  "accepted_risk": {
+    "requirement": "CM-FR-019",
+    "decision": "D015",
+    "prd_section": "9",
+    "statement": "Content deleted in Slack remains stored in Gist and remains recallable, including via semantic search, summaries, and observations.",
+    "temporary": true,
+    "phases": ["P06", "P07"],
+    "reversal_requires": ["new approved decision", "regression of messages, embeddings, summaries, observations, and backups"],
+    "remaining_mitigations": ["operator purge via deleteMessages", "D004 retention sweep"]
+  }
+}

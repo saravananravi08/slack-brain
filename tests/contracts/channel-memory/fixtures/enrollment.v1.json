@@ -1,0 +1,179 @@
+{
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "enrollment.md",
+  "records": [
+    {
+      "name": "channel_a_enrolled",
+      "note": "enrollment.md §2 — created from a member_joined_channel event for Gist's own bot user.",
+      "enrollment": {
+        "contract_version": "1.0.0",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "state": "enrolled",
+        "epoch": 1,
+        "enrolled_at": "2026-01-05T09:00:00.000Z",
+        "capture_floor_ts": "1767603600.000100",
+        "left_at": null,
+        "membership_source": "member_joined_channel",
+        "membership_confirmed_at": "2026-01-05T09:00:00.000Z",
+        "retention": "retained"
+      }
+    },
+    {
+      "name": "channel_b_enrolled",
+      "note": "CM-FR-003 — a second channel enrolled at the same time, independent record.",
+      "enrollment": {
+        "contract_version": "1.0.0",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTB",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTB",
+        "state": "enrolled",
+        "epoch": 1,
+        "enrolled_at": "2026-01-05T09:00:00.000Z",
+        "capture_floor_ts": "1767603600.000100",
+        "left_at": null,
+        "membership_source": "conversations_members",
+        "membership_confirmed_at": "2026-01-05T09:00:00.000Z",
+        "retention": "retained"
+      }
+    },
+    {
+      "name": "channel_a_left",
+      "note": "CM-FR-005 — capture stops, memory retained; capture_floor_ts and epoch unchanged.",
+      "enrollment": {
+        "contract_version": "1.0.0",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "state": "left",
+        "epoch": 1,
+        "enrolled_at": "2026-01-05T09:00:00.000Z",
+        "capture_floor_ts": "1767603600.000100",
+        "left_at": "2026-01-06T17:00:00.000Z",
+        "membership_source": "member_left_channel",
+        "membership_confirmed_at": "2026-01-06T17:00:00.000Z",
+        "retention": "retained"
+      },
+      "expect_retained": {
+        "messages_deleted": 0,
+        "embeddings_deleted": 0,
+        "summary_deleted": false,
+        "observations_deleted": false,
+        "delete_primitive_calls": 0
+      }
+    },
+    {
+      "name": "channel_a_rejoined",
+      "note": "enrollment.md §4 — same boundary_id, epoch 2, NEW floor; the gap is not backfilled.",
+      "enrollment": {
+        "contract_version": "1.0.0",
+        "boundary_id": "ch:T0CHANTEST:C0CHANTESTA",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "state": "enrolled",
+        "epoch": 2,
+        "enrolled_at": "2026-01-08T09:00:00.000Z",
+        "capture_floor_ts": "1767862800.000100",
+        "left_at": null,
+        "membership_source": "member_joined_channel",
+        "membership_confirmed_at": "2026-01-08T09:00:00.000Z",
+        "retention": "retained"
+      }
+    }
+  ],
+  "membership_facts": [
+    {
+      "name": "replayed_join_is_idempotent",
+      "note": "CM-FR-014 — Slack redelivers membership events on reconnect. A replay must not move the floor or bump the epoch.",
+      "applied_to": "channel_a_enrolled",
+      "fact": {
+        "kind": "member_joined_channel",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "ts": "1767603600.000100",
+        "event_id": "Ev0CHANTEST0001"
+      },
+      "expect_result": "unchanged",
+      "expect_epoch": 1,
+      "expect_capture_floor_ts": "1767603600.000100"
+    },
+    {
+      "name": "older_join_does_not_move_floor_backwards",
+      "note": "enrollment.md §6 — a backwards floor would re-open pre-enrollment history (CM-FR-006).",
+      "applied_to": "channel_a_enrolled",
+      "fact": {
+        "kind": "member_joined_channel",
+        "workspace_id": "T0CHANTEST",
+        "channel_id": "C0CHANTESTA",
+        "ts": "1767500000.000100",
+        "event_id": "Ev0CHANTEST0002"
+      },
+      "expect_result": "unchanged",
+      "expect_capture_floor_ts": "1767603600.000100"
+    }
+  ],
+  "capture_floor_cases": [
+    {
+      "name": "message_after_floor_is_captured",
+      "enrollment": "channel_a_enrolled",
+      "message_ts": "1767603700.000100",
+      "expect_within_floor": true
+    },
+    {
+      "name": "message_at_floor_is_captured",
+      "note": "The membership-confirming ts itself is inside the floor — boundary is inclusive.",
+      "enrollment": "channel_a_enrolled",
+      "message_ts": "1767603600.000100",
+      "expect_within_floor": true
+    },
+    {
+      "name": "message_before_floor_is_not_captured",
+      "note": "CM-FR-006 — no backfill. Denies with before_capture_floor, which is success, not an error.",
+      "enrollment": "channel_a_enrolled",
+      "message_ts": "1767500000.000100",
+      "expect_within_floor": false
+    },
+    {
+      "name": "floor_comparison_never_uses_float",
+      "note": "enrollment.md §3 — padded fractional comparison. These two ORDER equal but remain DISTINCT identities.",
+      "enrollment": "channel_a_enrolled",
+      "message_ts": "1767603600.0001",
+      "expect_within_floor": true,
+      "expect_ordering_equal_to_floor": true,
+      "expect_distinct_identity_from_floor": true
+    }
+  ],
+  "fail_closed_cases": [
+    {
+      "name": "unknown_channel_is_not_enrolled",
+      "note": "enrollment.md §2 rule 3 — no record means denied, never allowed.",
+      "channel_id": "C0CHANTESTZ",
+      "enrollment": null,
+      "expect_capture_deny_reason": "channel_not_enrolled"
+    },
+    {
+      "name": "left_channel_denies_new_capture",
+      "channel_id": "C0CHANTESTA",
+      "enrollment": "channel_a_left",
+      "expect_capture_deny_reason": "channel_not_enrolled"
+    },
+    {
+      "name": "configuration_cannot_enroll",
+      "note": "enrollment.md §2 rule 1 — a channel ID in config grants nothing without Slack-confirmed membership.",
+      "channel_id": "C0CHANTESTZ",
+      "enrollment": null,
+      "present_in_config_allowlist": true,
+      "expect_capture_deny_reason": "channel_not_enrolled"
+    },
+    {
+      "name": "message_traffic_is_not_membership_evidence",
+      "note": "enrollment.md §2 rule 2 — receiving events from a channel does not enroll it.",
+      "channel_id": "C0CHANTESTZ",
+      "enrollment": null,
+      "observed_message_events": 12,
+      "expect_capture_deny_reason": "channel_not_enrolled"
+    }
+  ]
+}
