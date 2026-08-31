@@ -1,6 +1,6 @@
 # T602 — Implement joined-channel registry
 
-- **Status:** In Progress
+- **Status:** Ready for Integration
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** pi coding agent
 - **Branch:** `task/T602-implement-joined-channel-registry`
@@ -47,15 +47,15 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Two joined channels remain distinct after restart.
-- [ ] Duplicate join/rejoin is idempotent.
-- [ ] Leave stops eligibility without deleting retained data.
-- [ ] Unknown or malformed channels fail closed.
-- [ ] Registry stores no message text or credentials.
+- [x] Two joined channels remain distinct after restart.
+- [x] Duplicate join/rejoin is idempotent.
+- [x] Leave stops eligibility without deleting retained data.
+- [x] Unknown or malformed channels fail closed.
+- [x] Registry stores no message text or credentials.
 
 ## Completion record
 
-- Implementation commit: —
+- Implementation commit: `8d473a9`
 - Handoff commit: —
 - Merge commit: —
 - Integration metadata commit: —
