@@ -8,6 +8,8 @@ import type {
   CheckOriginalInput,
   HandleMutationInput,
 } from '../../../src/ingestion/index.js';
+import type { ChannelContext } from '../../../src/channel-memory/context/index.js';
+import { ProactiveActionGate } from '../../../src/mastra/channels/proactive.js';
 import { createLiveSlackChannel } from '../../../src/mastra/channels/slack.js';
 import type {
   ChannelAuthorizationDecision,
@@ -52,6 +54,11 @@ interface HarnessOptions {
   readonly p06?: boolean;
   readonly authorizeCaptured?: ChannelAuthorizationDecision;
   readonly mutationStatus?: 'unchanged' | 'updated';
+  readonly proactiveAct?: boolean;
+  readonly proactiveChannelIds?: readonly string[];
+  readonly proactiveCooldownMs?: number;
+  readonly proactiveError?: Error;
+  readonly proactiveNow?: () => number;
 }
 
 function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
@@ -79,6 +86,20 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
     status: options.mutationStatus ?? 'unchanged',
     message_key: `${SYNTHETIC.workspace}/${SYNTHETIC.channel}/${SYNTHETIC.rootTs}` as const,
   }));
+  const classifyProactive = vi.fn(async () => {
+    if (options.proactiveError) throw options.proactiveError;
+    return { act: options.proactiveAct ?? false, reason: 'synthetic_relevance' };
+  });
+  const proactiveContext = vi.fn(async () => ({} as ChannelContext));
+  const proactive = options.proactiveChannelIds === undefined
+    ? undefined
+    : new ProactiveActionGate({
+        channelIds: options.proactiveChannelIds,
+        cooldownMs: options.proactiveCooldownMs ?? 60_000,
+        classifier: { classify: classifyProactive },
+        contextFor: proactiveContext,
+        ...(options.proactiveNow === undefined ? {} : { now: options.proactiveNow }),
+      });
 
   let channel: ReturnType<typeof createLiveSlackChannel>;
   channel = createLiveSlackChannel({
@@ -113,6 +134,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
       handle: handleMutation,
       shouldSuppressOriginal,
     },
+    ...(proactive === undefined ? {} : { proactive }),
     authorize: async (request) =>
       channel.adapter.getChannelVisibility(request.threadId) === 'external'
         ? { allowed: false, reason: 'external_user' }
@@ -172,6 +194,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
     adapter,
     channel,
     channelPersist,
+    classifyProactive,
     dispatch,
     drain,
     generation,
@@ -179,6 +202,7 @@ function makeHarness(state = makeMemoryState(), options: HarnessOptions = {}) {
     logger,
     persist,
     posts,
+    proactiveContext,
     resolveSender,
     shouldSuppressOriginal,
     state,
@@ -293,6 +317,206 @@ describe('D019/D020 edit-to-mention response trigger', () => {
     expect(harness.handleMutation).toHaveBeenCalledOnce();
     expect(harness.generation).not.toHaveBeenCalled();
     expect(harness.posts).toEqual([]);
+  });
+});
+
+describe('D021 proactive action mode', () => {
+  function proactiveHarness(options: HarnessOptions = {}) {
+    return makeHarness(makeMemoryState(), {
+      p06: true,
+      proactiveChannelIds: [SYNTHETIC.channel],
+      ...options,
+    });
+  }
+
+  it('responds once when an unaddressed human root is relevant', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('responds in-thread when an unaddressed human reply is relevant', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(channelMessage({
+      ts: SYNTHETIC.replyTs,
+      event_ts: SYNTHETIC.replyTs,
+      thread_ts: SYNTHETIC.rootTs,
+    })));
+
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.posts).toEqual([
+      expect.objectContaining({
+        threadId: `slack:${SYNTHETIC.channel}:${SYNTHETIC.rootTs}`,
+      }),
+    ]);
+  });
+
+  it('does nothing when an unaddressed human message is not relevant', async () => {
+    const harness = proactiveHarness({ proactiveAct: false });
+
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('excludes bot senders before proactive classification', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(channelMessage({
+      user: undefined,
+      bot_id: SYNTHETIC.otherBotId,
+      username: 'Synthetic Bot',
+    })));
+
+    expect(harness.channelPersist).toHaveBeenCalledOnce();
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.proactiveContext).not.toHaveBeenCalled();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('excludes app senders before proactive classification', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(channelMessage({
+      user: undefined,
+      app_id: 'A0OTHERAPP',
+      username: 'Synthetic App',
+    })));
+
+    expect(harness.channelPersist).toHaveBeenCalledOnce();
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.proactiveContext).not.toHaveBeenCalled();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('excludes Gist senders before proactive classification', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(channelMessage({
+      user: SYNTHETIC.botUserId,
+      text: 'synthetic urgent action request',
+    })));
+
+    expect(harness.channelPersist).toHaveBeenCalledOnce();
+    expect(harness.channelPersist.mock.calls[0]?.[0].sender.sender_class).toBe('gist');
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.proactiveContext).not.toHaveBeenCalled();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('captures a proactive response echo without re-evaluation or a loop', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+    await harness.deliver(envelope(channelMessage()));
+
+    const echoed = envelope(channelMessage({
+      user: SYNTHETIC.botUserId,
+      text: 'Synthetic reply.',
+      ts: '1735690300.000100',
+      event_ts: '1735690300.000100',
+      thread_ts: SYNTHETIC.rootTs,
+    }));
+    await harness.deliver(echoed);
+    await harness.deliver(echoed);
+
+    expect(harness.channelPersist).toHaveBeenCalledTimes(2);
+    expect(harness.channelPersist.mock.calls[1]?.[0].sender.sender_class).toBe('gist');
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('denies unauthorized candidates before context or classification', async () => {
+    const harness = proactiveHarness({
+      authorizeCaptured: { allowed: false, reason: 'guest_user' },
+      proactiveAct: true,
+    });
+
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.proactiveContext).not.toHaveBeenCalled();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('blocks a rapid second proactive action in the same channel', async () => {
+    const harness = proactiveHarness({
+      proactiveAct: true,
+      proactiveCooldownMs: 60_000,
+      proactiveNow: () => 1_000,
+    });
+
+    await harness.deliver(envelope(channelMessage()));
+    await harness.deliver(envelope(channelMessage({
+      ts: '1735690310.000100',
+      event_ts: '1735690310.000100',
+    })));
+
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('deduplicates replayed proactive candidates', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+    const replayed = envelope(channelMessage());
+
+    await harness.deliver(replayed);
+    await harness.deliver(replayed);
+
+    expect(harness.classifyProactive).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
+  });
+
+  it('leaves non-proactive channels capture-only', async () => {
+    const harness = proactiveHarness({
+      proactiveAct: true,
+      proactiveChannelIds: ['C0OTHER001'],
+    });
+
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.channelPersist).toHaveBeenCalledOnce();
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+  });
+
+  it('fails closed with a content-free log when classification throws', async () => {
+    const harness = proactiveHarness({
+      proactiveError: new Error('synthetic classifier failure'),
+    });
+
+    await harness.deliver(envelope(channelMessage()));
+
+    expect(harness.generation).not.toHaveBeenCalled();
+    expect(harness.posts).toEqual([]);
+    expect(harness.logger.error).toHaveBeenCalledWith(
+      'channel.proactive.classification.failed',
+      { errorClass: 'model_unavailable' },
+    );
+    expect(JSON.stringify(harness.logger.error.mock.calls)).not.toContain('rollout window');
+  });
+
+  it('keeps addressed mentions out of proactive classification', async () => {
+    const harness = proactiveHarness({ proactiveAct: true });
+
+    await harness.deliver(envelope(mentionEvent()));
+
+    expect(harness.classifyProactive).not.toHaveBeenCalled();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.posts).toHaveLength(1);
   });
 });
 

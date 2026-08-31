@@ -47,6 +47,7 @@ import {
 } from '../../security/index.js';
 import { messageKey, resolveIdentity } from '../memory/resource-policy.js';
 import { createSlackChannel, GIST_USER_NAME, type GistSlackChannel } from './index.js';
+import type { ProactiveActionEvaluator } from './proactive.js';
 import type { ChannelLogger, ChannelRequest, SlackChannelOptions } from './types.js';
 
 const DELIVERY_TTL_MS = 24 * 60 * 60 * 1_000;
@@ -64,7 +65,7 @@ interface SlackDeliveryContext {
 
 interface CaptureRouteResult {
   readonly responseEligible: boolean;
-  readonly trigger?: 'edit_mention';
+  readonly trigger?: 'edit_mention' | 'proactive';
 }
 
 interface DispatchableSlackAdapter {
@@ -127,6 +128,7 @@ export interface LiveSlackChannelOptions extends SlackChannelOptions {
   /** Required for P06: durable atomic delivery/content claims across restart. */
   readonly idempotencyLedger?: IdempotencyLedger;
   readonly metrics?: ChannelMemoryMetrics;
+  readonly proactive?: ProactiveActionEvaluator;
   readonly kiloBotId?: string;
   readonly kiloAppId?: string;
   readonly now?: () => Date;
@@ -254,12 +256,12 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   const ledger = options.idempotencyLedger ?? ledgerFor(options.state);
 
   const capturedRequests = new WeakSet<ChannelRequest>();
-  const authorizedEditRequests = new WeakSet<ChannelRequest>();
+  const preauthorizedRequests = new WeakSet<ChannelRequest>();
   let channel!: GistSlackChannel;
   channel = createSlackChannel({
     ...options,
     authorize: (request) => {
-      if (authorizedEditRequests.delete(request)) return { allowed: true, reason: null };
+      if (preauthorizedRequests.delete(request)) return { allowed: true, reason: null };
       return capturedRequests.has(request) && options.authorizeCaptured
         ? options.authorizeCaptured(request)
         : options.authorize(request);
@@ -269,10 +271,20 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       if (capture) {
         const result = await capture;
         if (!result.responseEligible) return false;
-        if (result.trigger === 'edit_mention') {
+        if (result.trigger === 'edit_mention' || result.trigger === 'proactive') {
           const decision = await (options.authorizeCaptured ?? options.authorize)(request);
           if (!decision.allowed) return false;
-          authorizedEditRequests.add(request);
+          if (result.trigger === 'proactive') {
+            try {
+              if (!options.proactive || !await options.proactive.evaluate(request)) return false;
+            } catch {
+              logger.error('channel.proactive.classification.failed', {
+                errorClass: 'model_unavailable',
+              });
+              return false;
+            }
+          }
+          preauthorizedRequests.add(request);
         }
         capturedRequests.add(request);
       }
@@ -563,7 +575,16 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
       return { responseEligible: false };
     }
 
-    return { responseEligible: responsePrecheckDenyReason(event) === null };
+    if (responsePrecheckDenyReason(event) === null) return { responseEligible: true };
+    if (
+      event.class === 'ambient'
+      && event.sender_class === 'human'
+      && !event.addressed_to_gist
+      && options.proactive?.isEnabled(event.channel_id) === true
+    ) {
+      return { responseEligible: true, trigger: 'proactive' };
+    }
+    return { responseEligible: false };
   }
 
   async function applyRawMembership(
@@ -824,7 +845,20 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   }
 
   const liveHandlers: LiveIngestionHandlers = {
-    onAmbientMessage: async (_thread, message) => ingestMessage(message, false),
+    onAmbientMessage: async (thread, message) => {
+      if (!p06Enabled) {
+        await ingestMessage(message, false);
+        return;
+      }
+      const capture = deliveryContext.getStore()?.capturePromise;
+      if (!capture) {
+        warnMissingDeliveryContext();
+        return;
+      }
+      if ((await capture).trigger === 'proactive') {
+        await channel.handlers.onNewMention(thread, message);
+      }
+    },
     onSubscribedMessage: async (_thread, message) => ingestMessage(message, true),
     onMessageUpdated: async (thread, message) => {
       if (!p06Enabled) {
@@ -844,6 +878,9 @@ export function createLiveSlackChannel(options: LiveSlackChannelOptions): LiveGi
   };
 
   if (p06Enabled) {
+    if (options.proactive?.hasChannels === true) {
+      channel.bot.onNewMessage(/[\s\S]*/, liveHandlers.onAmbientMessage);
+    }
     channel.bot.onMessageUpdated(liveHandlers.onMessageUpdated);
   } else {
     if (!options.ambientPersistence) {

@@ -40,6 +40,9 @@ const environmentSchema = z.object({
   GIST_APPROVED_WORKSPACE_ID: workspaceId,
   // D013: optional deny-only migration list; membership is the channel grant.
   GIST_APPROVED_CHANNEL_IDS: commaSeparatedIds(channelId, true).default([]),
+  GIST_PROACTIVE_CHANNELS: commaSeparatedIds(channelId, true).default([]),
+  GIST_PROACTIVE_COOLDOWN_MS: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
+    .default(60_000),
   GIST_USER_ALLOWLIST: commaSeparatedIds(userId, true).default([]),
   GIST_KILO_BOT_ID: botId.optional(),
   GIST_KILO_APP_ID: appId.optional(),
@@ -55,6 +58,10 @@ export interface Config {
   readonly slackAppToken: string;
   readonly approvedWorkspaceId: string;
   readonly approvedChannelIds: readonly string[];
+  /** D021 opt-in channels. Optional only for hand-built test/deployment Config values. */
+  readonly proactiveChannelIds?: readonly string[];
+  /** D021 per-channel action cooldown. Optional values use the accepted 60s default. */
+  readonly proactiveCooldownMs?: number;
   readonly userAllowlist: readonly string[];
   readonly kiloBotId?: string;
   readonly kiloAppId?: string;
@@ -100,6 +107,8 @@ export function parseConfig(
     slackAppToken: env.SLACK_APP_TOKEN,
     approvedWorkspaceId: env.GIST_APPROVED_WORKSPACE_ID,
     approvedChannelIds: Object.freeze([...env.GIST_APPROVED_CHANNEL_IDS]),
+    proactiveChannelIds: Object.freeze([...env.GIST_PROACTIVE_CHANNELS]),
+    proactiveCooldownMs: env.GIST_PROACTIVE_COOLDOWN_MS,
     userAllowlist: Object.freeze([...env.GIST_USER_ALLOWLIST]),
     ...(env.GIST_KILO_BOT_ID === undefined ? {} : { kiloBotId: env.GIST_KILO_BOT_ID }),
     ...(env.GIST_KILO_APP_ID === undefined ? {} : { kiloAppId: env.GIST_KILO_APP_ID }),

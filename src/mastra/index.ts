@@ -45,6 +45,10 @@ import { channelContextSystemMessage } from './agents/channel-context.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
 import { ChannelError, DurableChannelDedupLedger } from './channels/index.js';
 import {
+  OpenAIProactiveClassifier,
+  ProactiveActionGate,
+} from './channels/proactive.js';
+import {
   createLiveSlackChannel,
   type ChannelMemoryMetrics,
   type LiveGistSlackChannel,
@@ -391,6 +395,38 @@ export async function createFoundationRuntime(
     return decision;
   };
 
+  const proactive = new ProactiveActionGate({
+    channelIds: config.proactiveChannelIds ?? [],
+    cooldownMs: config.proactiveCooldownMs ?? 60_000,
+    classifier: new OpenAIProactiveClassifier({
+      apiKey: config.openaiApiKey,
+      model: config.gistModel,
+    }),
+    contextFor: async (request) => {
+      const context = authorizedContexts.get(request);
+      if (!context || context.identity.conversation_type !== 'channel') {
+        throw new ChannelError('unauthorized');
+      }
+      const readAuthorization: AuthorizationRequest = {
+        contract_version: AUTHORIZATION_CONTRACT_VERSION,
+        gate: 'read_memory',
+        event: context.event,
+        identity: context.identity,
+        policy: context.policy,
+      };
+      const decision = authorize(readAuthorization);
+      if (!decision.allowed || !decision.scope.includes(context.identity.boundary_id)) {
+        throw new ChannelError('unauthorized');
+      }
+
+      const requestContext = new RequestContext();
+      requestContext.setRaw(CHANNEL_MEMORY_AUTHORIZATION_CONTEXT_KEY, readAuthorization);
+      requestContext.setRaw(MASTRA_RESOURCE_ID_KEY, context.identity.resource_id);
+      requestContext.setRaw(MASTRA_THREAD_ID_KEY, context.identity.thread_id);
+      return channelContext.getChannelContext(requestContext);
+    },
+  });
+
   channel = createLiveSlackChannel({
     credentials: {
       botToken: config.slackBotToken,
@@ -403,6 +439,7 @@ export async function createFoundationRuntime(
     channelPersistence,
     idempotencyLedger,
     mutations,
+    proactive,
     ...(config.kiloBotId === undefined ? {} : { kiloBotId: config.kiloBotId }),
     ...(config.kiloAppId === undefined ? {} : { kiloAppId: config.kiloAppId }),
     ...(options.channelMemoryMetrics === undefined
