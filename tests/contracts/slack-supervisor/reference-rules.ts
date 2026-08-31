@@ -446,6 +446,77 @@ export function evaluateTransition(
 
 export type SupervisorEventSource = 'slack' | 'continuation';
 
+/** events.md §1 — `SourceEventKey = MessageKey | ContinuationKey`. */
+export type SourceEventKey = string;
+
+/**
+ * events.md §1 — a discriminated union on `source`, not one record with
+ * optional halves. A nullable `actor_class` is exactly the field a later
+ * reader defaults to something safe-looking.
+ */
+export interface SlackSupervisorEvent {
+  readonly source: 'slack';
+  readonly event_key: string;
+  readonly delivery_event_id: string;
+  readonly boundary_id: string;
+  readonly thread_id: string;
+  readonly workspace_id: string;
+  readonly channel_id: string;
+  readonly thread_root_ts: string;
+  readonly message_ts: string;
+  readonly actor_class: ActorClass;
+  readonly actor_id: string;
+  readonly is_thread_reply: boolean;
+  readonly addressed_to_gist: boolean;
+  readonly sent_at: string;
+}
+
+export interface ContinuationEvent {
+  readonly source: 'continuation';
+  readonly event_key: string;
+  readonly workflow_id: string;
+  readonly continuation_seq: number;
+  /** The immediate origin: a message key for #1, a continuation key after that. */
+  readonly origin_event_key: SourceEventKey;
+  /** The Slack message the chain descends from; copied unchanged down the chain. */
+  readonly root_message_key: string;
+  readonly enqueued_at: string;
+}
+
+export type SupervisorEvent = SlackSupervisorEvent | ContinuationEvent;
+
+export function isSlackEvent(event: SupervisorEvent): event is SlackSupervisorEvent {
+  return event.source === 'slack';
+}
+
+export function isContinuationEvent(event: SupervisorEvent): event is ContinuationEvent {
+  return event.source === 'continuation';
+}
+
+/**
+ * events.md §2, §2.1 — Slack events run the whole pipeline; continuations enter
+ * at correlation because steps 1–4 have no field to read on them.
+ */
+export function admissionEntryStep(source: SupervisorEventSource): number {
+  return source === 'continuation' ? 6 : 1;
+}
+
+/** Fields that exist only on a Slack-sourced event (events.md §1.1). */
+export const SLACK_ONLY_EVENT_FIELDS: readonly string[] = Object.freeze([
+  'delivery_event_id',
+  'boundary_id',
+  'thread_id',
+  'workspace_id',
+  'channel_id',
+  'thread_root_ts',
+  'message_ts',
+  'actor_class',
+  'actor_id',
+  'is_thread_reply',
+  'addressed_to_gist',
+  'sent_at',
+]);
+
 /**
  * The states whose `expected_actor` is `gist`. A committed transition into one
  * of these enqueues a continuation in the same commit (workflow-state.md §3.4),
@@ -475,22 +546,50 @@ export function enqueuesContinuation(input: {
   return !input.continuation_pending;
 }
 
+/**
+ * actions.md §2.4 — the consumption claim, taken before evaluation.
+ *
+ * Deliberately not the external-action claim: a continuation may legitimately
+ * produce no visible action at all (`draft → ready` is silent), so an action
+ * claim that is never taken would mark nothing as processed.
+ */
+export function continuationClaimKey(workflowId: string, sequence: number): string {
+  return `cont-claim:${workflowId}:${sequence}`;
+}
+
 export type ContinuationOutcome = 'evaluated' | 'superseded' | 'already_processed';
 
 /**
- * actions.md §2.1 — a continuation re-reads durable state after the queue.
+ * actions.md §2.1, §2.4 — a continuation re-reads durable state after the queue.
  *
  * It is not a promise that the workflow is still where it was: a human may have
  * cancelled while the continuation waited, in which case it does nothing.
  */
 export function continuationOutcome(input: {
-  readonly claim_held: boolean;
+  readonly consumption_claim_held: boolean;
   readonly current_state: WorkflowState;
   readonly enqueued_for_state: WorkflowState;
 }): ContinuationOutcome {
-  if (input.claim_held) return 'already_processed';
+  if (input.consumption_claim_held) return 'already_processed';
   if (input.current_state !== input.enqueued_for_state) return 'superseded';
   return 'evaluated';
+}
+
+/**
+ * actions.md §2.4 layer 2 — even without the consumption claim, the transition
+ * compare-and-set on the continuation's own `event_key` makes a replay a no-op.
+ *
+ * The layers are not the same mechanism: the claim stops the work, the
+ * compare-and-set stops the effect, and the point where a single mechanism is
+ * easiest to get wrong is the one where nothing visible happens.
+ */
+export function continuationReplayIsNoOp(input: {
+  readonly consumption_claim_held: boolean;
+  readonly stored: StoredWorkflow;
+  readonly request: TransitionRequest;
+}): boolean {
+  if (input.consumption_claim_held) return true;
+  return evaluateTransition(input.stored, input.request).outcome !== 'committed';
 }
 
 /**
@@ -1196,6 +1295,7 @@ export interface ReconciliationInput {
   readonly delivery_state: DeliveryState;
   readonly own_outgoing_record: boolean;
   readonly marker_found_in_thread: boolean;
+  /** Recorded as audit evidence; never used as proof of non-delivery (§5.1). */
   readonly thread_readable: boolean;
 }
 
@@ -1221,16 +1321,25 @@ export function reconcile(input: ReconciliationInput): ReconciliationResult {
   if (input.own_outgoing_record || input.marker_found_in_thread) {
     return { delivery_state: 'delivered', workflow_state: 'dispatched', reason_class: null };
   }
-  if (input.thread_readable) {
-    // Proven non-delivery: the thread was readable and the instruction is not
-    // in it. Only this proof turns an ambiguous attempt into a retryable one.
-    return { delivery_state: 'failed', workflow_state: 'ready', reason_class: null };
-  }
+  // dispatch.md §5.1 — absence is not proof. A post can be accepted and still
+  // not be visible yet: event delivery lags, history lags, our own capture may
+  // be mid-write, and a rate-limited read returns a short page. `thread_readable`
+  // is recorded as audit evidence and deliberately does not change the outcome,
+  // because letting it license a resend would break GS-INV-12 exactly when the
+  // timing was unlucky.
   return {
     delivery_state: 'in_flight',
     workflow_state: 'waiting_human',
     reason_class: 'dispatch_unreconciled',
   };
+}
+
+/**
+ * dispatch.md §5 — reconciliation is one-directional. It can promote an action
+ * to `delivered` on positive evidence; it can never demote one to `failed`.
+ */
+export function reconciliationCanConclude(): readonly DeliveryState[] {
+  return Object.freeze(['abandoned', 'delivered', 'in_flight']);
 }
 
 export interface FailedDispatchInput {

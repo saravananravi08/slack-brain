@@ -95,10 +95,18 @@ continuation in the same commit (§3.4). That is what stops a clear assignment f
 
 ### 2.3 Dispatch never advances state on hope (GS-FR-042)
 
-`ready → dispatched` happens **only** on a confirmed delivery. A dispatch attempt that fails,
-times out, or has an unknown outcome leaves the workflow in `ready`, records the failure, and
-increments `consecutive_failures` (`dispatch.md` §4). There is no state whose meaning is "we think
-we sent it".
+`ready → dispatched` happens **only** on a confirmed delivery. There is no state whose meaning is
+"we think we sent it". What happens otherwise depends on which of the three outcomes in
+`dispatch.md` §3.1 the attempt produced, and the difference matters:
+
+| Attempt outcome | Workflow | Failure counter |
+|---|---|---|
+| `delivered` | `ready → dispatched` | reset on the next progress transition |
+| `definitive_failure` — Slack rejected the post before accepting it | stays `ready` | `consecutive_failures` increments (`dispatch.md` §4) |
+| `indeterminate` — timeout, transport error, or a silent response | stays `ready`, but the checkpoint stays `in_flight` and **no retry is scheduled**; reconciliation decides, and an unresolved one moves the workflow to `waiting_human` with `dispatch_unreconciled` | not incremented; nothing has been established to count |
+
+An ambiguous attempt is not a failure, and treating it as one is what would license a second send.
+Only a definitive pre-acceptance rejection proves the instruction was never published.
 
 ### 2.4 Terminal states are final; reopen creates a new workflow
 
@@ -225,9 +233,10 @@ On process start:
    timers are **derived** from durable timestamps, never from in-memory state, so a restart cannot
    silently extend a deadline (GS-NFR-007).
 3. Reconcile any action left in a non-terminal delivery state per `dispatch.md` §5.
-4. Reload every pending `ContinuationEvent` and process it exactly once. The action claim on the
-   continuation's own `event_key` is what makes "exactly once" true: a continuation that already
-   produced an action finds its claim held and does nothing.
+4. Reload every pending `ContinuationEvent` and process it exactly once. "Exactly once" rests on the
+   continuation's own **consumption claim** and on the transition compare-and-set for its
+   `event_key` (`actions.md` §2.4) — not on the external-action claim, which a silent continuation
+   never takes.
 5. Do **not** re-send any instruction whose delivery was confirmed, and do not re-run any completed
    transition. Recovery replays state, not effects.
 

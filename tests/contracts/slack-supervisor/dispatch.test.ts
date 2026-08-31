@@ -22,6 +22,7 @@ import {
   isLegalDeliveryTransition,
   looksLikeSlackId,
   reconcile,
+  reconciliationCanConclude,
   retryAllowed,
   type ActionClass,
   type AttemptResult,
@@ -41,6 +42,10 @@ const outcomeFixture = asRecord(fixture.delivery_outcomes, 'delivery_outcomes');
 const outcomeCases = asArray(outcomeFixture.cases, 'delivery_outcomes.cases');
 const retryCases = asArray(asRecord(fixture.retry_permission, 'retry_permission').cases, 'retry.cases');
 const unbound = asRecord(fixture.unbound_visible_actions, 'unbound_visible_actions');
+const oneDirectional = asRecord(
+  fixture.reconciliation_is_one_directional,
+  'reconciliation_is_one_directional',
+);
 const failedDispatch = asArray(fixture.failed_dispatch, 'failed_dispatch');
 const reconciliation = asArray(fixture.reconciliation, 'reconciliation');
 const failureCases = asArray(fixture.failure_behavior, 'failure_behavior');
@@ -304,6 +309,28 @@ describe('retry needs a definitive non-delivery (dispatch.md §3.3)', () => {
     }
   });
 
+  it('has no route from an ambiguous attempt to a second send', () => {
+    // `failed` can only be set by a definitive pre-acceptance rejection, and
+    // reconciliation can never produce it.
+    expect(reconciliationCanConclude()).not.toContain('failed');
+    for (const readable of [true, false]) {
+      const result = reconcile({
+        delivery_state: 'in_flight',
+        own_outgoing_record: false,
+        marker_found_in_thread: false,
+        thread_readable: readable,
+      });
+      expect(
+        retryAllowed({
+          delivery_state: result.delivery_state,
+          consecutive_failures: 0,
+          max_consecutive_failures: 3,
+          workflow_state: result.workflow_state,
+        }),
+      ).toBe(false);
+    }
+  });
+
   it('permits a retry from failed only', () => {
     const states: DeliveryState[] = ['pending', 'in_flight', 'delivered', 'failed', 'abandoned'];
     for (const state of states) {
@@ -467,17 +494,21 @@ describe('restart reconciliation (dispatch.md §5, GS-FR-015)', () => {
     ).toBe(false);
   });
 
-  it('turns proven non-delivery into a retryable failure', () => {
-    // The only route from an ambiguous attempt to a retry, and it is a route
-    // through proof: the thread was readable and the instruction is not in it.
+  it('never treats absence as proof of non-delivery', () => {
+    // The defect this fixes. A post can be accepted and still not be visible
+    // yet — event delivery lags, history lags, our own capture may be
+    // mid-write — so a readable empty thread looks identical to a send that
+    // never happened, and letting it license a retry would break GS-INV-12
+    // exactly when the timing was unlucky.
     const result = reconcile({
       delivery_state: 'in_flight',
       own_outgoing_record: false,
       marker_found_in_thread: false,
       thread_readable: true,
     });
-    expect(result.delivery_state).toBe('failed');
-    expect(result.workflow_state).toBe('ready');
+    expect(result.delivery_state).toBe('in_flight');
+    expect(result.workflow_state).toBe('waiting_human');
+    expect(result.reason_class).toBe('dispatch_unreconciled');
     expect(
       retryAllowed({
         delivery_state: result.delivery_state,
@@ -485,7 +516,62 @@ describe('restart reconciliation (dispatch.md §5, GS-FR-015)', () => {
         max_consecutive_failures: 3,
         workflow_state: result.workflow_state,
       }),
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it('reaches the same answer whether or not the thread read cleanly', () => {
+    // `thread_readable` is recorded as audit evidence and deliberately does
+    // not change the outcome.
+    const readable = reconcile({
+      delivery_state: 'in_flight',
+      own_outgoing_record: false,
+      marker_found_in_thread: false,
+      thread_readable: true,
+    });
+    const unreadable = reconcile({
+      delivery_state: 'in_flight',
+      own_outgoing_record: false,
+      marker_found_in_thread: false,
+      thread_readable: false,
+    });
+    expect(readable).toEqual(unreadable);
+    expect(oneDirectional.expect_thread_readable_changes_outcome).toBe(false);
+  });
+
+  it('is one-directional: it can conclude delivery, never failure', () => {
+    expect(reconciliationCanConclude()).not.toContain('failed');
+    expect(
+      asStrings(oneDirectional.expect_reachable_delivery_states, 'reachable').slice().sort(),
+    ).toEqual([...reconciliationCanConclude()].sort());
+    expect(oneDirectional.expect_can_conclude_failed).toBe(false);
+    expect(oneDirectional.expect_absence_permits_resend).toBe(false);
+  });
+
+  it('reaches only the concludable states across every reconciliation input', () => {
+    const concludable = reconciliationCanConclude();
+    for (const state of ['pending', 'in_flight'] as DeliveryState[]) {
+      for (const own of [true, false]) {
+        for (const marker of [true, false]) {
+          for (const readable of [true, false]) {
+            const result = reconcile({
+              delivery_state: state,
+              own_outgoing_record: own,
+              marker_found_in_thread: marker,
+              thread_readable: readable,
+            });
+            expect(concludable, `${state}/${own}/${marker}/${readable}`).toContain(
+              result.delivery_state,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  it('names the delayed-visibility causes that make absence inconclusive', () => {
+    const causes = asStrings(oneDirectional.delayed_visibility_causes, 'delayed_visibility_causes');
+    expect(causes.length).toBeGreaterThanOrEqual(3);
+    expect(causes).toContain('capture_write_in_progress');
   });
 
   it('runs inline after an indeterminate outcome and again at restart', () => {

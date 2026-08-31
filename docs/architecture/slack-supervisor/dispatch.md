@@ -70,9 +70,13 @@ correlate to at most one workflow: a thread holds at most one non-terminal workf
 (`events.md` §4.1), so there is no case where a single event legitimately needs to act on two.
 
 The `source_event_key` may be a Slack `MessageKey` or a continuation's
-`cont:<workflow_id>:<continuation_seq>` (`actions.md` §2.1). Both are durable event identities, so
-a continuation is bounded by exactly the same claim as a Slack event, and a continuation replayed
-after restart cannot produce a second action.
+`cont:<workflow_id>:<continuation_seq>` (`actions.md` §2.1). Both are durable event identities, so a
+continuation that *does* produce an externally visible action is bounded by exactly the same claim
+as a Slack event.
+
+It is not, however, what marks a continuation **processed**: a silent continuation takes no action
+claim at all, so replay protection for the internal turn is the separate consumption claim in
+`actions.md` §2.4.
 
 **`DispatchClaimKey`** is claimed once per delivery attempt. It bounds retries: a retry is a new
 attempt number with its own claim, so a retry that races with a slow original cannot produce two
@@ -144,11 +148,11 @@ This is the rule that makes GS-FR-043 true rather than approximately true. On `i
 
 1. The checkpoint **stays `in_flight`**. It is not marked failed, and no retry is scheduled.
 2. Reconciliation (§5) runs immediately against the same evidence a restart would use.
-3. If reconciliation proves delivery, the action becomes `delivered` and the workflow advances
-   normally. If it proves non-delivery, the action becomes `failed` — now definitive — and §3.3
-   permits a bounded retry.
-4. If reconciliation cannot resolve it, the checkpoint stays `in_flight`, the workflow moves to
-   `waiting_human` with `dispatch_unreconciled`, and **no further send occurs**.
+3. If reconciliation finds **positive evidence of delivery**, the action becomes `delivered` and the
+   workflow advances normally.
+4. Otherwise — including when the thread is readable and the instruction is simply not in it — the
+   checkpoint stays `in_flight`, the workflow moves to `waiting_human` with
+   `dispatch_unreconciled`, and **no further send occurs**. Absence is not proof (§5).
 
 The earlier reading of this contract mapped a timeout straight to `failed` and let `failed → pending`
 retry from there. That was a duplicate-dispatch path in plain sight: a slow Slack post that
@@ -165,12 +169,14 @@ and the cost of guessing wrong is duplicated work nobody asked for.
 
 `failed → pending` requires all of:
 
-1. the checkpoint's `delivery_state` is `failed`, which by §3.1 means the attempt was definitively
-   not delivered, or reconciliation proved non-delivery;
+1. the checkpoint's `delivery_state` is `failed`, which by §3.1 can only have been set by a
+   **definitive pre-acceptance rejection** from Slack;
 2. `consecutive_failures < max_consecutive_failures`;
 3. the workflow is still `ready` and non-terminal.
 
-There is no path from `indeterminate` to a retry that does not pass through reconciliation first.
+There is no other route to `failed`, and therefore no route from an ambiguous attempt to a second
+send at all. Reconciliation can promote an action to `delivered`; it can never demote one to
+`failed` (§5).
 
 Retry convergence (GS-FR-043): retries share one `action_id` and one `version`. Whichever attempt
 succeeds first sets `delivered` under compare-and-set; later attempts observe `delivered` and stop.
@@ -200,30 +206,46 @@ accepts new events. Using the same function for both is deliberate: a timeout mi
 mid-send leave exactly the same question behind, and answering it two different ways is how the two
 paths drift apart.
 
-| Found state | Reconciliation | Result |
+**Reconciliation is one-directional: it can only find evidence *of* delivery.** It never concludes
+non-delivery, and it never produces a state a retry can start from.
+
+| Found state | Evidence | Result |
 |---|---|---|
-| `pending`, no claim consumed | nothing was sent | → `abandoned`; workflow stays `ready`; no failure counted |
-| `in_flight`, Gist's own outgoing record exists for this action | it was delivered | → `delivered`; workflow advances normally |
-| `in_flight`, an outgoing message with this action's `workflow_marker` exists in the bound thread | it was delivered | → `delivered`; workflow advances normally |
-| `in_flight`, the bound thread is readable and contains no such message | proven non-delivery | → `failed`; workflow stays `ready`; retry permitted per §3.3 |
-| `in_flight`, the thread cannot be read or the answer is ambiguous | unknown | → left `in_flight`; workflow → `waiting_human`, reason `dispatch_unreconciled`; **no send** |
+| `pending`, no claim consumed | the send never started | → `abandoned`; workflow stays `ready`; no failure counted |
+| `in_flight`, Gist's own outgoing record exists for this action | positive: it was delivered | → `delivered`; workflow advances normally |
+| `in_flight`, an outgoing message with this action's `workflow_marker` exists in the bound thread | positive: it was delivered | → `delivered`; workflow advances normally |
+| `in_flight`, no such evidence — whether or not the thread reads cleanly | **inconclusive** | → left `in_flight`; workflow → `waiting_human`, reason `dispatch_unreconciled`; **no send** |
 
 Reconciliation reads Gist's **own** outgoing message record first — the send path persists
 outgoing messages directly, so the local record is authoritative and does not depend on Slack echo
 behavior. The thread scan is the fallback when the local record is absent because the process died
 between the Slack call and the local write.
 
-Row 4 is the only route to a retry after an ambiguous attempt, and it is a route through proof: the
-thread was readable and the instruction is not in it. Row 5 is the important one: an unreconcilable
-in-flight action asks a human rather than re-sending. Re-sending would risk a duplicate instruction,
-and a duplicate instruction to a coding bot is a duplicate pull request, a duplicate issue, or
-duplicated work. Asking is cheap; duplicating is not.
+### 5.1 Absence is not proof of non-delivery
 
-Note what row 5 does *not* do. It does not mark the action failed, because that would make it
-retryable; it does not mark it delivered, because nothing proved that; and it does not abandon it,
-because the instruction may be live at the far end and the human needs to be told about a real
-possibility rather than a tidy fiction. `in_flight` is the honest state, and it is where the
-checkpoint stays.
+An earlier reading of this contract treated "the thread is readable and the instruction is not in
+it" as proof that nothing was published, and let a retry start from there. That is not sound, and
+the reason is ordinary rather than exotic: a Slack post can be accepted and still not be visible to
+us yet. Delivery of the corresponding event can lag, `conversations.history` can be behind, our own
+capture path can be mid-write, and a rate-limited read can return a short page. Every one of those
+looks exactly like "it was never sent" at the moment we look.
+
+Getting this wrong costs the invariant the whole section exists for. If absence licensed a retry,
+then a post that landed while we were reading would be sent twice, and GS-INV-12 — restart and retry
+cannot duplicate a dispatch — would hold only when the timing happened to cooperate. A duplicate
+instruction to a coding bot is a duplicate pull request; to Linear, a duplicate work item.
+
+So the asymmetry is deliberate: **positive evidence advances the workflow; the absence of evidence
+stops it.** The two are not symmetric claims and the contract does not treat them as such.
+
+The last row is therefore the honest one. It does not mark the action `failed`, because that would
+make it retryable and nothing established a failure; it does not mark it `delivered`, because
+nothing established that either; and it does not `abandon` it, because the instruction may be live
+at the far end and the human deserves to hear about a real possibility rather than a tidy fiction.
+`in_flight` is where the checkpoint stays, and a person decides what to do next.
+
+The `thread_readable` observation is still recorded — it is useful evidence in an audit — but it no
+longer changes the outcome.
 
 **Recovery replays state, not effects.** No confirmed-delivered instruction is re-sent, and no
 committed transition is re-applied.
@@ -279,5 +301,6 @@ never costs the memory layer.
 | §3.3 retry only after a definitive failure or proven non-delivery | `dispatch.test.ts` |
 | §3 retry convergence to one action and one bot turn | `dispatch.test.ts` |
 | §4 failed dispatch leaves the workflow in `ready` | `dispatch.test.ts`, `workflow-state.test.ts` |
-| §5 all five reconciliation rows, inline and at restart | `dispatch.test.ts` |
+| §5 all four reconciliation rows, inline and at restart | `dispatch.test.ts` |
+| §5.1 absence never yields `failed` and never permits a resend | `dispatch.test.ts` |
 | §6 failure classes are content-free; checkpoint precedes the send | `dispatch.test.ts`, `contract-safety.test.ts` |

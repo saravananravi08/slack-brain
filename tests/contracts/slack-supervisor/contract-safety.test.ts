@@ -167,6 +167,46 @@ describe('no captured conversation, prompt, or model output', () => {
   });
 });
 
+describe('no retired vocabulary survives a rename', () => {
+  /**
+   * Names this set has renamed. A stale one is not cosmetic: T802 reads these
+   * documents as its specification, and a field that exists in prose but not in
+   * the schema is a measurement nobody can record.
+   */
+  const RETIRED_NAMES: readonly [string, string][] = [
+    ['distinguishes_outcomes', 'outcome_distinguishability'],
+    ['confirmDelivery', 'deliveryOutcome'],
+  ];
+
+  it.each(CONTRACT_DOCS)('%s uses no retired name', (doc) => {
+    const text = loadContractDoc(doc);
+    for (const [retired, replacement] of RETIRED_NAMES) {
+      expect(text.includes(retired), `${doc} still says ${retired}; use ${replacement}`).toBe(false);
+    }
+  });
+
+  it.each(FIXTURE_FILES)('%s uses no retired name', (file) => {
+    const text = fixtureText(file);
+    for (const [retired, replacement] of RETIRED_NAMES) {
+      expect(text.includes(retired), `${file} still says ${retired}; use ${replacement}`).toBe(
+        false,
+      );
+    }
+  });
+
+  it('scans the reference rules and suites too', () => {
+    const onDisk = readdirSync(fileURLToPath(TEST_DIR)).filter(
+      (file) => file.endsWith('.ts') && file !== 'contract-safety.test.ts',
+    );
+    for (const file of onDisk) {
+      const text = readFileSync(fileURLToPath(new URL(file, TEST_DIR)), 'utf8');
+      for (const [retired] of RETIRED_NAMES) {
+        expect(text.includes(retired), `${file} still says ${retired}`).toBe(false);
+      }
+    }
+  });
+});
+
 describe('every reason, failure, and outcome class is safe to log (GS-NFR-004)', () => {
   const CLASS_SOURCES: readonly [string, string][] = [
     ['events.v1.json', 'reason_classes'],

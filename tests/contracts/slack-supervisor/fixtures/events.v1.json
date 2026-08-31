@@ -404,7 +404,7 @@
     "continuation_already_processed"
   ],
   "continuation_admission": {
-    "note": "events.md \u00a72.1 \u2014 a continuation enters at step 6. Nothing received from Slack may take this path.",
+    "note": "events.md \u00a71.2, \u00a72.1 \u2014 a continuation is the other member of the union. Steps 1\u20134 do not merely skip: it has no field for them to read.",
     "entry_step": 6,
     "skipped_steps": [
       "persist_exact_message",
@@ -422,16 +422,37 @@
       "contract_version": "1.0.0",
       "source": "continuation",
       "event_key": "cont:wf_supv_0001:1",
-      "delivery_event_id": null,
-      "boundary_id": "ch:T0SUPVTEST:C0SUPVTESTA",
-      "thread_id": "ch:T0SUPVTEST:C0SUPVTESTA#1756684800.000100",
-      "workspace_id": "T0SUPVTEST",
-      "channel_id": "C0SUPVTESTA",
-      "thread_root_ts": "1756684800.000100",
-      "message_ts": "1756684800.000100",
-      "is_thread_reply": false,
-      "addressed_to_gist": false,
-      "sent_at": "2026-09-01T00:00:01.000Z"
+      "workflow_id": "wf_supv_0001",
+      "continuation_seq": 1,
+      "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+      "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+      "enqueued_at": "2026-09-01T00:00:01.000Z"
+    },
+    "expect_carries_slack_only_fields": false
+  },
+  "event_union": {
+    "note": "events.md \u00a71 \u2014 a discriminated union on `source`, not one record with optional halves.",
+    "members": [
+      "slack",
+      "continuation"
+    ],
+    "slack_only_fields": [
+      "delivery_event_id",
+      "boundary_id",
+      "thread_id",
+      "workspace_id",
+      "channel_id",
+      "thread_root_ts",
+      "message_ts",
+      "actor_class",
+      "actor_id",
+      "is_thread_reply",
+      "addressed_to_gist",
+      "sent_at"
+    ],
+    "entry_steps": {
+      "slack": 1,
+      "continuation": 6
     }
   }
 }

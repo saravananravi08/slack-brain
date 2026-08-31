@@ -95,13 +95,24 @@ its next evaluation without waiting for anybody.
 
 ```text
 ContinuationEvent
-  event_key          "cont:<workflow_id>:<continuation_seq>"
+  event_key          ContinuationKey   # "cont:<workflow_id>:<continuation_seq>"
   source             'continuation'
   workflow_id        string
   continuation_seq   integer >= 1
-  origin_event_key   MessageKey      # the Slack event whose transition enqueued this
+  origin_event_key   SourceEventKey    # the immediate origin; see below
+  root_message_key   MessageKey        # the Slack message the chain started from
   enqueued_at        timestamp
 ```
+
+`origin_event_key` is a `SourceEventKey`, not a `MessageKey`, because a continuation's immediate
+origin is often another continuation: continuation #1 commits `draft → ready` and enqueues
+continuation #2, whose origin is `cont:<workflow_id>:1`. Typing it as a message key would have been
+wrong for every step of a chain after the first.
+
+`root_message_key` keeps the provenance a `MessageKey` genuinely answers — which authorized human
+message this work descends from — without pretending the immediate parent was one. It is copied
+unchanged down the chain, so it does not walk. Both fields are identities; neither carries content.
+The full record shape lives in `events.md` §1.2.
 
 **Enqueue rule.** A committed transition into a state whose `next_expected_actor` is `gist` — that
 is `draft`, `ready`, and `changes_requested` (`workflow-state.md` §2.1) — enqueues exactly one
@@ -136,11 +147,13 @@ Five rules, and together they make an unbounded internal loop unreachable rather
    those states are waiting for somebody else, and a continuation there would be a poll.
 2. **At most one pending per workflow.** Enqueue is idempotent on `(workflow_id,
    continuation_seq)`, and a second continuation cannot be enqueued while one is pending.
-3. **The transition table forbids a cycle.** No Gist-expected state is reachable from another
-   Gist-expected state without passing through a state that waits on a human or a bot: `draft` and
-   `ready` have no self-transition, `ready → ready` is illegal, and `changes_requested → ready` is
-   the only edge between two of them. The longest continuation chain is therefore
-   `draft → ready → dispatched` — two.
+3. **The transition table forbids a cycle.** Restricted to the three Gist-expected states, the
+   legal edges are exactly two — `draft → ready` and `changes_requested → ready` — and `ready` has
+   none. That subgraph is acyclic with `ready` as its only sink: nothing returns to `draft` or to
+   `changes_requested` without first passing through a state that waits on a human or a bot, and
+   none of the three self-transitions. So a chain can take at most one Gist-expected step before it
+   lands on `ready`, and `ready`'s next move is `dispatched`, which expects a bot. The longest run
+   is therefore **two continuations** — `draft → ready` then `ready → dispatched`.
 4. **It consumes a turn.** A continuation is a new source event, so `turn_count` increments and
    `max_turns` bounds it exactly as it bounds Slack traffic (`workflow-state.md` §7.2).
 5. **A failed dispatch does not enqueue one.** A dispatch failure commits no state change
@@ -159,10 +172,35 @@ Nor is it a scheduler or a timer. Continuations fire once, immediately, off a co
 Inactivity and lifetime deadlines are `workflow-state.md` §7's separate concern and do not run
 through this mechanism.
 
+### 2.4 Processed exactly once, whether or not it acts
+
+A continuation may legitimately produce **no externally visible action** — `draft → ready` is
+silent. The external-action claim (`dispatch.md` §2) therefore cannot be what marks a continuation
+processed: for a silent turn that claim is never taken, so a replay would find nothing held and
+evaluate again.
+
+Two durable mechanisms, both independent of the external-action claim:
+
+```text
+ContinuationClaimKey = "cont-claim:<workflow_id>:<continuation_seq>"
+```
+
+1. **The consumption claim** is taken durably *before* evaluation, keyed on the continuation's
+   identity. A replay finds it held and stops with `continuation_already_processed`, having
+   evaluated nothing and called no model.
+2. **The transition compare-and-set** is the second layer. A continuation's `event_key` is the
+   `source_event_key` of any transition it commits, and `workflow-state.md` §3.2 already treats a
+   repeated `source_event_key` as an **idempotent success** rather than an error. So even if the
+   consumption claim were lost, the state change cannot happen twice.
+
+The layers are deliberately not the same mechanism. The claim stops the *work* — the evaluation, the
+model call, the dispatch decision. The compare-and-set stops the *effect*. A single mechanism would
+have to be correct at both points, and the point where it is easiest to get wrong is the one where
+nothing visible happens.
+
 **Restart.** Pending continuations are durable. On restart they are reloaded with the active
-workflows (`workflow-state.md` §4) and processed exactly once — the claim in `dispatch.md` §2 keys
-on the continuation's own `event_key`, so a continuation that was already processed cannot produce a
-second action.
+workflows (`workflow-state.md` §4) and processed exactly once under the claim above, whether their
+original run produced an action or was silent.
 
 ## 3. Logical targets and destination mapping (GS-FR-023, D027)
 
@@ -366,7 +404,9 @@ matter of prompt discipline.
 | §1.2 no approval request for non-gated actions (GS-FR-006) | `approvals.test.ts` |
 | §2.1 continuation enqueued with the transition; reaches dispatch with no further human message | `continuation.test.ts` |
 | §2.2 all five bounds, including the no-cycle argument | `continuation.test.ts` |
-| §2.3 a continuation is not self-evaluation and survives restart once | `continuation.test.ts` |
+| §2.3 a continuation is not self-evaluation | `continuation.test.ts` |
+| §2.4 the consumption claim, and that a silent continuation is still marked processed | `continuation.test.ts` |
+| §2.4 the transition compare-and-set as the second layer | `continuation.test.ts`, `workflow-state.test.ts` |
 | §3 no Slack ID anywhere in a validated action | `actions.test.ts`, `contract-safety.test.ts` |
 | §3 destination derives from the binding, never the action | `actions.test.ts` |
 | §4 closed work-class union per target | `actions.test.ts` |

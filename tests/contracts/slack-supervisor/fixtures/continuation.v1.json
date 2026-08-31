@@ -5,11 +5,13 @@
   "defines": "docs/architecture/slack-supervisor/actions.md \u00a72.1\u2013\u00a72.3, events.md \u00a72.1, workflow-state.md \u00a73.4",
   "note": "A continuation is a durable runtime-owned turn. It exists so a clear authorized assignment reaches dispatch without a second Slack message (GS-FR-006, PRD acceptance scenario 1).",
   "record_required_fields": [
-    "event_key",
+    "contract_version",
     "source",
+    "event_key",
     "workflow_id",
     "continuation_seq",
     "origin_event_key",
+    "root_message_key",
     "enqueued_at"
   ],
   "record_forbidden_fields": [
@@ -21,16 +23,27 @@
     "actor_id",
     "actor_class",
     "delivery_event_id",
+    "boundary_id",
+    "thread_id",
+    "channel_id",
+    "workspace_id",
+    "thread_root_ts",
+    "message_ts",
+    "is_thread_reply",
+    "addressed_to_gist",
+    "sent_at",
     "prompt",
     "model_output",
     "raw_event"
   ],
   "sample_record": {
-    "event_key": "cont:wf_supv_0001:1",
+    "contract_version": "1.0.0",
     "source": "continuation",
+    "event_key": "cont:wf_supv_0001:1",
     "workflow_id": "wf_supv_0001",
     "continuation_seq": 1,
     "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+    "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
     "enqueued_at": "2026-09-01T00:00:01.000Z"
   },
   "gist_expected_states": [
@@ -191,7 +204,7 @@
     "expect_final_state": "dispatched"
   },
   "chain_bounds": {
-    "note": "actions.md \u00a72.2 rule 3 \u2014 no Gist-expected state reaches another without passing through a state that waits on somebody, so the chain is finite by construction. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations actually fired from that state is one more than that.",
+    "note": "actions.md \u00a72.2 rule 3 \u2014 restricted to the three Gist-expected states the legal edges are exactly draft\u2192ready and changes_requested\u2192ready, and `ready` has none, so the subgraph is acyclic with `ready` as its only sink. `expect_longest_chain` counts further Gist-expected states reachable consecutively from each start; the number of continuations fired from that state is one more than that.",
     "expect_longest_chain": {
       "draft": 1,
       "ready": 0,
@@ -199,45 +212,50 @@
     },
     "expect_any_cycle": false,
     "expect_max_chain_overall": 1,
-    "expect_max_continuations_from_draft": 2
+    "expect_max_continuations_from_draft": 2,
+    "expect_gist_expected_edges": [
+      "draft->ready",
+      "changes_requested->ready"
+    ],
+    "expect_ready_has_no_gist_expected_successor": true
   },
   "outcomes": [
     {
       "name": "state_unchanged_so_it_evaluates",
-      "claim_held": false,
       "current_state": "draft",
       "enqueued_for_state": "draft",
-      "expect_outcome": "evaluated"
+      "expect_outcome": "evaluated",
+      "consumption_claim_held": false
     },
     {
       "name": "human_cancelled_while_it_waited",
       "note": "events.md \u00a75 rule 2 \u2014 a queued event re-reads durable state before acting.",
-      "claim_held": false,
       "current_state": "cancelled",
       "enqueued_for_state": "draft",
-      "expect_outcome": "superseded"
+      "expect_outcome": "superseded",
+      "consumption_claim_held": false
     },
     {
       "name": "workflow_moved_on_while_it_waited",
-      "claim_held": false,
       "current_state": "waiting_human",
       "enqueued_for_state": "ready",
-      "expect_outcome": "superseded"
+      "expect_outcome": "superseded",
+      "consumption_claim_held": false
     },
     {
       "name": "replayed_after_restart",
       "note": "The action claim on the continuation's own event_key makes reprocessing a no-op rather than a second dispatch.",
-      "claim_held": true,
       "current_state": "ready",
       "enqueued_for_state": "ready",
-      "expect_outcome": "already_processed"
+      "expect_outcome": "already_processed",
+      "consumption_claim_held": true
     },
     {
       "name": "claim_held_wins_over_a_state_match",
-      "claim_held": true,
       "current_state": "draft",
       "enqueued_for_state": "draft",
-      "expect_outcome": "already_processed"
+      "expect_outcome": "already_processed",
+      "consumption_claim_held": true
     }
   ],
   "turn_accounting": {
@@ -262,10 +280,11 @@
       "model_output",
       "channel_summary",
       "channel_observation"
-    ]
+    ],
+    "expect_carries_slack_only_fields": false
   },
   "claims": {
-    "note": "dispatch.md \u00a72 \u2014 a continuation is claimed exactly like a Slack event.",
+    "note": "dispatch.md \u00a72 \u2014 when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is not what marks the continuation processed; actions.md \u00a72.4 is.",
     "cases": [
       {
         "name": "continuation_claims_on_its_own_key",
@@ -276,6 +295,106 @@
         "name": "slack_event_claims_on_its_message_key",
         "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
         "expect_action_claim_key": "ev:T0SUPVTEST/C0SUPVTESTA/1756684800.000100"
+      }
+    ]
+  },
+  "origin_typing": {
+    "note": "actions.md \u00a72.1 \u2014 the immediate origin is a SourceEventKey because a chain's later steps descend from another continuation, not from a message. root_message_key keeps the provenance a MessageKey genuinely answers.",
+    "chain": [
+      {
+        "name": "first_continuation_descends_from_the_human_message",
+        "continuation_seq": 1,
+        "origin_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_origin_is_message_key": true
+      },
+      {
+        "name": "second_continuation_descends_from_the_first",
+        "note": "The defect this fixes: typing origin_event_key as a MessageKey was wrong for every step after the first.",
+        "continuation_seq": 2,
+        "origin_event_key": "cont:wf_supv_0001:1",
+        "root_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684800.000100",
+        "expect_origin_is_message_key": false
+      }
+    ],
+    "expect_root_constant_along_the_chain": true
+  },
+  "consumption_claim": {
+    "note": "actions.md \u00a72.4 \u2014 a continuation may produce no externally visible action, so the external-action claim cannot be what marks it processed.",
+    "keys": [
+      {
+        "name": "first_turn",
+        "workflow_id": "wf_supv_0001",
+        "sequence": 1,
+        "expect_key": "cont-claim:wf_supv_0001:1"
+      },
+      {
+        "name": "second_turn",
+        "workflow_id": "wf_supv_0001",
+        "sequence": 2,
+        "expect_key": "cont-claim:wf_supv_0001:2"
+      }
+    ],
+    "expect_independent_of_action_claim": true,
+    "expect_taken_before_evaluation": true,
+    "silent_continuation": {
+      "note": "draft \u2192 ready produces no visible action at all, so no action claim is ever taken; only the consumption claim marks this turn processed.",
+      "event_key": "cont:wf_supv_0001:1",
+      "visible_actions": 0,
+      "expect_action_claim_taken": false,
+      "expect_consumption_claim_taken": true
+    },
+    "replay_layers": [
+      {
+        "name": "consumption_claim_alone_makes_replay_a_no_op",
+        "consumption_claim_held": true,
+        "stored": {
+          "state": "ready",
+          "pending_action_version": null,
+          "committed_source_events": []
+        },
+        "request": {
+          "expected_state": "draft",
+          "expected_action_version": null,
+          "next_state": "ready",
+          "source_event_key": "cont:wf_supv_0001:1"
+        },
+        "expect_no_op": true
+      },
+      {
+        "name": "transition_cas_is_the_second_layer",
+        "note": "Even with the claim lost, the duplicate source event makes the state change idempotent.",
+        "consumption_claim_held": false,
+        "stored": {
+          "state": "ready",
+          "pending_action_version": null,
+          "committed_source_events": [
+            "cont:wf_supv_0001:1"
+          ]
+        },
+        "request": {
+          "expected_state": "draft",
+          "expected_action_version": null,
+          "next_state": "ready",
+          "source_event_key": "cont:wf_supv_0001:1"
+        },
+        "expect_no_op": true
+      },
+      {
+        "name": "a_fresh_continuation_with_neither_layer_held_does_commit",
+        "consumption_claim_held": false,
+        "stored": {
+          "state": "draft",
+          "pending_action_version": null,
+          "committed_source_events": []
+        },
+        "request": {
+          "expected_state": "draft",
+          "expected_action_version": null,
+          "next_state": "ready",
+          "source_event_key": "cont:wf_supv_0001:1"
+        },
+        "expect_no_op": false
       }
     ]
   }

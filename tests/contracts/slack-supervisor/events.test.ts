@@ -8,7 +8,10 @@ import { describe, expect, it } from 'vitest';
 
 import { asArray, asRecord, asStrings, byName, loadFixture, names } from './helpers.js';
 import {
+  SLACK_ONLY_EVENT_FIELDS,
+  admissionEntryStep,
   correlate,
+  isSlackEvent,
   cooldownSuppresses,
   duplicateReason,
   evaluationEligibility,
@@ -17,6 +20,7 @@ import {
   type CorrelationEvent,
   type EligibilityInput,
   type ExpectedActor,
+  type SupervisorEvent,
   type WorkflowBinding,
   type WorkflowState,
 } from './reference-rules.js';
@@ -48,6 +52,16 @@ describe('SupervisorEvent record (events.md §1)', () => {
 
   it('names its source, so a continuation is never mistaken for Slack traffic', () => {
     expect(sample.source).toBe('slack');
+    expect(isSlackEvent(sample as unknown as SupervisorEvent)).toBe(true);
+  });
+
+  it('carries every Slack-only field as required, not optional', () => {
+    // The union exists so these are never nullable. A nullable actor_class is
+    // exactly the field a later reader defaults to something safe-looking.
+    for (const field of SLACK_ONLY_EVENT_FIELDS) {
+      expect(sample, `Slack event is missing ${field}`).toHaveProperty(field);
+      expect(sample[field], `${field} is null on a Slack event`).not.toBeNull();
+    }
   });
 
   it('keeps content identity and delivery identity separate', () => {
@@ -322,6 +336,26 @@ describe('serialization and cooldown separation (events.md §5, GS-FR-021, GS-FR
     // The cooldown limits unsolicited commentary; workflow limits bound
     // supervised work. Confusing the two is a correctness bug, not caution.
     expect(cooldownSuppresses({ in_active_workflow: true, cooldown_active: true })).toBe(false);
+  });
+});
+
+describe('the event union (events.md §1)', () => {
+  const union = asRecord(fixture.event_union, 'event_union');
+
+  it('has exactly two members, discriminated on source', () => {
+    expect(asStrings(union.members, 'members')).toEqual(['slack', 'continuation']);
+  });
+
+  it('declares the Slack-only field set the continuation half must not carry', () => {
+    expect(asStrings(union.slack_only_fields, 'slack_only_fields').slice().sort()).toEqual(
+      [...SLACK_ONLY_EVENT_FIELDS].sort(),
+    );
+  });
+
+  it('gives each member its own entry step', () => {
+    const steps = asRecord(union.entry_steps, 'entry_steps');
+    expect(admissionEntryStep('slack')).toBe(steps.slack);
+    expect(admissionEntryStep('continuation')).toBe(steps.continuation);
   });
 });
 

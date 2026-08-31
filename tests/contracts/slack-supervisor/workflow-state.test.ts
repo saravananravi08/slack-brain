@@ -18,6 +18,9 @@ import {
 } from './helpers.js';
 import {
   TERMINAL_STATES,
+  applyDeliveryOutcome,
+  applyFailedDispatch,
+  retryAllowed,
   WORKFLOW_TRANSITIONS,
   WORKFLOW_STATES,
   evaluateTransition,
@@ -268,6 +271,48 @@ describe('requester authority (workflow-state.md §3.3)', () => {
     for (const actor of ['gist_self', 'unknown_automation', 'unauthorized_human'] as ActorClass[]) {
       expect(recordedRequester(actor)).toBeNull();
     }
+  });
+});
+
+describe('dispatch never advances on hope, and §2.3 says what actually happens', () => {
+  const doc = loadContractDoc('workflow-state.md');
+
+  it('names all three delivery outcomes, not just success and failure', () => {
+    // §2.3 previously said a timeout or unknown outcome left the workflow
+    // `ready` and incremented failures, which contradicted dispatch.md once
+    // `indeterminate` existed.
+    for (const outcome of ['delivered', 'definitive_failure', 'indeterminate']) {
+      expect(doc, `§2.3 does not mention ${outcome}`).toContain(outcome);
+    }
+  });
+
+  it('no longer claims an ambiguous attempt increments the failure counter', () => {
+    expect(doc).toContain('An ambiguous attempt is not a failure');
+    expect(doc).toContain('no retry is scheduled');
+  });
+
+  it('agrees with dispatch.md about what an indeterminate outcome does', () => {
+    // Same fact, two documents: the checkpoint does not move and no retry is
+    // permitted from it.
+    expect(applyDeliveryOutcome('in_flight', 'indeterminate')).toBe('in_flight');
+    expect(
+      retryAllowed({
+        delivery_state: 'in_flight',
+        consecutive_failures: 0,
+        max_consecutive_failures: 3,
+        workflow_state: 'ready',
+      }),
+    ).toBe(false);
+  });
+
+  it('still counts a definitive failure', () => {
+    const result = applyFailedDispatch({
+      workflow_state_before: 'ready',
+      consecutive_failures_before: 0,
+      max_consecutive_failures: 3,
+    });
+    expect(result.workflow_state).toBe('ready');
+    expect(result.consecutive_failures).toBe(1);
   });
 });
 

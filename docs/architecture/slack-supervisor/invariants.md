@@ -88,11 +88,13 @@ The checkpoint write precedes the Slack call; `delivered` is set only from a con
 message identity; retries share one action and one version; an unreconcilable in-flight action asks
 a human rather than re-sending (GS-FR-015, GS-FR-020, GS-FR-043, GS-NFR-002, `dispatch.md` §2, §5).
 
-**A retry requires a definitive non-delivery result.** A timeout, a transport error, or any response
-that neither confirms nor disproves publication is `indeterminate`: the checkpoint stays `in_flight`
-and reconciliation decides. Only a result that proves the post was never published — an API refusal,
-or a readable thread that does not contain it — permits another send (`dispatch.md` §3.1–§3.3).
-Retrying an ambiguous attempt is a duplicate dispatch wearing a retry's clothes.
+**A retry requires a definitive pre-acceptance rejection from Slack.** A timeout, a transport error,
+or any response that neither confirms nor disproves publication is `indeterminate`: the checkpoint
+stays `in_flight` and reconciliation decides. Reconciliation is one-directional — it can promote an
+action to `delivered` on positive evidence, and it can never demote one to `failed`, because the
+absence of a message proves nothing when capture, history, and our own writes can all lag
+(`dispatch.md` §5.1). Everything unresolved stops at `waiting_human` with no further send. Retrying
+an ambiguous attempt is a duplicate dispatch wearing a retry's clothes.
 
 **GS-INV-13 — autonomy is bounded and survives restart.**
 Every workflow carries `max_turns`, `max_consecutive_failures`, `inactivity_timeout_ms`,
@@ -130,5 +132,6 @@ failing the suite.
 | GS-INV-10 | `actions.test.ts`, `contract-safety.test.ts` |
 | GS-INV-11 | `approvals.test.ts` |
 | GS-INV-12 | `dispatch.test.ts` |
+| GS-INV-09, 12 for continuations | `continuation.test.ts` |
 | GS-INV-13 | `limits.test.ts`, `continuation.test.ts` |
 | GS-INV-14 | `contract-safety.test.ts` |

@@ -11,15 +11,27 @@ in what order events are allowed to touch it.
 
 ## 1. `SupervisorEvent`
 
-The record the supervisor path receives. It is built **from** a persisted channel message; it never
-re-parses a raw Slack payload and never carries one.
+A **discriminated union** on `source`, not one record with optional halves:
 
 ```text
-SupervisorEvent
+SupervisorEvent = SlackSupervisorEvent | ContinuationEvent
+```
+
+The two arrive by different routes, carry different evidence, and enter the pipeline at different
+steps. Collapsing them into a single shape would mean every Slack-only field is nullable, and a
+nullable `actor_class` is exactly the field a later reader defaults to something safe-looking.
+
+### 1.1 `SlackSupervisorEvent`
+
+Built **from** a persisted channel message; it never re-parses a raw Slack payload and never carries
+one.
+
+```text
+SlackSupervisorEvent
   contract_version      string
-  source                'slack' | 'continuation'   # §2.1
-  event_key             SourceEventKey        # MessageKey, or a continuation key (§2.1)
-  delivery_event_id     string | null         # Slack envelope event ID; null for a continuation
+  source                'slack'
+  event_key             MessageKey            # workspace_id/channel_id/message_ts, verbatim
+  delivery_event_id     string                # Slack envelope event ID, for delivery dedup
   boundary_id           BoundaryId            # ch:<workspace_id>:<channel_id>
   thread_id             ThreadId              # <boundary_id>#<thread_root_ts>
   workspace_id          string
@@ -30,22 +42,46 @@ SupervisorEvent
   actor_id              string                # exact U…/B…/A… of the sender
   is_thread_reply       boolean
   addressed_to_gist     boolean               # syntactic addressing only; never permission
-  sent_at              string                 # RFC 3339 UTC
+  sent_at               string                # RFC 3339 UTC
 ```
 
-Deliberately **absent**: message text, file names, link URLs, display names, and any derived
-summary. The supervisor decision layer reads content through the bounded channel-context API
-(`src/channel-memory/context/`), which already labels it `untrusted_slack_content`. Workflow state
-references messages by `event_key`; it never copies them (GS-NFR-004, D026).
+Every field is required. Deliberately **absent**: message text, file names, link URLs, display
+names, and any derived summary. The supervisor decision layer reads content through the bounded
+channel-context API (`src/channel-memory/context/`), which already labels it
+`untrusted_slack_content`. Workflow state references messages by `event_key`; it never copies them
+(GS-NFR-004, D026).
 
-`event_key` is content identity and `delivery_event_id` is delivery identity. Both are required for
-a Slack-sourced event. This is the same split channel memory uses (CM-INV-05), and the supervisor
-reuses the durable claims rather than keeping a second ledger.
+`event_key` is content identity and `delivery_event_id` is delivery identity. Both are required.
+This is the same split channel memory uses (CM-INV-05), and the supervisor reuses the durable claims
+rather than keeping a second ledger.
 
-A continuation has no Slack delivery, so `delivery_event_id` is null and its `event_key` is its own
-durable identity. Everything downstream — serialization, the action claim, the transition audit —
-treats the two sources identically, which is the point: an internal turn must be as bounded and as
-replay-safe as a message from the outside.
+### 1.2 `ContinuationEvent`
+
+```text
+ContinuationEvent
+  contract_version      string
+  source                'continuation'
+  event_key             ContinuationKey       # cont:<workflow_id>:<continuation_seq>
+  workflow_id           string
+  continuation_seq      integer >= 1
+  origin_event_key      SourceEventKey        # the immediate origin (actions.md §2.1)
+  root_message_key      MessageKey            # the Slack message the chain started from
+  enqueued_at           timestamp
+```
+
+It carries **none** of the Slack-only fields, and that is the point of the union rather than an
+omission to be patched later. It has no `actor_class` because no actor produced it; no
+`delivery_event_id` because Slack delivered nothing; no `message_ts`, `boundary_id`, or
+`thread_root_ts` because it is bound by `workflow_id`, and the workflow record already holds the
+one immutable binding (§4.1). Reading the binding from the record rather than copying it onto the
+event also means a continuation cannot disagree with its own workflow about where the work lives.
+
+Both halves are content-free, and everything downstream — serialization, the transition audit, the
+external-action claim when one is produced — treats them identically. An internal turn must be as
+bounded and as replay-safe as a message from the outside.
+
+`SourceEventKey = MessageKey | ContinuationKey` is the union the rest of the set writes against
+(`dispatch.md` §1, §2).
 
 ## 2. Admission order (GS-FR-001, GS-FR-017, GS-NFR-003)
 
@@ -74,10 +110,11 @@ produce no outward effect.
 
 ### 2.1 Continuations enter at step 6
 
-A `ContinuationEvent` (`actions.md` §2.1) is created by the runtime from a committed transition, not
-received from Slack. Steps 1–4 have nothing to decide for it: there is no message to persist, no
-sender to classify, no boundary to check beyond the binding it was born with, and no actor to route.
-It therefore enters the pipeline at **step 6**, and runs steps 6, 7, and 8 in full:
+A `ContinuationEvent` (§1.2, `actions.md` §2.1) is created by the runtime from a committed
+transition, not received from Slack. Steps 1–4 have nothing to decide for it, and the union in §1 is
+why: it has no message to persist, no sender to classify, no boundary to check beyond the binding it
+was born with, and no actor to route. Those steps do not merely skip — there is no field for them to
+read. It therefore enters the pipeline at **step 6**, and runs steps 6, 7, and 8 in full:
 
 - **Correlate** — it names its workflow directly. The §4.2 checks that concern a *sender*
   (checks 4 and 5) do not apply; the checks that concern the *binding* are satisfied by
@@ -88,8 +125,10 @@ It therefore enters the pipeline at **step 6**, and runs steps 6, 7, and 8 in fu
 - **Evaluate** — producing at most one action, under its own claim.
 
 Deduplication (step 5) is not skipped so much as relocated: a continuation's replay protection is
-the action claim on its `event_key` (`dispatch.md` §2), which is what makes reprocessing after a
-restart a no-op rather than a second dispatch.
+its own **consumption claim** plus the transition compare-and-set on its `event_key`
+(`actions.md` §2.4), not the external-action claim. That distinction matters because a continuation
+may legitimately produce no externally visible action at all — `draft → ready` is silent — and an
+action claim that is never taken marks nothing as processed.
 
 Continuations are the **only** events that may enter below step 4. Nothing received from Slack can
 take this path, and a continuation can never be constructed from a Slack message, from bot content,
@@ -246,7 +285,8 @@ model output, a raw payload, or a credential.
 
 | Rule | Pinned by |
 |---|---|
-| §1 record shape; no content fields | `events.test.ts` |
+| §1 the `slack` / `continuation` union; no Slack-only field on a continuation | `events.test.ts`, `continuation.test.ts` |
+| §1.1 Slack record shape; no content fields | `events.test.ts` |
 | §2 admission order; fail-closed steps | `events.test.ts` |
 | §2.1 continuations enter at step 6 and nothing else may | `continuation.test.ts` |
 | §3 eligibility table, including the active-thread row | `events.test.ts` |

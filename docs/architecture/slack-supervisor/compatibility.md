@@ -206,7 +206,7 @@ the set version per `README.md` §2, and records which rows moved:
 | `events.md` §4.2 check 3 (thread match) | `reply_placement` | admit a marker-scoped binding, or NO-GO |
 | `actions.md` §5.1 (marker is secondary) | `marker_preserved` | the marker may become load-bearing; strengthen its generation and matching rules |
 | `actions.md` §5.2 `reply_in_thread` | `reply_placement`, `requires_mention` | the instruction must @-mention the bot, and the rendered form changes |
-| `workflow-state.md` §3.1 (`dispatched → running`) | `completion_signal`, `distinguishes_outcomes` | interim signals may not be distinguishable; the state machine may need an explicit acknowledgement step |
+| `workflow-state.md` §3.1 (`dispatched → running`) | `completion_signal`, `outcome_distinguishability` | interim signals may not be distinguishable; the state machine may need an explicit acknowledgement step |
 | `workflow-state.md` §5 (fresh review) | whether the bot supports a fresh session | if it cannot, decide whether an in-session review satisfies GS-FR-029 or blocks it |
 | `dispatch.md` §5 (reconciliation by marker) | `marker_preserved` | reconciliation falls back to Gist's own outgoing record only, and the ambiguous row grows |
 | `events.md` §6 (duplicate rows) | `duplicate_behavior` | if a repeated instruction causes a second action, Gist must never re-send even after an ambiguous reconciliation |

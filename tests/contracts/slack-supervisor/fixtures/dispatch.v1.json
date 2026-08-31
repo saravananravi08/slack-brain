@@ -237,14 +237,15 @@
       "expect_expected_actor": "gist"
     },
     {
-      "name": "proven_non_delivery_after_reconciliation_counts_a_failure",
+      "name": "invalid_request_is_a_definitive_failure",
       "failure_class": "slack_invalid_request",
       "workflow_state_before": "ready",
       "consecutive_failures_before": 0,
       "max_consecutive_failures": 3,
       "expect_workflow_state": "ready",
       "expect_consecutive_failures": 1,
-      "expect_expected_actor": "gist"
+      "expect_expected_actor": "gist",
+      "note": "Reconciliation can never produce this state; only Slack rejecting the post before accepting it can."
     },
     {
       "name": "reaching_the_failure_limit_asks_a_human",
@@ -273,14 +274,14 @@
       "note": "The send path persists outgoing messages directly, so the local record is authoritative and does not depend on Slack echo behavior.",
       "delivery_state": "in_flight",
       "own_outgoing_record": true,
-      "marker_found_in_thread": true,
-      "thread_readable": true,
+      "marker_found_in_thread": false,
+      "thread_readable": false,
       "expect_delivery_state": "delivered",
       "expect_workflow_state": "dispatched",
       "expect_reason_class": null
     },
     {
-      "name": "in_flight_with_marker_in_thread_but_no_local_record_was_delivered",
+      "name": "in_flight_with_marker_in_thread_was_delivered",
       "delivery_state": "in_flight",
       "own_outgoing_record": false,
       "marker_found_in_thread": true,
@@ -290,19 +291,18 @@
       "expect_reason_class": null
     },
     {
-      "name": "in_flight_with_a_readable_empty_thread_was_not_delivered",
+      "name": "in_flight_with_a_readable_empty_thread_is_still_inconclusive",
+      "note": "The defect this fixes. A post can be accepted and not visible yet: event delivery lags, history lags, our own capture may be mid-write, and a rate-limited read returns a short page. Absence looks identical to non-delivery at the moment we look.",
       "delivery_state": "in_flight",
       "own_outgoing_record": false,
       "marker_found_in_thread": false,
       "thread_readable": true,
-      "expect_delivery_state": "failed",
-      "expect_workflow_state": "ready",
-      "expect_reason_class": null,
-      "note": "Proven non-delivery: the thread was readable and the instruction is not in it. This is the only route from an ambiguous attempt to a retry, and it is a route through proof."
+      "expect_delivery_state": "in_flight",
+      "expect_workflow_state": "waiting_human",
+      "expect_reason_class": "dispatch_unreconciled"
     },
     {
       "name": "in_flight_with_an_unreadable_thread_asks_a_human",
-      "note": "Re-sending would risk a duplicate instruction, which for a coding bot is duplicated work. Asking is cheap.",
       "delivery_state": "in_flight",
       "own_outgoing_record": false,
       "marker_found_in_thread": false,
@@ -640,7 +640,7 @@
     ]
   },
   "retry_permission": {
-    "note": "dispatch.md \u00a73.3 \u2014 a retry needs a definitive failure, not merely a failure-shaped situation.",
+    "note": "dispatch.md \u00a73.3 \u2014 the only route to `failed` is a definitive pre-acceptance rejection from Slack, so there is no route from an ambiguous attempt to a second send at all.",
     "cases": [
       {
         "name": "definitive_failure_under_the_limit_may_retry",
@@ -703,5 +703,22 @@
   "reconciliation_callers": [
     "inline_after_indeterminate_outcome",
     "restart"
-  ]
+  ],
+  "reconciliation_is_one_directional": {
+    "note": "dispatch.md \u00a75.1 \u2014 positive evidence advances the workflow; the absence of evidence stops it. The two are not symmetric claims.",
+    "expect_reachable_delivery_states": [
+      "abandoned",
+      "delivered",
+      "in_flight"
+    ],
+    "expect_can_conclude_failed": false,
+    "expect_absence_permits_resend": false,
+    "expect_thread_readable_changes_outcome": false,
+    "delayed_visibility_causes": [
+      "event_delivery_lag",
+      "history_api_lag",
+      "capture_write_in_progress",
+      "rate_limited_short_page"
+    ]
+  }
 }

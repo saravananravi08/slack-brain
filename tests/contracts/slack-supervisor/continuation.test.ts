@@ -13,16 +13,26 @@ import { describe, expect, it } from 'vitest';
 import { asArray, asRecord, asStrings, byName, loadContractDoc, loadFixture, names } from './helpers.js';
 import {
   GIST_EXPECTED_STATES,
+  SLACK_ONLY_EVENT_FIELDS,
+  admissionEntryStep,
+  isContinuationEvent,
+  isSlackEvent,
   WORKFLOW_STATES,
   WORKFLOW_TRANSITIONS,
   actionClaimKey,
   applyCounters,
+  continuationClaimKey,
   continuationEventKey,
   continuationOutcome,
+  continuationReplayIsNoOp,
   enqueuesContinuation,
   isTerminal,
   longestContinuationChain,
+  type ContinuationEvent,
   type CountingInput,
+  type StoredWorkflow,
+  type SupervisorEvent,
+  type TransitionRequest,
   type WorkflowState,
 } from './reference-rules.js';
 
@@ -64,6 +74,129 @@ describe('ContinuationEvent record (actions.md §2.1)', () => {
       continuationEventKey(String(testCase.workflow_id), Number(testCase.sequence)),
     );
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('origin typing (actions.md §2.1)', () => {
+  const origin = asRecord(fixture.origin_typing, 'origin_typing');
+  const chainCases = asArray(origin.chain, 'origin_typing.chain');
+
+  it.each(names(chainCases))('%s', (name) => {
+    const testCase = byName(chainCases, name);
+    const isMessageKey = /^[^:]+\/[^/]+\/\d+\.\d+$/.test(String(testCase.origin_event_key));
+    expect(isMessageKey).toBe(testCase.expect_origin_is_message_key);
+  });
+
+  it('lets a later continuation descend from an earlier one', () => {
+    // The defect this fixes: typing origin_event_key as a MessageKey was wrong
+    // for every step of a chain after the first.
+    const second = byName(chainCases, 'second_continuation_descends_from_the_first');
+    expect(second.origin_event_key).toBe(continuationEventKey('wf_supv_0001', 1));
+  });
+
+  it('keeps root_message_key constant along the chain', () => {
+    const roots = new Set(chainCases.map((testCase) => testCase.root_message_key));
+    expect(roots.size).toBe(1);
+    expect(origin.expect_root_constant_along_the_chain).toBe(true);
+  });
+
+  it('answers provenance with the root, not with the immediate parent', () => {
+    const second = byName(chainCases, 'second_continuation_descends_from_the_first');
+    expect(second.root_message_key).not.toBe(second.origin_event_key);
+    expect(String(second.root_message_key)).toMatch(/^[^:]+\/[^/]+\/\d+\.\d+$/);
+  });
+});
+
+describe('the continuation half of the event union (events.md §1.2)', () => {
+  const sample = asRecord(fixture.sample_record, 'sample_record');
+  const union = asRecord(loadFixture('events.v1.json').event_union, 'event_union');
+
+  it('discriminates on source', () => {
+    const event = sample as unknown as SupervisorEvent;
+    expect(isContinuationEvent(event)).toBe(true);
+    expect(isSlackEvent(event)).toBe(false);
+  });
+
+  it.each(asStrings(union.slack_only_fields, 'slack_only_fields'))(
+    'carries no %s',
+    (field) => {
+      // Not an omission to be patched later: it has no actor because no actor
+      // produced it, and no binding because the workflow record holds the one
+      // immutable binding.
+      expect(sample).not.toHaveProperty(field);
+    },
+  );
+
+  it('matches the declared Slack-only field set', () => {
+    expect(asStrings(union.slack_only_fields, 'slack_only_fields').slice().sort()).toEqual(
+      [...SLACK_ONLY_EVENT_FIELDS].sort(),
+    );
+  });
+
+  it('enters the pipeline at correlation while Slack events start at capture', () => {
+    expect(admissionEntryStep('continuation')).toBe(6);
+    expect(admissionEntryStep('slack')).toBe(1);
+  });
+
+  it('types the sample as a ContinuationEvent', () => {
+    const event = sample as unknown as ContinuationEvent;
+    expect(event.workflow_id).toBe('wf_supv_0001');
+    expect(event.continuation_seq).toBe(1);
+  });
+});
+
+describe('the consumption claim marks it processed (actions.md §2.4)', () => {
+  const claim = asRecord(fixture.consumption_claim, 'consumption_claim');
+  const keys = asArray(claim.keys, 'consumption_claim.keys');
+  const layers = asArray(claim.replay_layers, 'replay_layers');
+  const silent = asRecord(claim.silent_continuation, 'silent_continuation');
+
+  it.each(names(keys))('%s builds its own claim key', (name) => {
+    const testCase = byName(keys, name);
+    expect(
+      continuationClaimKey(String(testCase.workflow_id), Number(testCase.sequence)),
+    ).toBe(testCase.expect_key);
+  });
+
+  it('is independent of the external-action claim', () => {
+    // The defect this fixes: an internal-only continuation takes no action
+    // claim, so an action claim marks nothing as processed.
+    const consumption = continuationClaimKey('wf_supv_0001', 1);
+    const action = actionClaimKey(continuationEventKey('wf_supv_0001', 1));
+    expect(consumption).not.toBe(action);
+    expect(claim.expect_independent_of_action_claim).toBe(true);
+    expect(claim.expect_taken_before_evaluation).toBe(true);
+  });
+
+  it('marks a silent continuation processed even though it acts on nothing', () => {
+    expect(silent.visible_actions).toBe(0);
+    expect(silent.expect_action_claim_taken).toBe(false);
+    expect(silent.expect_consumption_claim_taken).toBe(true);
+  });
+
+  it.each(names(layers))('%s', (name) => {
+    const testCase = byName(layers, name);
+    expect(
+      continuationReplayIsNoOp({
+        consumption_claim_held: Boolean(testCase.consumption_claim_held),
+        stored: testCase.stored as unknown as StoredWorkflow,
+        request: testCase.request as unknown as TransitionRequest,
+      }),
+    ).toBe(testCase.expect_no_op);
+  });
+
+  it('still makes replay a no-op if the consumption claim were lost', () => {
+    // Two layers on purpose: the claim stops the work, the compare-and-set
+    // stops the effect.
+    const testCase = byName(layers, 'transition_cas_is_the_second_layer');
+    expect(testCase.consumption_claim_held).toBe(false);
+    expect(
+      continuationReplayIsNoOp({
+        consumption_claim_held: false,
+        stored: testCase.stored as unknown as StoredWorkflow,
+        request: testCase.request as unknown as TransitionRequest,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -214,14 +347,31 @@ describe('continuations cannot loop (actions.md §2.2 rule 3)', () => {
     expect(fromDraft).toBe(2);
   });
 
-  it('has no edge between two Gist-expected states other than changes_requested → ready', () => {
+  it('has exactly the two Gist-expected edges the contract names', () => {
+    // The earlier wording claimed no Gist-expected state was reachable from
+    // another and then named one; both draft→ready and changes_requested→ready
+    // are legal, and stating them is what makes the bound checkable.
     const edges: string[] = [];
     for (const from of GIST_EXPECTED_STATES) {
       for (const to of WORKFLOW_TRANSITIONS[from]) {
         if (GIST_EXPECTED_STATES.includes(to)) edges.push(`${from}->${to}`);
       }
     }
-    expect(edges).toEqual(['draft->ready', 'changes_requested->ready']);
+    expect(edges).toEqual(asStrings(chain.expect_gist_expected_edges, 'edges'));
+  });
+
+  it('makes `ready` the only sink of that subgraph', () => {
+    const successors = WORKFLOW_TRANSITIONS.ready.filter((state) =>
+      GIST_EXPECTED_STATES.includes(state),
+    );
+    expect(successors).toEqual([]);
+    expect(chain.expect_ready_has_no_gist_expected_successor).toBe(true);
+  });
+
+  it('gives none of the three a self-transition', () => {
+    for (const state of GIST_EXPECTED_STATES) {
+      expect(WORKFLOW_TRANSITIONS[state], state).not.toContain(state);
+    }
   });
 });
 
@@ -230,7 +380,7 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
     const testCase = byName(outcomes, name);
     expect(
       continuationOutcome({
-        claim_held: Boolean(testCase.claim_held),
+        consumption_claim_held: Boolean(testCase.consumption_claim_held),
         current_state: testCase.current_state as WorkflowState,
         enqueued_for_state: testCase.enqueued_for_state as WorkflowState,
       }),
@@ -240,7 +390,7 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
   it('does nothing when a human cancelled while it waited', () => {
     expect(
       continuationOutcome({
-        claim_held: false,
+        consumption_claim_held: false,
         current_state: 'cancelled',
         enqueued_for_state: 'draft',
       }),
@@ -252,7 +402,7 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
     // safe; without it a restart would re-dispatch.
     expect(
       continuationOutcome({
-        claim_held: true,
+        consumption_claim_held: true,
         current_state: 'ready',
         enqueued_for_state: 'ready',
       }),
@@ -261,7 +411,11 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
 
   it('lets the claim win over a state that still matches', () => {
     expect(
-      continuationOutcome({ claim_held: true, current_state: 'draft', enqueued_for_state: 'draft' }),
+      continuationOutcome({
+        consumption_claim_held: true,
+        current_state: 'draft',
+        enqueued_for_state: 'draft',
+      }),
     ).toBe('already_processed');
   });
 });
@@ -351,10 +505,14 @@ describe('continuations enter the pipeline below routing (events.md §2.1)', () 
     expect(admission.expect_only_continuations_may_enter_below_step_4).toBe(true);
   });
 
-  it('carries no Slack delivery identity', () => {
+  it('carries none of the Slack-only fields at all', () => {
+    // Not "null where Slack would have a value" — the field is absent, because
+    // the union gives the continuation half no place to put one.
     const sample = asRecord(admission.sample_event, 'sample_event');
     expect(sample.source).toBe('continuation');
-    expect(sample.delivery_event_id).toBeNull();
-    expect(sample).not.toHaveProperty('actor_class');
+    for (const field of SLACK_ONLY_EVENT_FIELDS) {
+      expect(sample, `continuation carries ${field}`).not.toHaveProperty(field);
+    }
+    expect(admission.expect_carries_slack_only_fields).toBe(false);
   });
 });
