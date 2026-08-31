@@ -95,7 +95,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T604](./tasks/T604-ALL-MESSAGE-PERSISTENCE.md) — Persist all live channel messages | P06 | Completed | T601 | PG-06B | pi-coder-19 | task/T604-persist-all-live-channel-messages | 2026-08-31 | a52871d |
 | [T605](./tasks/T605-EDIT-FIDELITY.md) — Enforce edit fidelity and delete-ignore policy | P06 | Completed | T601 | PG-06B | pi-coder-18 | task/T605-enforce-edit-fidelity | 2026-08-31 | 9cc1326 |
 | [T606](./tasks/T606-MULTI-CHANNEL-CAPTURE-INTEGRATION.md) — Integrate multi-channel capture runtime | P06 | Completed | T602, T603, T604, T605 | PG-06C | pi-coder-20 | task/T606-integrate-multi-channel-capture-runtime | 2026-08-31 | 7fd43b5 |
-| [T607](./tasks/T607-MULTI-CHANNEL-CAPTURE-VALIDATION.md) — Validate complete multi-channel capture | P06 | In Progress | T606 | PG-06D | pi-coder-19 | task/T607-validate-complete-multi-channel-capture | 2026-08-31 | — |
+| [T607](./tasks/T607-MULTI-CHANNEL-CAPTURE-VALIDATION.md) — Validate complete multi-channel capture | P06 | In Progress | T606 | PG-06D | pi-coder-21 | task/T607-validate-complete-multi-channel-capture | 2026-08-31 | — |
 | [T701](./tasks/T701-CHANNEL-HISTORY.md) — Build chronological channel history provider | P07 | Planned | P06 | PG-07A | Unassigned | task/T701-build-channel-history-provider | — | — |
 | [T702](./tasks/T702-OBSERVATIONAL-MEMORY.md) — Enable channel-scoped Observation Memory | P07 | Planned | P06, T605 | PG-07A | Unassigned | task/T702-enable-channel-observation-memory | — | — |
 | [T703](./tasks/T703-SEMANTIC-MEMORY-TOOL.md) — Implement scoped semantic memory tool | P07 | Planned | P06, D017 | PG-07A | Unassigned | task/T703-implement-semantic-memory-tool | — | — |
