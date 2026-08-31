@@ -288,7 +288,15 @@ describe('dispatch never advances on hope, and §2.3 says what actually happens'
 
   it('no longer claims an ambiguous attempt increments the failure counter', () => {
     expect(doc).toContain('An ambiguous attempt is not a failure');
-    expect(doc).toContain('no retry is scheduled');
+    expect(doc).toContain('no retry is ever scheduled');
+  });
+
+  it('treats `ready` as transient on the indeterminate path, not a resting state', () => {
+    // Leaving it in `ready` would look exactly like a workflow eligible to
+    // dispatch, which is the one thing it must not do while an instruction may
+    // already be live at the far end.
+    expect(doc).toContain('`ready` is a **transient** state on the indeterminate path');
+    expect(doc).toContain('`ready → waiting_human`');
   });
 
   it('agrees with dispatch.md about what an indeterminate outcome does', () => {

@@ -124,11 +124,12 @@ read. It therefore enters the pipeline at **step 6**, and runs steps 6, 7, and 8
   before a human cancelled the workflow finds the cancellation when it runs, and does nothing.
 - **Evaluate** — producing at most one action, under its own claim.
 
-Deduplication (step 5) is not skipped so much as relocated: a continuation's replay protection is
-its own **consumption claim** plus the transition compare-and-set on its `event_key`
-(`actions.md` §2.4), not the external-action claim. That distinction matters because a continuation
-may legitimately produce no externally visible action at all — `draft → ready` is silent — and an
-action claim that is never taken marks nothing as processed.
+Deduplication (step 5) is not skipped so much as relocated, and it protects a different thing.
+Continuation processing is **at-least-once**: a crash can cause one to be evaluated twice
+(`actions.md` §2.4). What is deduplicated is the *effect*, by the transition compare-and-set on the
+continuation's `event_key` and by the external-action claim if it posts. A continuation may
+legitimately produce no externally visible action at all — `draft → ready` is silent — so neither
+claim alone decides whether it has been handled; its durable processing state does.
 
 Continuations are the **only** events that may enter below step 4. Nothing received from Slack can
 take this path, and a continuation can never be constructed from a Slack message, from bot content,

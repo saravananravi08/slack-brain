@@ -103,10 +103,18 @@ continuation in the same commit (§3.4). That is what stops a clear assignment f
 |---|---|---|
 | `delivered` | `ready → dispatched` | reset on the next progress transition |
 | `definitive_failure` — Slack rejected the post before accepting it | stays `ready` | `consecutive_failures` increments (`dispatch.md` §4) |
-| `indeterminate` — timeout, transport error, or a silent response | stays `ready`, but the checkpoint stays `in_flight` and **no retry is scheduled**; reconciliation decides, and an unresolved one moves the workflow to `waiting_human` with `dispatch_unreconciled` | not incremented; nothing has been established to count |
+| `indeterminate` — timeout, transport error, or a silent response | the checkpoint stays `in_flight` and **no retry is ever scheduled**; the workflow stays `ready` only for the duration of the immediate reconciliation attempt, then resolves per the next two rows | not incremented; nothing has been established to count |
+| `indeterminate`, reconciliation finds positive evidence of delivery | `ready → dispatched` | not incremented |
+| `indeterminate`, reconciliation finds none | `ready → waiting_human`, reason `dispatch_unreconciled`; no further send | not incremented |
+
+`ready` is a **transient** state on the indeterminate path, not a resting one. A workflow does not
+sit in `ready` after an ambiguous send: either delivery is evidenced and it advances, or it stops
+and asks a human. Leaving it in `ready` would look exactly like a workflow eligible to dispatch,
+which is the one thing it must not do while an instruction may already be live at the far end.
 
 An ambiguous attempt is not a failure, and treating it as one is what would license a second send.
-Only a definitive pre-acceptance rejection proves the instruction was never published.
+Only a definitive pre-acceptance rejection establishes that the instruction was never published;
+reconciliation can evidence delivery but never its absence (`dispatch.md` §5.1).
 
 ### 2.4 Terminal states are final; reopen creates a new workflow
 
@@ -233,10 +241,11 @@ On process start:
    timers are **derived** from durable timestamps, never from in-memory state, so a restart cannot
    silently extend a deadline (GS-NFR-007).
 3. Reconcile any action left in a non-terminal delivery state per `dispatch.md` §5.
-4. Reload every pending `ContinuationEvent` and process it exactly once. "Exactly once" rests on the
-   continuation's own **consumption claim** and on the transition compare-and-set for its
-   `event_key` (`actions.md` §2.4) — not on the external-action claim, which a silent continuation
-   never takes.
+4. Reload every `ContinuationEvent` that is not `completed`, including any left in `processing` by
+   the run that died: those are **resumed**, not skipped (`actions.md` §2.4). Processing is
+   at-least-once, so a resumed continuation may be evaluated a second time; its effects cannot
+   repeat, because the transition compare-and-set on its `event_key` and the external-action claim
+   both converge.
 5. Do **not** re-send any instruction whose delivery was confirmed, and do not re-run any completed
    transition. Recovery replays state, not effects.
 

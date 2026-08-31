@@ -225,7 +225,7 @@
       "current_state": "draft",
       "enqueued_for_state": "draft",
       "expect_outcome": "evaluated",
-      "consumption_claim_held": false
+      "processing_state": "processing"
     },
     {
       "name": "human_cancelled_while_it_waited",
@@ -233,29 +233,29 @@
       "current_state": "cancelled",
       "enqueued_for_state": "draft",
       "expect_outcome": "superseded",
-      "consumption_claim_held": false
+      "processing_state": "processing"
     },
     {
       "name": "workflow_moved_on_while_it_waited",
       "current_state": "waiting_human",
       "enqueued_for_state": "ready",
       "expect_outcome": "superseded",
-      "consumption_claim_held": false
+      "processing_state": "processing"
     },
     {
       "name": "replayed_after_restart",
-      "note": "The action claim on the continuation's own event_key makes reprocessing a no-op rather than a second dispatch.",
+      "note": "A continuation whose durable processing state is `completed` has a recorded outcome, so it is genuinely done; a crash mid-run leaves `processing` instead and is resumed.",
       "current_state": "ready",
       "enqueued_for_state": "ready",
       "expect_outcome": "already_processed",
-      "consumption_claim_held": true
+      "processing_state": "completed"
     },
     {
       "name": "claim_held_wins_over_a_state_match",
       "current_state": "draft",
       "enqueued_for_state": "draft",
       "expect_outcome": "already_processed",
-      "consumption_claim_held": true
+      "processing_state": "completed"
     }
   ],
   "turn_accounting": {
@@ -284,7 +284,7 @@
     "expect_carries_slack_only_fields": false
   },
   "claims": {
-    "note": "dispatch.md \u00a72 \u2014 when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is not what marks the continuation processed; actions.md \u00a72.4 is.",
+    "note": "dispatch.md \u00a72 \u2014 when a continuation does produce a visible action it is claimed exactly like a Slack event. That claim is one of the two effect guards; whether the continuation has been handled is its processing state (actions.md \u00a72.4).",
     "cases": [
       {
         "name": "continuation_claims_on_its_own_key",
@@ -319,52 +319,151 @@
     ],
     "expect_root_constant_along_the_chain": true
   },
-  "consumption_claim": {
-    "note": "actions.md \u00a72.4 \u2014 a continuation may produce no externally visible action, so the external-action claim cannot be what marks it processed.",
-    "keys": [
+  "processing": {
+    "note": "actions.md \u00a72.4 \u2014 at-least-once and recoverable. A one-time marker taken before evaluation would strand a workflow whenever a run died between taking it and committing anything durable.",
+    "states": [
+      "pending",
+      "processing",
+      "completed"
+    ],
+    "transitions": {
+      "pending": [
+        "processing"
+      ],
+      "processing": [
+        "completed",
+        "pending"
+      ],
+      "completed": []
+    },
+    "illegal_transitions": [
+      {
+        "name": "pending_cannot_complete_without_processing",
+        "from": "pending",
+        "to": "completed"
+      },
+      {
+        "name": "completed_is_terminal",
+        "from": "completed",
+        "to": "pending"
+      },
+      {
+        "name": "completed_cannot_reprocess",
+        "from": "completed",
+        "to": "processing"
+      }
+    ],
+    "lease_keys": [
       {
         "name": "first_turn",
         "workflow_id": "wf_supv_0001",
         "sequence": 1,
-        "expect_key": "cont-claim:wf_supv_0001:1"
+        "expect_key": "cont-lease:wf_supv_0001:1"
       },
       {
         "name": "second_turn",
         "workflow_id": "wf_supv_0001",
         "sequence": 2,
-        "expect_key": "cont-claim:wf_supv_0001:2"
+        "expect_key": "cont-lease:wf_supv_0001:2"
       }
     ],
-    "expect_independent_of_action_claim": true,
-    "expect_taken_before_evaluation": true,
-    "silent_continuation": {
-      "note": "draft \u2192 ready produces no visible action at all, so no action claim is ever taken; only the consumption claim marks this turn processed.",
-      "event_key": "cont:wf_supv_0001:1",
-      "visible_actions": 0,
-      "expect_action_claim_taken": false,
-      "expect_consumption_claim_taken": true
-    },
-    "replay_layers": [
+    "current_run_id": "run_supv_b",
+    "now": "2026-09-01T00:10:00.000Z",
+    "recovery": [
       {
-        "name": "consumption_claim_alone_makes_replay_a_no_op",
-        "consumption_claim_held": true,
-        "stored": {
-          "state": "ready",
-          "pending_action_version": null,
-          "committed_source_events": []
+        "name": "crash_after_lease_before_any_durable_write_resumes",
+        "note": "The defect this fixes. A one-time claim would have said 'handled' over a workflow where nothing happened, and restart would have dropped it, stranding a Gist-expected state with nothing scheduled.",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_a",
+          "lease_expires_at": "2026-09-01T00:05:00.000Z"
         },
-        "request": {
-          "expected_state": "draft",
-          "expected_action_version": null,
-          "next_state": "ready",
-          "source_event_key": "cont:wf_supv_0001:1"
-        },
-        "expect_no_op": true
+        "expect_action": "resume"
       },
       {
-        "name": "transition_cas_is_the_second_layer",
-        "note": "Even with the claim lost, the duplicate source event makes the state change idempotent.",
-        "consumption_claim_held": false,
+        "name": "processing_with_no_lease_expiry_resumes",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_a",
+          "lease_expires_at": null
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "pending_resumes",
+        "record": {
+          "processing_state": "pending",
+          "lease_owner": null,
+          "lease_expires_at": null
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "our_own_stale_lease_resumes",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_b",
+          "lease_expires_at": "2026-09-01T00:20:00.000Z"
+        },
+        "expect_action": "resume"
+      },
+      {
+        "name": "a_live_lease_held_elsewhere_is_left_alone",
+        "note": "Liveness only: it stops two live runs racing the same continuation.",
+        "record": {
+          "processing_state": "processing",
+          "lease_owner": "run_supv_c",
+          "lease_expires_at": "2026-09-01T00:20:00.000Z"
+        },
+        "expect_action": "leave_to_live_owner"
+      },
+      {
+        "name": "completed_is_skipped",
+        "record": {
+          "processing_state": "completed",
+          "lease_owner": null,
+          "lease_expires_at": null
+        },
+        "expect_action": "skip_completed"
+      }
+    ],
+    "completion_evidence": [
+      {
+        "name": "committed_transition",
+        "evidence": "committed_transition",
+        "expect_may_complete": true
+      },
+      {
+        "name": "durable_action_checkpoint",
+        "evidence": "action_checkpoint",
+        "expect_may_complete": true
+      },
+      {
+        "name": "durable_superseded_outcome",
+        "evidence": "superseded_outcome",
+        "expect_may_complete": true,
+        "note": "A superseded continuation commits no transition; without a durable outcome for that case it would be resumed forever."
+      },
+      {
+        "name": "nothing_durable_yet",
+        "evidence": null,
+        "expect_may_complete": false,
+        "note": "'I started' and 'it happened' are different durable facts, and only the second ends the work."
+      }
+    ],
+    "at_least_once": {
+      "note": "A crash can cause a second evaluation, and this contract does not claim otherwise. What cannot repeat is an effect.",
+      "expect_duplicate_evaluation_possible": true,
+      "expect_duplicate_effect_possible": false,
+      "expect_claims_exactly_once_evaluation": false,
+      "effect_guards": [
+        "transition_compare_and_set",
+        "external_action_claim"
+      ]
+    },
+    "duplicate_effect": [
+      {
+        "name": "transition_cas_converges_a_second_evaluation",
         "stored": {
           "state": "ready",
           "pending_action_version": null,
@@ -378,11 +477,28 @@
           "next_state": "ready",
           "source_event_key": "cont:wf_supv_0001:1"
         },
-        "expect_no_op": true
+        "action_claim_held": false,
+        "expect_prevented": true
       },
       {
-        "name": "a_fresh_continuation_with_neither_layer_held_does_commit",
-        "consumption_claim_held": false,
+        "name": "action_claim_converges_a_second_visible_action",
+        "note": "The first pass posted before dying; the second finds the claim held and posts nothing.",
+        "stored": {
+          "state": "ready",
+          "pending_action_version": 1,
+          "committed_source_events": []
+        },
+        "request": {
+          "expected_state": "ready",
+          "expected_action_version": 1,
+          "next_state": "dispatched",
+          "source_event_key": "cont:wf_supv_0001:2"
+        },
+        "action_claim_held": true,
+        "expect_prevented": true
+      },
+      {
+        "name": "a_genuine_first_pass_is_allowed_to_act",
         "stored": {
           "state": "draft",
           "pending_action_version": null,
@@ -394,8 +510,16 @@
           "next_state": "ready",
           "source_event_key": "cont:wf_supv_0001:1"
         },
-        "expect_no_op": false
+        "action_claim_held": false,
+        "expect_prevented": false
       }
-    ]
+    ],
+    "silent_continuation": {
+      "note": "draft \u2192 ready produces no visible action, so no action claim is ever taken; its processing state is what records that it was handled.",
+      "event_key": "cont:wf_supv_0001:1",
+      "visible_actions": 0,
+      "expect_action_claim_taken": false,
+      "expect_completed_with": "committed_transition"
+    }
   }
 }

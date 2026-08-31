@@ -546,15 +546,91 @@ export function enqueuesContinuation(input: {
   return !input.continuation_pending;
 }
 
+/** actions.md §2.4 — durable processing state, not a one-time claim. */
+export type ContinuationProcessingState = 'pending' | 'processing' | 'completed';
+
+export const CONTINUATION_PROCESSING_STATES: readonly ContinuationProcessingState[] = Object.freeze([
+  'pending',
+  'processing',
+  'completed',
+]);
+
 /**
- * actions.md §2.4 — the consumption claim, taken before evaluation.
- *
- * Deliberately not the external-action claim: a continuation may legitimately
- * produce no visible action at all (`draft → ready` is silent), so an action
- * claim that is never taken would mark nothing as processed.
+ * `processing → pending` is the whole point: a run that died mid-evaluation
+ * must be resumed, not treated as having handled the work.
  */
-export function continuationClaimKey(workflowId: string, sequence: number): string {
-  return `cont-claim:${workflowId}:${sequence}`;
+export const CONTINUATION_PROCESSING_TRANSITIONS: Readonly<
+  Record<ContinuationProcessingState, readonly ContinuationProcessingState[]>
+> = Object.freeze({
+  pending: ['processing'],
+  processing: ['completed', 'pending'],
+  completed: [],
+});
+
+export function isLegalContinuationProcessingTransition(
+  from: ContinuationProcessingState,
+  to: ContinuationProcessingState,
+): boolean {
+  return CONTINUATION_PROCESSING_TRANSITIONS[from].includes(to);
+}
+
+/** actions.md §2.4 — the lease exists for liveness, not for correctness. */
+export function continuationLeaseKey(workflowId: string, sequence: number): string {
+  return `cont-lease:${workflowId}:${sequence}`;
+}
+
+export interface ContinuationLeaseRecord {
+  readonly processing_state: ContinuationProcessingState;
+  readonly lease_owner: string | null;
+  readonly lease_expires_at: string | null;
+}
+
+export type ContinuationRecoveryAction = 'resume' | 'skip_completed' | 'leave_to_live_owner';
+
+/**
+ * actions.md §2.4 — restart recovery.
+ *
+ * A continuation left in `processing` by a run that is gone is **resumed**. The
+ * earlier design took a one-time claim before evaluating, which meant a crash
+ * between the claim and any durable write left a marker saying "handled" over a
+ * workflow where nothing had happened — stranding it in a Gist-expected state
+ * with nothing scheduled to act on it, which is the exact failure the
+ * continuation mechanism exists to prevent.
+ */
+export function continuationRecoveryAction(
+  record: ContinuationLeaseRecord,
+  nowIso: string,
+  currentRunId: string,
+): ContinuationRecoveryAction {
+  if (record.processing_state === 'completed') return 'skip_completed';
+  if (record.processing_state === 'pending') return 'resume';
+
+  const heldByAnotherLiveRun =
+    record.lease_owner !== null &&
+    record.lease_owner !== currentRunId &&
+    record.lease_expires_at !== null &&
+    Date.parse(record.lease_expires_at) > Date.parse(nowIso);
+  return heldByAnotherLiveRun ? 'leave_to_live_owner' : 'resume';
+}
+
+/** actions.md §2.4 — the durable outcomes `completed` may be written with. */
+export type ContinuationCompletionEvidence =
+  | 'committed_transition'
+  | 'action_checkpoint'
+  | 'superseded_outcome';
+
+export const CONTINUATION_COMPLETION_EVIDENCE: readonly ContinuationCompletionEvidence[] =
+  Object.freeze(['committed_transition', 'action_checkpoint', 'superseded_outcome']);
+
+/**
+ * actions.md §2.4 — `completed` is never written before a durable record
+ * explains why. "I started" and "it happened" are different durable facts, and
+ * only the second one ends the work.
+ */
+export function mayMarkContinuationCompleted(
+  evidence: ContinuationCompletionEvidence | null,
+): boolean {
+  return evidence !== null && CONTINUATION_COMPLETION_EVIDENCE.includes(evidence);
 }
 
 export type ContinuationOutcome = 'evaluated' | 'superseded' | 'already_processed';
@@ -566,30 +642,30 @@ export type ContinuationOutcome = 'evaluated' | 'superseded' | 'already_processe
  * cancelled while the continuation waited, in which case it does nothing.
  */
 export function continuationOutcome(input: {
-  readonly consumption_claim_held: boolean;
+  readonly processing_state: ContinuationProcessingState;
   readonly current_state: WorkflowState;
   readonly enqueued_for_state: WorkflowState;
 }): ContinuationOutcome {
-  if (input.consumption_claim_held) return 'already_processed';
+  if (input.processing_state === 'completed') return 'already_processed';
   if (input.current_state !== input.enqueued_for_state) return 'superseded';
   return 'evaluated';
 }
 
 /**
- * actions.md §2.4 layer 2 — even without the consumption claim, the transition
- * compare-and-set on the continuation's own `event_key` makes a replay a no-op.
+ * actions.md §2.4 — duplicate *effects* are prevented; duplicate evaluation is
+ * not, and this contract does not pretend otherwise.
  *
- * The layers are not the same mechanism: the claim stops the work, the
- * compare-and-set stops the effect, and the point where a single mechanism is
- * easiest to get wrong is the one where nothing visible happens.
+ * Both guards key on the continuation's own `event_key`: the transition
+ * compare-and-set converges the state change, and the external-action claim
+ * converges anything Slack would see.
  */
-export function continuationReplayIsNoOp(input: {
-  readonly consumption_claim_held: boolean;
+export function continuationDuplicateEffectPrevented(input: {
   readonly stored: StoredWorkflow;
   readonly request: TransitionRequest;
+  readonly action_claim_held: boolean;
 }): boolean {
-  if (input.consumption_claim_held) return true;
-  return evaluateTransition(input.stored, input.request).outcome !== 'committed';
+  const transitionRepeats = evaluateTransition(input.stored, input.request).outcome !== 'committed';
+  return transitionRepeats || input.action_claim_held;
 }
 
 /**
@@ -1194,6 +1270,9 @@ export const DELIVERY_TRANSITIONS: Readonly<Record<DeliveryState, readonly Deliv
     pending: ['in_flight', 'abandoned'],
     // `in_flight → in_flight` is the indeterminate case: the outcome told us
     // nothing, so nothing moves until reconciliation decides (§3.2).
+    // `in_flight → abandoned` survives only as a human-resolved route (§3.4):
+    // writing it asserts nothing was published, which §5.1 says cannot be
+    // inferred from absence.
     in_flight: ['in_flight', 'delivered', 'failed', 'abandoned'],
     delivered: [],
     failed: ['pending', 'abandoned'],
@@ -1202,6 +1281,21 @@ export const DELIVERY_TRANSITIONS: Readonly<Record<DeliveryState, readonly Deliv
 
 export function isLegalDeliveryTransition(from: DeliveryState, to: DeliveryState): boolean {
   return DELIVERY_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * dispatch.md §3.4 — abandoning an in-flight action asserts that nothing was
+ * published, so it needs the one thing the runtime lacks: a person who can go
+ * and look at the channel.
+ *
+ * Absence, an unreadable thread, a reconciliation pass that found nothing, and
+ * the passage of time are none of them grounds.
+ */
+export function mayAbandonInFlight(input: {
+  readonly resolver_actor_class: ActorClass | null;
+  readonly is_owner_or_approver: boolean;
+}): boolean {
+  return input.resolver_actor_class === 'authorized_human' && input.is_owner_or_approver;
 }
 
 export type DeliveryOutcome = 'delivered' | 'definitive_failure' | 'indeterminate';
@@ -1404,7 +1498,11 @@ const RETRYABLE_FAILURES: readonly FailureClass[] = Object.freeze([
   'slack_invalid_request',
 ]);
 
-/** dispatch.md §6 — no retry from the failure itself; §5 decides. */
+/**
+ * dispatch.md §6 — no retry, ever. §5 either evidences delivery or the workflow
+ * stops at `waiting_human`; reconciliation cannot conclude non-delivery, so
+ * there is no path from here to a second send.
+ */
 const RECONCILE_FAILURES: readonly FailureClass[] = Object.freeze(['slack_transport_error']);
 
 const HUMAN_STOP_FAILURES: readonly FailureClass[] = Object.freeze([
@@ -1413,6 +1511,10 @@ const HUMAN_STOP_FAILURES: readonly FailureClass[] = Object.freeze([
   'dispatch_unreconciled',
 ]);
 
+/**
+ * `workflow_state` is where the workflow lands when the failure is **not**
+ * resolved into a delivery by §5.
+ */
 export function failureBehavior(failure: FailureClass): {
   readonly retryable: boolean;
   readonly workflow_state: 'ready' | 'waiting_human' | 'unchanged';
@@ -1422,7 +1524,9 @@ export function failureBehavior(failure: FailureClass): {
     return { retryable: true, workflow_state: 'ready', reconciles: false };
   }
   if (RECONCILE_FAILURES.includes(failure)) {
-    return { retryable: false, workflow_state: 'ready', reconciles: true };
+    // `ready` is transient on this path and is not where it lands: unresolved,
+    // it stops at `waiting_human` (workflow-state.md §2.3).
+    return { retryable: false, workflow_state: 'waiting_human', reconciles: true };
   }
   if (HUMAN_STOP_FAILURES.includes(failure)) {
     return { retryable: false, workflow_state: 'waiting_human', reconciles: false };

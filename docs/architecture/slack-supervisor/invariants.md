@@ -86,7 +86,15 @@ the approval structurally (GS-FR-036, `approvals.md` §3).
 **GS-INV-12 — restart and retry cannot duplicate a dispatch.**
 The checkpoint write precedes the Slack call; `delivered` is set only from a confirmed outgoing
 message identity; retries share one action and one version; an unreconcilable in-flight action asks
-a human rather than re-sending (GS-FR-015, GS-FR-020, GS-FR-043, GS-NFR-002, `dispatch.md` §2, §5).
+a human rather than re-sending, and only that human may abandon it (GS-FR-015, GS-FR-020,
+GS-FR-043, GS-NFR-002, `dispatch.md` §2, §3.4, §5).
+
+The guarantee is about **effects, not evaluations**. Continuation processing is at-least-once: a
+crash between acquiring a lease and committing anything durable is resumed, so the same continuation
+may be evaluated twice (`actions.md` §2.4). Its effects still cannot repeat, because the transition
+compare-and-set and the external-action claim are both keyed on its `event_key`. Claiming
+exactly-once evaluation would be claiming something this design does not provide, and the honest
+version is the one an implementer can actually build against.
 
 **A retry requires a definitive pre-acceptance rejection from Slack.** A timeout, a transport error,
 or any response that neither confirms nor disproves publication is `indeterminate`: the checkpoint

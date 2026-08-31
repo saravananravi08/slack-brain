@@ -84,7 +84,7 @@ The set stayed at **1.0.0** through T801's integration review. Five defects were
 |---|---|
 | Clear-assignment progress gap | `actions.md` §2.1–§2.3, `events.md` §2.1, `workflow-state.md` §3.4 — a durable runtime-owned `ContinuationEvent`, enqueued in the transition's own commit, so a clear assignment reaches dispatch without a second Slack message |
 | Model-controlled timeout | `actions.md` §5 — the instruction envelope splits into a model half and a runtime half, and `response_deadline_ms` is derived from the workflow's stored limits (§5.2) instead of being model-supplied |
-| Ambiguous retry could duplicate a dispatch | `dispatch.md` §3.1–§3.3, §5 — a third `DeliveryOutcome`, `indeterminate`; a timeout or transport error keeps the checkpoint `in_flight` and goes to reconciliation, and only proven non-delivery permits a retry |
+| Ambiguous retry could duplicate a dispatch | `dispatch.md` §3.1–§3.3, §5 — a third `DeliveryOutcome`, `indeterminate`; a timeout or transport error keeps the checkpoint `in_flight` and goes to reconciliation, and only a definitive pre-acceptance rejection from Slack permits a retry |
 | Unbound visible-action claim gap | `dispatch.md` §2 — `ActionClaimKey` is keyed on the source event alone, so replies carrying no `workflow_id` are bounded by the same one-action rule |
 | Compatibility outcome overconstraint | `compatibility.md` §2.1, §2.2, §4 — `outcome_distinguishability` accepts `stable_text` as well as `structured`, with a sample floor, while keeping prose as evidence and never as authority |
 

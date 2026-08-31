@@ -172,35 +172,84 @@ Nor is it a scheduler or a timer. Continuations fire once, immediately, off a co
 Inactivity and lifetime deadlines are `workflow-state.md` §7's separate concern and do not run
 through this mechanism.
 
-### 2.4 Processed exactly once, whether or not it acts
+### 2.4 At-least-once processing, idempotent effects
 
 A continuation may legitimately produce **no externally visible action** — `draft → ready` is
 silent. The external-action claim (`dispatch.md` §2) therefore cannot be what marks a continuation
-processed: for a silent turn that claim is never taken, so a replay would find nothing held and
-evaluate again.
+processed: for a silent turn that claim is never taken.
 
-Two durable mechanisms, both independent of the external-action claim:
+The obvious repair — take a one-time claim before evaluating and stop on replay — is wrong, and
+wrong in the direction that strands work. A process that crashes *after* taking the claim and
+*before* committing anything durable leaves a claim that says "handled" over a workflow where
+nothing happened. Restart sees the claim, drops the continuation, and the workflow sits in a
+Gist-expected state with nothing scheduled to act on it. That is the exact failure §2.1 exists to
+prevent, reintroduced by the mechanism meant to make it safe.
+
+So processing is **at-least-once and recoverable**, and duplicate *effects* are prevented
+separately.
+
+#### Processing state and lease
+
+Each continuation carries durable processing state alongside its record:
 
 ```text
-ContinuationClaimKey = "cont-claim:<workflow_id>:<continuation_seq>"
+ContinuationProcessingState = 'pending' | 'processing' | 'completed'
+
+ContinuationLeaseKey = "cont-lease:<workflow_id>:<continuation_seq>"
 ```
 
-1. **The consumption claim** is taken durably *before* evaluation, keyed on the continuation's
-   identity. A replay finds it held and stops with `continuation_already_processed`, having
-   evaluated nothing and called no model.
-2. **The transition compare-and-set** is the second layer. A continuation's `event_key` is the
-   `source_event_key` of any transition it commits, and `workflow-state.md` §3.2 already treats a
-   repeated `source_event_key` as an **idempotent success** rather than an error. So even if the
-   consumption claim were lost, the state change cannot happen twice.
+| From | To | When |
+|---|---|---|
+| `pending` | `processing` | a run acquires the lease and begins evaluation |
+| `processing` | `pending` | the lease expired, or a restart found it held by a run that is gone — **resume**, do not drop |
+| `processing` | `completed` | written **atomically with** the durable record of what happened (below) |
+| `completed` | — | terminal |
 
-The layers are deliberately not the same mechanism. The claim stops the *work* — the evaluation, the
-model call, the dispatch decision. The compare-and-set stops the *effect*. A single mechanism would
-have to be correct at both points, and the point where it is easiest to get wrong is the one where
-nothing visible happens.
+The lease carries an owning run identity and an expiry, both content-free. It exists for
+*liveness*, not for correctness: it stops two live runs racing the same continuation in the normal
+case, and it expires so that a crashed run's work is picked up rather than abandoned.
 
-**Restart.** Pending continuations are durable. On restart they are reloaded with the active
-workflows (`workflow-state.md` §4) and processed exactly once under the claim above, whether their
-original run produced an action or was silent.
+#### Completion is atomic with a durable outcome
+
+`processing → completed` may only be written in the same commit as **exactly one** of:
+
+1. the committed transition the continuation produced (`workflow-state.md` §3.2);
+2. the durable action checkpoint, when the continuation produced an externally visible action
+   (`dispatch.md` §1); or
+3. a durable `superseded` outcome, when the recheck found the workflow had moved on and no
+   transition applies (§2.1).
+
+Never before any of them. If the process dies between acquiring the lease and one of these writes,
+the continuation is still `processing` with nothing recorded, the lease lapses, and the next run
+resumes it. Nothing is stranded, because "I started" and "it happened" are different durable facts
+and only the second one ends the work.
+
+Row 3 is not a loophole in "atomic with a transition". A superseded continuation genuinely produced
+no transition, and without a durable outcome for that case it would be resumed forever. What matters
+is the shared property: `completed` is never written until a durable record explains why.
+
+#### Duplicate effects are prevented, duplicate evaluation is not
+
+**A crash can cause a continuation to be evaluated twice, and this contract does not pretend
+otherwise.** The model may be called a second time. There is no exactly-once model evaluation to be
+had here, and claiming one would only hide where the cost actually falls.
+
+What must not happen twice is an *effect*, and two mechanisms already in this set guarantee that,
+both keyed on the continuation's own `event_key`:
+
+- **The transition compare-and-set.** A continuation's `event_key` is the `source_event_key` of any
+  transition it commits, and `workflow-state.md` §3.2 treats a repeated `source_event_key` as an
+  **idempotent success**. The second evaluation observes the already-committed result.
+- **The external-action claim** (`dispatch.md` §2), `ev:<event_key>`. If the first pass posted
+  anything, the second finds the claim held and posts nothing.
+
+So a resumed continuation either re-derives the same decision and finds it already applied, or finds
+the workflow moved on and completes as `superseded`. The cost of the crash is a repeated evaluation;
+the guarantee is that Slack sees no second instruction and the workflow takes no second transition.
+
+**Restart.** Pending continuations are durable and reloaded with the active workflows
+(`workflow-state.md` §4). A continuation in `processing` whose lease has lapsed is **resumed**, not
+skipped — whether its interrupted run was silent or had already posted.
 
 ## 3. Logical targets and destination mapping (GS-FR-023, D027)
 
@@ -405,8 +454,9 @@ matter of prompt discipline.
 | §2.1 continuation enqueued with the transition; reaches dispatch with no further human message | `continuation.test.ts` |
 | §2.2 all five bounds, including the no-cycle argument | `continuation.test.ts` |
 | §2.3 a continuation is not self-evaluation | `continuation.test.ts` |
-| §2.4 the consumption claim, and that a silent continuation is still marked processed | `continuation.test.ts` |
-| §2.4 the transition compare-and-set as the second layer | `continuation.test.ts`, `workflow-state.test.ts` |
+| §2.4 the processing-state machine, and that a lapsed `processing` resumes rather than drops | `continuation.test.ts` |
+| §2.4 `completed` only atomically with a transition, a checkpoint, or a `superseded` outcome | `continuation.test.ts` |
+| §2.4 duplicate effects prevented by the transition CAS and the action claim | `continuation.test.ts`, `workflow-state.test.ts` |
 | §3 no Slack ID anywhere in a validated action | `actions.test.ts`, `contract-safety.test.ts` |
 | §3 destination derives from the binding, never the action | `actions.test.ts` |
 | §4 closed work-class union per target | `actions.test.ts` |

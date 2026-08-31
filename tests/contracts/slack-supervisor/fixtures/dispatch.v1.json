@@ -184,6 +184,11 @@
       "from": "pending",
       "to": "delivered",
       "note": "Delivery is only confirmed from an in-flight attempt that returned an outgoing message identity."
+    },
+    {
+      "name": "abandoned_cannot_return_to_failed",
+      "from": "abandoned",
+      "to": "failed"
     }
   ],
   "retry_convergence": {
@@ -372,7 +377,7 @@
     {
       "failure_class": "slack_transport_error",
       "expect_retryable": false,
-      "expect_workflow_state": "ready",
+      "expect_workflow_state": "waiting_human",
       "expect_reconciles": true
     },
     {
@@ -720,5 +725,72 @@
       "capture_write_in_progress",
       "rate_limited_short_page"
     ]
-  }
+  },
+  "abandonment": {
+    "note": "dispatch.md \u00a73.4 \u2014 writing `abandoned` from `in_flight` asserts nothing was published, which \u00a75.1 says cannot be inferred. Only a person who can look at the channel may assert it.",
+    "cases": [
+      {
+        "name": "owner_may_resolve_an_unreconciled_action",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": true
+      },
+      {
+        "name": "configured_approver_may_resolve",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": true
+      },
+      {
+        "name": "another_authorized_human_may_not",
+        "resolver_actor_class": "authorized_human",
+        "is_owner_or_approver": false,
+        "expect_allowed": false
+      },
+      {
+        "name": "the_runtime_may_not_abandon_on_its_own",
+        "resolver_actor_class": null,
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "kilo_may_not",
+        "resolver_actor_class": "kilo",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "linear_may_not",
+        "resolver_actor_class": "linear",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "gist_self_may_not",
+        "resolver_actor_class": "gist_self",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      },
+      {
+        "name": "an_unauthorized_human_may_not",
+        "resolver_actor_class": "unauthorized_human",
+        "is_owner_or_approver": true,
+        "expect_allowed": false
+      }
+    ],
+    "non_grounds": [
+      "message_absent_from_thread",
+      "thread_unreadable",
+      "reconciliation_found_nothing",
+      "time_elapsed"
+    ],
+    "expect_reconciliation_can_abandon_in_flight": false,
+    "expect_pending_abandonment_unaffected": true,
+    "unresolved_workflow_rests_at": "waiting_human",
+    "unresolved_terminates_via": [
+      "timeout_inactivity",
+      "timeout_lifetime"
+    ]
+  },
+  "failure_behavior_note": "dispatch.md \u00a76 \u2014 `expect_workflow_state` is where the workflow lands when the failure is not resolved into a delivery by \u00a75."
 }

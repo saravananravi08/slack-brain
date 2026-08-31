@@ -176,6 +176,8 @@ describe('no retired vocabulary survives a rename', () => {
   const RETIRED_NAMES: readonly [string, string][] = [
     ['distinguishes_outcomes', 'outcome_distinguishability'],
     ['confirmDelivery', 'deliveryOutcome'],
+    ['continuationClaimKey', 'continuationLeaseKey'],
+    ['continuationReplayIsNoOp', 'continuationDuplicateEffectPrevented'],
   ];
 
   it.each(CONTRACT_DOCS)('%s uses no retired name', (doc) => {
@@ -194,6 +196,40 @@ describe('no retired vocabulary survives a rename', () => {
     }
   });
 
+  /**
+   * Wording this set has superseded. A stale sentence is worse than a stale
+   * name: it reads as current policy, and a P09 implementer following it would
+   * build the behavior the review rejected.
+   */
+  const RETIRED_PHRASES: readonly [string, string][] = [
+    ['consumption claim', 'durable continuation processing state and lease (actions.md §2.4)'],
+    ['cont-claim:', 'cont-lease: (actions.md §2.4)'],
+    ['proves non-delivery', 'reconciliation evidences delivery only (dispatch.md §5.1)'],
+    ['proven non-delivery', 'reconciliation evidences delivery only (dispatch.md §5.1)'],
+    ['processed exactly once', 'at-least-once processing with idempotent effects (actions.md §2.4)'],
+    ['claim held and stops', 'a lapsed processing lease resumes (actions.md §2.4)'],
+  ];
+
+  it.each(CONTRACT_DOCS)('%s uses no superseded wording', (doc) => {
+    const text = loadContractDoc(doc).toLowerCase();
+    for (const [retired, replacement] of RETIRED_PHRASES) {
+      expect(
+        text.includes(retired.toLowerCase()),
+        `${doc} still says "${retired}"; the contract now says ${replacement}`,
+      ).toBe(false);
+    }
+  });
+
+  it.each(FIXTURE_FILES)('%s uses no superseded wording', (file) => {
+    const text = fixtureText(file).toLowerCase();
+    for (const [retired, replacement] of RETIRED_PHRASES) {
+      expect(
+        text.includes(retired.toLowerCase()),
+        `${file} still says "${retired}"; the contract now says ${replacement}`,
+      ).toBe(false);
+    }
+  });
+
   it('scans the reference rules and suites too', () => {
     const onDisk = readdirSync(fileURLToPath(TEST_DIR)).filter(
       (file) => file.endsWith('.ts') && file !== 'contract-safety.test.ts',
@@ -202,6 +238,10 @@ describe('no retired vocabulary survives a rename', () => {
       const text = readFileSync(fileURLToPath(new URL(file, TEST_DIR)), 'utf8');
       for (const [retired] of RETIRED_NAMES) {
         expect(text.includes(retired), `${file} still says ${retired}`).toBe(false);
+      }
+      for (const [retired] of RETIRED_PHRASES) {
+        expect(text.toLowerCase().includes(retired.toLowerCase()), `${file} still says "${retired}"`)
+          .toBe(false);
       }
     }
   });

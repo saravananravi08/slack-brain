@@ -21,12 +21,14 @@ import {
   failureBehavior,
   isLegalDeliveryTransition,
   looksLikeSlackId,
+  mayAbandonInFlight,
   reconcile,
   reconciliationCanConclude,
   retryAllowed,
   type ActionClass,
   type AttemptResult,
   type DeliveryState,
+  type ActorClass,
   type FailureClass,
   type ReconciliationInput,
   type WorkflowState,
@@ -590,6 +592,63 @@ describe('restart reconciliation (dispatch.md §5, GS-FR-015)', () => {
   });
 });
 
+describe('abandoning an in-flight action needs a person (dispatch.md §3.4)', () => {
+  const abandonment = asRecord(fixture.abandonment, 'abandonment');
+  const cases = asArray(abandonment.cases, 'abandonment.cases');
+
+  it.each(names(cases))('%s', (name) => {
+    const testCase = byName(cases, name);
+    expect(
+      mayAbandonInFlight({
+        resolver_actor_class: (testCase.resolver_actor_class as ActorClass | null) ?? null,
+        is_owner_or_approver: Boolean(testCase.is_owner_or_approver),
+      }),
+    ).toBe(testCase.expect_allowed);
+  });
+
+  it('never lets the runtime abandon on its own', () => {
+    // Writing `abandoned` asserts that nothing was published, which §5.1 says
+    // cannot be inferred. A person can go and look at the channel.
+    expect(
+      mayAbandonInFlight({ resolver_actor_class: null, is_owner_or_approver: true }),
+    ).toBe(false);
+    expect(abandonment.expect_reconciliation_can_abandon_in_flight).toBe(false);
+  });
+
+  it('never lets a bot or an unauthorized human abandon', () => {
+    for (const actor of [
+      'kilo',
+      'linear',
+      'gist_self',
+      'unknown_automation',
+      'unauthorized_human',
+    ] as ActorClass[]) {
+      expect(
+        mayAbandonInFlight({ resolver_actor_class: actor, is_owner_or_approver: true }),
+        actor,
+      ).toBe(false);
+    }
+  });
+
+  it.each(asStrings(abandonment.non_grounds, 'non_grounds'))('%s is not grounds', (ground) => {
+    expect(ground.length).toBeGreaterThan(0);
+    expect(abandonment.expect_reconciliation_can_abandon_in_flight).toBe(false);
+  });
+
+  it('rests an unresolved action at waiting_human and terminates only by timeout', () => {
+    expect(abandonment.unresolved_workflow_rests_at).toBe('waiting_human');
+    expect(asStrings(abandonment.unresolved_terminates_via, 'terminates_via')).toEqual([
+      'timeout_inactivity',
+      'timeout_lifetime',
+    ]);
+  });
+
+  it('leaves pending abandonment untouched, since nothing was sent', () => {
+    expect(DELIVERY_TRANSITIONS.pending).toContain('abandoned');
+    expect(abandonment.expect_pending_abandonment_unaffected).toBe(true);
+  });
+});
+
 describe('ordering and failure taxonomy (dispatch.md §6, GS-NFR-006)', () => {
   const ordering = asRecord(fixture.ordering, 'ordering');
 
@@ -640,10 +699,19 @@ describe('ordering and failure taxonomy (dispatch.md §6, GS-NFR-006)', () => {
 
   it('sends an ambiguous transport error to reconciliation rather than to a retry', () => {
     // It reads like a transport hiccup and is the one error class that cannot
-    // say whether the post landed.
+    // say whether the post landed. Unresolved it stops at waiting_human — it
+    // does not rest in `ready`, which would look dispatchable.
     const behavior = failureBehavior('slack_transport_error');
     expect(behavior.retryable).toBe(false);
     expect(behavior.reconciles).toBe(true);
+    expect(behavior.workflow_state).toBe('waiting_human');
+  });
+
+  it('never lands an unresolved failure in `ready`', () => {
+    for (const testCase of failureCases) {
+      if (testCase.expect_retryable === true) continue;
+      expect(testCase.expect_workflow_state, String(testCase.failure_class)).not.toBe('ready');
+    }
   });
 
   it('never substitutes a destination or a transport when capability fails', () => {

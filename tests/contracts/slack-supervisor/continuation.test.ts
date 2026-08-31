@@ -21,14 +21,23 @@ import {
   WORKFLOW_TRANSITIONS,
   actionClaimKey,
   applyCounters,
-  continuationClaimKey,
+  CONTINUATION_COMPLETION_EVIDENCE,
+  CONTINUATION_PROCESSING_STATES,
+  CONTINUATION_PROCESSING_TRANSITIONS,
+  continuationDuplicateEffectPrevented,
   continuationEventKey,
+  continuationLeaseKey,
   continuationOutcome,
-  continuationReplayIsNoOp,
+  continuationRecoveryAction,
+  isLegalContinuationProcessingTransition,
+  mayMarkContinuationCompleted,
   enqueuesContinuation,
   isTerminal,
   longestContinuationChain,
+  type ContinuationCompletionEvidence,
   type ContinuationEvent,
+  type ContinuationLeaseRecord,
+  type ContinuationProcessingState,
   type CountingInput,
   type StoredWorkflow,
   type SupervisorEvent,
@@ -145,58 +154,190 @@ describe('the continuation half of the event union (events.md §1.2)', () => {
   });
 });
 
-describe('the consumption claim marks it processed (actions.md §2.4)', () => {
-  const claim = asRecord(fixture.consumption_claim, 'consumption_claim');
-  const keys = asArray(claim.keys, 'consumption_claim.keys');
-  const layers = asArray(claim.replay_layers, 'replay_layers');
-  const silent = asRecord(claim.silent_continuation, 'silent_continuation');
+describe('at-least-once processing with a recoverable lease (actions.md §2.4)', () => {
+  const processing = asRecord(fixture.processing, 'processing');
+  const leaseKeys = asArray(processing.lease_keys, 'lease_keys');
+  const recovery = asArray(processing.recovery, 'recovery');
+  const evidence = asArray(processing.completion_evidence, 'completion_evidence');
+  const duplicates = asArray(processing.duplicate_effect, 'duplicate_effect');
+  const atLeastOnce = asRecord(processing.at_least_once, 'at_least_once');
+  const silent = asRecord(processing.silent_continuation, 'silent_continuation');
+  const declaredTransitions = asRecord(processing.transitions, 'processing.transitions');
 
-  it.each(names(keys))('%s builds its own claim key', (name) => {
-    const testCase = byName(keys, name);
+  it('declares the three processing states', () => {
+    expect(asStrings(processing.states, 'states')).toEqual([...CONTINUATION_PROCESSING_STATES]);
+  });
+
+  it.each([...CONTINUATION_PROCESSING_STATES])('%s matches the frozen row', (state) => {
+    expect(asStrings(declaredTransitions[state], `transitions.${state}`)).toEqual([
+      ...CONTINUATION_PROCESSING_TRANSITIONS[state],
+    ]);
+  });
+
+  it('allows processing → pending, which is what makes a crash recoverable', () => {
+    expect(isLegalContinuationProcessingTransition('processing', 'pending')).toBe(true);
+  });
+
+  it.each(names(asArray(processing.illegal_transitions, 'illegal_transitions')))(
+    '%s is rejected',
+    (name) => {
+      const testCase = byName(asArray(processing.illegal_transitions, 'illegal'), name);
+      expect(
+        isLegalContinuationProcessingTransition(
+          testCase.from as ContinuationProcessingState,
+          testCase.to as ContinuationProcessingState,
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it.each(names(leaseKeys))('%s builds its own lease key', (name) => {
+    const testCase = byName(leaseKeys, name);
     expect(
-      continuationClaimKey(String(testCase.workflow_id), Number(testCase.sequence)),
+      continuationLeaseKey(String(testCase.workflow_id), Number(testCase.sequence)),
     ).toBe(testCase.expect_key);
   });
 
-  it('is independent of the external-action claim', () => {
-    // The defect this fixes: an internal-only continuation takes no action
-    // claim, so an action claim marks nothing as processed.
-    const consumption = continuationClaimKey('wf_supv_0001', 1);
-    const action = actionClaimKey(continuationEventKey('wf_supv_0001', 1));
-    expect(consumption).not.toBe(action);
-    expect(claim.expect_independent_of_action_claim).toBe(true);
-    expect(claim.expect_taken_before_evaluation).toBe(true);
+  describe('restart recovery', () => {
+    it.each(names(recovery))('%s', (name) => {
+      const testCase = byName(recovery, name);
+      expect(
+        continuationRecoveryAction(
+          testCase.record as unknown as ContinuationLeaseRecord,
+          String(processing.now),
+          String(processing.current_run_id),
+        ),
+      ).toBe(testCase.expect_action);
+    });
+
+    it('resumes a continuation whose run died before any durable write', () => {
+      // The defect this fixes: a one-time claim taken before evaluation would
+      // have said "handled" over a workflow where nothing happened, and restart
+      // would have dropped it — stranding a Gist-expected state with nothing
+      // scheduled to act on it.
+      const testCase = byName(recovery, 'crash_after_lease_before_any_durable_write_resumes');
+      expect(
+        continuationRecoveryAction(
+          testCase.record as unknown as ContinuationLeaseRecord,
+          String(processing.now),
+          String(processing.current_run_id),
+        ),
+      ).toBe('resume');
+    });
+
+    it('never drops a continuation that is not completed', () => {
+      for (const testCase of recovery) {
+        const state = asRecord(testCase.record, 'record').processing_state;
+        if (state === 'completed') continue;
+        expect(testCase.expect_action, String(testCase.name)).not.toBe('skip_completed');
+      }
+    });
+
+    it('leaves a live lease held by another run alone', () => {
+      // Liveness only: the lease stops two live runs racing, and expires so a
+      // crashed run's work is picked up rather than abandoned.
+      expect(
+        continuationRecoveryAction(
+          {
+            processing_state: 'processing',
+            lease_owner: 'run_supv_c',
+            lease_expires_at: '2026-09-01T00:20:00.000Z',
+          },
+          String(processing.now),
+          String(processing.current_run_id),
+        ),
+      ).toBe('leave_to_live_owner');
+    });
   });
 
-  it('marks a silent continuation processed even though it acts on nothing', () => {
-    expect(silent.visible_actions).toBe(0);
-    expect(silent.expect_action_claim_taken).toBe(false);
-    expect(silent.expect_consumption_claim_taken).toBe(true);
+  describe('completion is atomic with a durable outcome', () => {
+    it.each(names(evidence))('%s', (name) => {
+      const testCase = byName(evidence, name);
+      expect(
+        mayMarkContinuationCompleted(
+          (testCase.evidence as ContinuationCompletionEvidence | null) ?? null,
+        ),
+      ).toBe(testCase.expect_may_complete);
+    });
+
+    it('refuses to complete before anything durable is written', () => {
+      expect(mayMarkContinuationCompleted(null)).toBe(false);
+    });
+
+    it('accepts exactly the three declared evidences', () => {
+      const declared = evidence
+        .filter((testCase) => testCase.expect_may_complete === true)
+        .map((testCase) => testCase.evidence);
+      expect(declared.slice().sort()).toEqual([...CONTINUATION_COMPLETION_EVIDENCE].sort());
+    });
+
+    it('completes a silent continuation on its committed transition', () => {
+      // No visible action means no action claim, so the transition is what
+      // records that the turn happened.
+      expect(silent.visible_actions).toBe(0);
+      expect(silent.expect_action_claim_taken).toBe(false);
+      expect(
+        mayMarkContinuationCompleted(silent.expect_completed_with as ContinuationCompletionEvidence),
+      ).toBe(true);
+    });
   });
 
-  it.each(names(layers))('%s', (name) => {
-    const testCase = byName(layers, name);
-    expect(
-      continuationReplayIsNoOp({
-        consumption_claim_held: Boolean(testCase.consumption_claim_held),
-        stored: testCase.stored as unknown as StoredWorkflow,
-        request: testCase.request as unknown as TransitionRequest,
-      }),
-    ).toBe(testCase.expect_no_op);
-  });
+  describe('duplicate effects, not duplicate evaluation', () => {
+    it('does not claim exactly-once evaluation', () => {
+      // There is no exactly-once model evaluation to be had here, and claiming
+      // one would only hide where the cost falls.
+      expect(atLeastOnce.expect_duplicate_evaluation_possible).toBe(true);
+      expect(atLeastOnce.expect_duplicate_effect_possible).toBe(false);
+      expect(atLeastOnce.expect_claims_exactly_once_evaluation).toBe(false);
+      expect(asStrings(atLeastOnce.effect_guards, 'effect_guards')).toEqual([
+        'transition_compare_and_set',
+        'external_action_claim',
+      ]);
+    });
 
-  it('still makes replay a no-op if the consumption claim were lost', () => {
-    // Two layers on purpose: the claim stops the work, the compare-and-set
-    // stops the effect.
-    const testCase = byName(layers, 'transition_cas_is_the_second_layer');
-    expect(testCase.consumption_claim_held).toBe(false);
-    expect(
-      continuationReplayIsNoOp({
-        consumption_claim_held: false,
-        stored: testCase.stored as unknown as StoredWorkflow,
-        request: testCase.request as unknown as TransitionRequest,
-      }),
-    ).toBe(true);
+    it.each(names(duplicates))('%s', (name) => {
+      const testCase = byName(duplicates, name);
+      expect(
+        continuationDuplicateEffectPrevented({
+          stored: testCase.stored as unknown as StoredWorkflow,
+          request: testCase.request as unknown as TransitionRequest,
+          action_claim_held: Boolean(testCase.action_claim_held),
+        }),
+      ).toBe(testCase.expect_prevented);
+    });
+
+    it('converges a re-evaluated continuation on the already-committed transition', () => {
+      const testCase = byName(duplicates, 'transition_cas_converges_a_second_evaluation');
+      expect(
+        continuationDuplicateEffectPrevented({
+          stored: testCase.stored as unknown as StoredWorkflow,
+          request: testCase.request as unknown as TransitionRequest,
+          action_claim_held: false,
+        }),
+      ).toBe(true);
+    });
+
+    it('posts nothing a second time when the first pass already posted', () => {
+      const testCase = byName(duplicates, 'action_claim_converges_a_second_visible_action');
+      expect(
+        continuationDuplicateEffectPrevented({
+          stored: testCase.stored as unknown as StoredWorkflow,
+          request: testCase.request as unknown as TransitionRequest,
+          action_claim_held: true,
+        }),
+      ).toBe(true);
+    });
+
+    it('still lets a genuine first pass act', () => {
+      const testCase = byName(duplicates, 'a_genuine_first_pass_is_allowed_to_act');
+      expect(
+        continuationDuplicateEffectPrevented({
+          stored: testCase.stored as unknown as StoredWorkflow,
+          request: testCase.request as unknown as TransitionRequest,
+          action_claim_held: false,
+        }),
+      ).toBe(false);
+    });
   });
 });
 
@@ -380,7 +521,7 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
     const testCase = byName(outcomes, name);
     expect(
       continuationOutcome({
-        consumption_claim_held: Boolean(testCase.consumption_claim_held),
+        processing_state: testCase.processing_state as ContinuationProcessingState,
         current_state: testCase.current_state as WorkflowState,
         enqueued_for_state: testCase.enqueued_for_state as WorkflowState,
       }),
@@ -390,29 +531,29 @@ describe('a continuation re-reads state after the queue (events.md §5 rule 2)',
   it('does nothing when a human cancelled while it waited', () => {
     expect(
       continuationOutcome({
-        consumption_claim_held: false,
+        processing_state: 'processing',
         current_state: 'cancelled',
         enqueued_for_state: 'draft',
       }),
     ).toBe('superseded');
   });
 
-  it('is a no-op when replayed after restart (GS-INV-09, GS-INV-12)', () => {
-    // The claim on the continuation's own event key is what makes reprocessing
-    // safe; without it a restart would re-dispatch.
+  it('is a no-op once its processing state records a durable outcome', () => {
+    // `completed` means an outcome was written. A crash mid-run leaves
+    // `processing` instead, and that is resumed rather than skipped.
     expect(
       continuationOutcome({
-        consumption_claim_held: true,
+        processing_state: 'completed',
         current_state: 'ready',
         enqueued_for_state: 'ready',
       }),
     ).toBe('already_processed');
   });
 
-  it('lets the claim win over a state that still matches', () => {
+  it('lets a completed processing state win over a state that still matches', () => {
     expect(
       continuationOutcome({
-        consumption_claim_held: true,
+        processing_state: 'completed',
         current_state: 'draft',
         enqueued_for_state: 'draft',
       }),

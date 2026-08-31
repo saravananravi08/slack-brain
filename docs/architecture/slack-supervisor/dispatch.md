@@ -75,8 +75,9 @@ continuation that *does* produce an externally visible action is bounded by exac
 as a Slack event.
 
 It is not, however, what marks a continuation **processed**: a silent continuation takes no action
-claim at all, so replay protection for the internal turn is the separate consumption claim in
-`actions.md` §2.4.
+claim at all. Whether a continuation has been handled is its own durable processing state
+(`actions.md` §2.4); this claim only guarantees that, however many times a continuation is
+evaluated, Slack sees at most one action from it.
 
 **`DispatchClaimKey`** is claimed once per delivery attempt. It bounds retries: a retry is a new
 attempt number with its own claim, so a retry that races with a slow original cannot produce two
@@ -103,7 +104,7 @@ DeliveryState = 'pending' | 'in_flight' | 'delivered' | 'failed' | 'abandoned'
 | `in_flight` | `delivered` | Slack returned a canonical message identity for the post |
 | `in_flight` | `failed` | the attempt returned a **definitive non-delivery** result (§3.1) |
 | `in_flight` | `in_flight` | the attempt's outcome is **indeterminate**; nothing moves (§3.2) |
-| `in_flight` | `abandoned` | reconciliation proved nothing was delivered and the action was superseded (§5) |
+| `in_flight` | `abandoned` | **only** on an explicit authorized-human resolution recorded on the workflow (§3.4) — never from absence, and never from reconciliation |
 | `failed` | `pending` | a retry is permitted and a new attempt begins (§3.3) |
 | `failed` | `abandoned` | retries exhausted, or the workflow moved on |
 | `delivered` | — | terminal; a delivered action is never re-sent |
@@ -181,6 +182,24 @@ send at all. Reconciliation can promote an action to `delivered`; it can never d
 Retry convergence (GS-FR-043): retries share one `action_id` and one `version`. Whichever attempt
 succeeds first sets `delivered` under compare-and-set; later attempts observe `delivered` and stop.
 One durable action, one expected bot turn.
+
+### 3.4 Abandoning an in-flight action needs a person
+
+An action stuck at `in_flight` after §5 could not resolve it is the one case where the runtime has
+genuinely run out of evidence. It may not clear the record on its own: writing `abandoned` asserts
+that nothing was published, which is precisely the claim §5.1 says cannot be inferred.
+
+`in_flight → abandoned` therefore requires an explicit resolution by the workflow owner or a
+configured approver (`approvals.md` §4), recorded on the workflow alongside the transition that
+carries it. That is the same authority that cancels or redirects work, and it is the right one: a
+person can go and look at the channel, which is the evidence the runtime lacked.
+
+Absence of a message, an unreadable thread, a reconciliation pass that found nothing, and the mere
+passage of time are **none of them** grounds for abandonment. A workflow whose owner never resolves
+it stays at `waiting_human` until an inactivity or lifetime limit terminates it
+(`workflow-state.md` §7.3) — which records a timeout, not a claim about delivery.
+
+`pending → abandoned` is unaffected: nothing was ever sent, so no claim about delivery is being made.
 
 ## 4. Failed dispatch does not advance the workflow (GS-FR-042)
 
@@ -265,20 +284,22 @@ FailureClass =
 
 Every value is a class, safe to log, and names nothing about content, channel, or person.
 
-Fail-closed behavior by group:
+Fail-closed behavior by group. The workflow column is where the workflow lands when the failure is
+**not** resolved into a delivery by §5:
 
 | Group | Behavior |
 |---|---|
 | Definitive non-delivery (`slack_rate_limited`, `slack_permission_denied`, `slack_invalid_request`) | retry within `max_consecutive_failures`; workflow stays `ready` |
-| Ambiguous transport (`slack_transport_error`) | **no retry from the failure itself.** The outcome is `indeterminate`, so the checkpoint stays `in_flight` and §5 reconciles it. A retry happens only if reconciliation proves non-delivery |
+| Ambiguous transport (`slack_transport_error`) | **no retry, ever.** The outcome is `indeterminate`, so the checkpoint stays `in_flight` and §5 reconciles it. Reconciliation can evidence delivery but never its absence (§5.1), so there is no path from here to a second send: resolved means `dispatched`, unresolved means `waiting_human` with no send |
 | Guard rejections (`state_*`, `version_*`, `illegal_*`, `terminal_*`, `approval_*`, `claim_*`, `in_flight_conflict`) | no retry; the decision was stale or unauthorized. Re-evaluate against current state |
 | Capability (`destination_unresolved`, `compatibility_blocked`) | no retry; `waiting_human`. Never substitute another destination or transport (D023, D029) |
 | Model/schema (`schema_invalid`, `runtime_controlled_field_present`, `model_unavailable`) | no action taken; the event is recorded as evaluated with no effect. Exact capture is unaffected |
 | Storage (`storage_unavailable`) | no dispatch. If the checkpoint cannot be written, nothing is sent |
 | Unresolvable (`dispatch_unreconciled`) | no retry and no send; `waiting_human` (§3.2) |
 
-`slack_transport_error` moving out of the retryable group is the whole of fix 3. It reads like a
-transport hiccup and it is the one error class that cannot tell you whether the post landed.
+`slack_transport_error` is the one error class that reads like a transport hiccup and cannot tell
+you whether the post landed. It is therefore not retryable and, unresolved, it stops at
+`waiting_human` rather than resting in `ready`.
 
 The storage row is the ordering guarantee that makes the rest work: **the checkpoint write precedes
 the Slack call**. If durable state cannot record the intent to act, the act does not happen. A
@@ -298,7 +319,8 @@ never costs the memory layer.
 | §3 delivery transition table; `delivered` only on confirmed identity | `dispatch.test.ts` |
 | §3.1 the definitive / indeterminate split, per error class | `dispatch.test.ts` |
 | §3.2 an indeterminate outcome never retries and never re-sends | `dispatch.test.ts` |
-| §3.3 retry only after a definitive failure or proven non-delivery | `dispatch.test.ts` |
+| §3.3 retry only after a definitive pre-acceptance rejection | `dispatch.test.ts` |
+| §3.4 `in_flight → abandoned` needs an authorized human, never absence | `dispatch.test.ts` |
 | §3 retry convergence to one action and one bot turn | `dispatch.test.ts` |
 | §4 failed dispatch leaves the workflow in `ready` | `dispatch.test.ts`, `workflow-state.test.ts` |
 | §5 all four reconciliation rows, inline and at restart | `dispatch.test.ts` |
