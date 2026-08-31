@@ -1,7 +1,12 @@
 import type { SlackAdapter } from '@chat-adapter/slack';
-import type { MastraDBMessage } from '@mastra/core/agent';
+import type { AgentMemoryOption, MastraDBMessage } from '@mastra/core/agent';
 import { MastraStateAdapter } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
+import {
+  MASTRA_RESOURCE_ID_KEY,
+  MASTRA_THREAD_ID_KEY,
+  RequestContext,
+} from '@mastra/core/request-context';
 import {
   LibSQLFactoryStorage,
   LibSQLVector,
@@ -9,6 +14,11 @@ import {
 } from '@mastra/libsql';
 
 import { parseConfig, type Config } from '../config.js';
+import {
+  ChannelContextProvider,
+  type ChannelContextBudgets,
+} from '../channel-memory/context/index.js';
+import { ChannelHistoryProvider } from '../channel-memory/history/index.js';
 import {
   ChannelMessagePersistenceService,
   MastraMutationStorage,
@@ -27,9 +37,11 @@ import {
   policyForEnrolledChannel,
   policySnapshotFromConfig,
   type AuthorizationEvent,
+  type AuthorizationRequest,
   type SenderAttributes,
   type SenderResolver,
 } from '../security/index.js';
+import { channelContextSystemMessage } from './agents/channel-context.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
 import { ChannelError, DurableChannelDedupLedger } from './channels/index.js';
 import {
@@ -50,6 +62,10 @@ import {
   createMastraStorage,
 } from './storage/index.js';
 import { createGistObservability } from './storage/observability.js';
+import {
+  CHANNEL_MEMORY_AUTHORIZATION_CONTEXT_KEY,
+  createChannelMemorySearchTool,
+} from './tools/channel-memory-search.js';
 
 /**
  * Storage and the configured runtime Mastra instance are built inside
@@ -66,6 +82,36 @@ import { createGistObservability } from './storage/observability.js';
  * now touches no filesystem and reads no environment variable.
  */
 export const mastra = new Mastra({});
+
+export const GIST_CHANNEL_CONTEXT_BUDGETS: ChannelContextBudgets = {
+  total_tokens: 6_000,
+  current_thread: { records: 20, tokens: 2_000 },
+  recent_channel_history: { records: 40, tokens: 2_000 },
+  rolling_channel_summary_tokens: 750,
+  channel_observations_tokens: 1_250,
+};
+
+function countApproximateTokens(text: string): number {
+  return text === '' ? 0 : Math.ceil(Array.from(text).length / 4);
+}
+
+function channelMemoryRun(
+  resource: string,
+  thread: string,
+  readOnly: boolean,
+): AgentMemoryOption {
+  const memory: AgentMemoryOption = { resource, thread };
+  Object.defineProperty(memory, 'options', {
+    enumerable: false,
+    value: {
+      lastMessages: false,
+      semanticRecall: false,
+      observationalMemory: false,
+      ...(readOnly ? { readOnly: true } : {}),
+    },
+  });
+  return memory;
+}
 
 export function createRuntimeStorage(config: Readonly<Config>): LibSQLStore {
   return createMastraStorage({ databaseUrl: config.databaseUrl });
@@ -252,8 +298,26 @@ export async function createFoundationRuntime(
     databaseUrl: config.databaseUrl,
     embeddingModel: config.embeddingModel,
   });
-  const gistAgent = createGistAgent(createGistModel(config.gistModel), memory);
+  const channelMemorySearch = createChannelMemorySearchTool({ memory });
+  const gistAgent = createGistAgent(
+    createGistModel(config.gistModel),
+    memory,
+    channelMemorySearch,
+  );
   mastra.addAgent(gistAgent, 'gist');
+
+  const channelHistory = new ChannelHistoryProvider({
+    storage,
+    countTokens: countApproximateTokens,
+    maxRecords: GIST_CHANNEL_CONTEXT_BUDGETS.recent_channel_history.records,
+    maxTokens: GIST_CHANNEL_CONTEXT_BUDGETS.recent_channel_history.tokens,
+  });
+  const channelContext = new ChannelContextProvider({
+    history: channelHistory,
+    observations: memory.channelObservations,
+    budgets: GIST_CHANNEL_CONTEXT_BUDGETS,
+    countTokens: countApproximateTokens,
+  });
 
   const policy = policySnapshotFromConfig(config);
   const state = new MastraStateAdapter(memoryStore, () => gistAgent.id);
@@ -352,17 +416,42 @@ export async function createFoundationRuntime(
       authorizedContexts.delete(request);
       if (!context) throw new ChannelError('unauthorized');
 
+      let readAuthorization: AuthorizationRequest | undefined;
       for (const gate of ['read_memory', 'write_memory'] as const) {
-        const decision = authorize({
+        const authorizationRequest: AuthorizationRequest = {
           contract_version: AUTHORIZATION_CONTRACT_VERSION,
           gate,
           event: context.event,
           identity: context.identity,
           policy: context.policy,
-        });
+        };
+        const decision = authorize(authorizationRequest);
         if (!decision.allowed) throw new ChannelError('unauthorized');
-        if (gate === 'read_memory' && !decision.scope.includes(context.identity.boundary_id)) {
-          throw new ChannelError('unauthorized');
+        if (gate === 'read_memory') {
+          if (!decision.scope.includes(context.identity.boundary_id)) {
+            throw new ChannelError('unauthorized');
+          }
+          readAuthorization = authorizationRequest;
+        }
+      }
+      if (!readAuthorization) throw new ChannelError('unauthorized');
+
+      const requestContext = new RequestContext();
+      requestContext.setRaw(
+        CHANNEL_MEMORY_AUTHORIZATION_CONTEXT_KEY,
+        readAuthorization,
+      );
+      requestContext.setRaw(MASTRA_RESOURCE_ID_KEY, context.identity.resource_id);
+      requestContext.setRaw(MASTRA_THREAD_ID_KEY, context.identity.thread_id);
+
+      let channelSystem: string | undefined;
+      if (context.identity.conversation_type === 'channel') {
+        try {
+          channelSystem = channelContextSystemMessage(
+            await channelContext.getChannelContext(requestContext),
+          );
+        } catch {
+          throw new ChannelError('retrieval_failed');
         }
       }
 
@@ -377,13 +466,21 @@ export async function createFoundationRuntime(
           text: request.text,
         }),
         {
-          memory: {
-            resource: context.identity.resource_id,
-            thread: context.identity.thread_id,
-            // P06 capture and outgoing_self persistence are the sole channel
-            // writers. DMs keep their existing agent-memory behavior.
-            ...(context.membershipAuthoritative ? { options: { readOnly: true } } : {}),
-          },
+          requestContext,
+          activeTools: channelSystem ? ['search_channel_memory'] : [],
+          ...(channelSystem ? { system: channelSystem } : {}),
+          memory: context.identity.conversation_type === 'channel'
+            ? channelMemoryRun(
+                context.identity.resource_id,
+                context.identity.thread_id,
+                // P06 capture and outgoing_self persistence are the sole
+                // channel writers after membership-authoritative capture.
+                context.membershipAuthoritative,
+              )
+            : {
+                resource: context.identity.resource_id,
+                thread: context.identity.thread_id,
+              },
         },
       );
       return response.textStream;
