@@ -6,7 +6,7 @@
 
 - **Overall:** In Progress
 - **Integration branch:** `feature/gist-slack-bot-supervisor` for P08–P10; upstream `integration/mastra-rewrite`
-- **Coordinator:** pi coding agent (P08–P10 feature coordinator)
+- **Coordinator:** herdr orchestrator (P08–P10)
 - **Current phase gate:** P06/P07 code and offline validation are merged; their operator live checklists remain pending. Proactive human-message handling through T609d is merged at baseline `5fdf8e2`. **P08 Slack supervisor contracts/compatibility is starting:** Slack-only steering of trusted Kilo/Linear bots, durable workflows, and bot-reply continuation. T801 is the first task; runtime implementation must wait for T802 live bot compatibility and T803 threat/protocol GO.
 - **Last updated:** 2026-08-31 — feature branch created from `5fdf8e2`; P08–P10 PRD/governance drafted. Baseline verified: typecheck/build green, 1063 passing, 5 skipped.
 
@@ -46,7 +46,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | In Progress (deliverables merged; operator beta/cutover/rollback gates pending) | P03, P04 | Unassigned | — |
 | [P06](./phases/P06-CHANNEL-CAPTURE.md) — Complete Multi-Channel Capture | Merged (offline GO; live checklist pending operator) | T406, D013–D015 | Kilo coordinator | 1a63d5e |
 | [P07](./phases/P07-CHANNEL-CONTEXT.md) — Channel Context and Observational Memory | Merged (offline GO; live checklist pending operator) | P06, D016–D017 | Kilo coordinator | 58f1cc1 |
-| [P08](./phases/P08-SLACK-AUTOMATION-CONTRACTS.md) — Slack Automation Contracts and Compatibility | Planned | baseline `5fdf8e2`, D023–D029 | pi coding agent | — |
+| [P08](./phases/P08-SLACK-AUTOMATION-CONTRACTS.md) — Slack Automation Contracts and Compatibility | Planned | baseline `5fdf8e2`, D023–D029 | herdr orchestrator | — |
 | [P09](./phases/P09-DURABLE-SUPERVISOR.md) — Durable Slack Supervisor Runtime | Planned | P08 | Unassigned | — |
 | [P10](./phases/P10-BOT-STEERED-WORKFLOWS.md) — Bot-Steered Workflows and Live Validation | Planned | P09 | Unassigned | — |
 

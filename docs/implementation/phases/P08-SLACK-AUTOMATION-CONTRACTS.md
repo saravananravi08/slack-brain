@@ -2,7 +2,7 @@
 
 - **Status:** Planned
 - **Depends on:** Channel-memory/context baseline through `5fdf8e2`; accepted D023–D029
-- **Phase integrator:** Unassigned
+- **Phase integrator:** herdr orchestrator
 - **PRD coverage:** GS-FR-001–011, GS-FR-017–026, GS-NFR-003/004/007
 
 ## Outcome
