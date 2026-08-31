@@ -1,8 +1,8 @@
 # P08 — Slack Automation Contracts and Compatibility
 
-- **Status:** In Progress
+- **Status:** Planned
 - **Depends on:** Channel-memory/context baseline through `5fdf8e2`; accepted D023–D029
-- **Phase integrator:** pi coding agent
+- **Phase integrator:** Unassigned
 - **PRD coverage:** GS-FR-001–011, GS-FR-017–026, GS-NFR-003/004/007
 
 ## Outcome
@@ -28,7 +28,7 @@ The phase is intentionally serial. Runtime work must not start from assumed Slac
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | In Progress | D023–D029, baseline `5fdf8e2` | PG-08A | pi coding agent | — |
+| [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | Planned | D023–D029, baseline `5fdf8e2` | PG-08A | Unassigned | — |
 | [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | Planned | T801, operator test access | PG-08B | Unassigned | — |
 | [T803](../tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | Planned | T802 | PG-08C | Unassigned | — |
 
