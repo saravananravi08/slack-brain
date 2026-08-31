@@ -403,3 +403,9 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Root cause of live no-fire: ambient message handler was registered only when GIST_PROACTIVE_CHANNELS was non-empty, and the running process lacked the var; fixed — evaluator always registered, empty list = all enrolled channels (enrollment-registry consulted, failures deny).
 - Verification: scoped 103 tests; full 1061 passed / 5 skipped; typecheck OK; build OK; scope clean.
 - Result: merged GO; pushed; live restarted.
+
+### 2026-08-31 — T609c/T609d merged (live wiring + operator-approved test mode)
+
+- T609c: live ambient gate wiring (worker pi-coder-27, `b938523` + handoff `425215e`) — proactive gate now fires in the real Socket Mode path with stage-trace diagnostics; content-leak assertions proven live.
+- T609d: ALL_MESSAGES_PROACTIVE_CLASSIFIER test mode (`3bee8c5`) — operator-approved temporary rollout mode that acts on all eligible proactive messages (all guards intact: human-only, cooldown, dedup, fail-closed).
+- Merge `5b8d0e2`; full 1063 passed / 5 skipped; typecheck OK; build OK.
