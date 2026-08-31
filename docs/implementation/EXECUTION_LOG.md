@@ -286,3 +286,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `8d473a9`; handoff `2f616f9`; merge `35da11a`.
 - Verification: scope clean; diff-check clean; 13 registry tests passed; typecheck OK; post-merge regression 949 passed / 5 skipped.
 - Result: merged GO. Blockers: none.
+
+### 2026-08-31 — T603 completed (P06 Wave 2)
+
+- Task: T603 normalize all message senders; worker: pi-coder-17; branch: task/T603-normalize-all-message-senders.
+- Implementation `e0832fa`; handoff `a828980`; merge `7dfd075`.
+- Verification: scope audit clean; focused events+contracts 450 passed; post-merge regression 961 passed / 5 skipped; typecheck OK.
+- Result: merged GO. Blockers: none.

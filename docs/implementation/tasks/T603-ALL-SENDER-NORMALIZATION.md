@@ -1,6 +1,6 @@
 # T603 — Normalize all message senders
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** pi-agent
 - **Branch:** `task/T603-normalize-all-message-senders`
@@ -57,6 +57,6 @@ git diff --check
 
 - Implementation commit: `e0832fa72c2955a7e6489936fa8645f44dfe84ef`
 - Handoff commit: —
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `7dfd075`
+- Integration metadata commit: docs(P06) complete T603 metadata commit
+- Completed at: 2026-08-31
