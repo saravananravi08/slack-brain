@@ -1,8 +1,8 @@
 # T801 — Freeze Slack supervisor contracts
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
-- **Owner:** Unassigned
+- **Owner:** claude-opus5
 - **Branch:** `task/T801-freeze-slack-supervisor-contracts`
 - **Parallel group:** PG-08A
 - **Depends on:** D023–D029; channel-memory/context/proactive baseline `5fdf8e2`

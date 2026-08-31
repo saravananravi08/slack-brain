@@ -1,0 +1,387 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/compatibility.md",
+  "note": "These are SHAPES, not measurements. T802 fills them from a live probe in its own branch and must not widen an enum to fit an observation.",
+  "required_fields": [
+    "contract_version",
+    "logical_target",
+    "bot_alias",
+    "observed_on",
+    "sample_count",
+    "accepts_bot_authored",
+    "requires_mention",
+    "reply_placement",
+    "reply_identity_stable",
+    "marker_preserved",
+    "distinguishes_outcomes",
+    "completion_signal",
+    "duplicate_behavior",
+    "reply_latency_bucket",
+    "reacts_to_edits",
+    "unrelated_message_inert",
+    "decision",
+    "blocking_reason_class"
+  ],
+  "forbidden_fields": [
+    "message_text",
+    "reply_text",
+    "instruction_text",
+    "raw_payload",
+    "prompt",
+    "model_output",
+    "channel_id",
+    "workspace_id",
+    "bot_id",
+    "app_id",
+    "user_id",
+    "token",
+    "screenshot",
+    "trace"
+  ],
+  "enums": {
+    "tri": ["yes", "no", "unknown"],
+    "reply_placement": ["same_thread", "channel_root", "new_thread", "none", "unknown"],
+    "completion_signal": ["explicit", "implicit", "none", "unknown"],
+    "duplicate_behavior": ["ignored", "second_action", "error", "unknown"],
+    "latency_bucket": ["lt_5s", "lt_30s", "lt_5m", "gte_5m", "none", "unknown"],
+    "blocking_reason": [
+      "ignores_bot_authored",
+      "uncorrelatable_replies",
+      "unstable_identity",
+      "duplicate_side_effects",
+      "no_outcome_signal",
+      "unmeasured"
+    ],
+    "decision": ["GO", "NO_GO"],
+    "phase_recommendation": ["GO", "PARTIAL", "NO_GO"]
+  },
+  "unmeasured_template": {
+    "note": "The shape T802 starts from. Every Tri and enum begins at `unknown`, which is a NO_GO under rule 6 until measured.",
+    "contract_version": "1.0.0",
+    "logical_target": "kilo",
+    "bot_alias": "trusted-bot-a",
+    "observed_on": "2026-09-01",
+    "sample_count": 1,
+    "accepts_bot_authored": "unknown",
+    "requires_mention": "unknown",
+    "reply_placement": "unknown",
+    "reply_identity_stable": "unknown",
+    "marker_preserved": "unknown",
+    "distinguishes_outcomes": "unknown",
+    "completion_signal": "unknown",
+    "duplicate_behavior": "unknown",
+    "reply_latency_bucket": "unknown",
+    "reacts_to_edits": "unknown",
+    "unrelated_message_inert": "unknown",
+    "decision": "NO_GO",
+    "blocking_reason_class": "unmeasured"
+  },
+  "strategy_cases": [
+    {
+      "name": "same_thread_with_marker",
+      "reply_placement": "same_thread",
+      "marker_preserved": "yes",
+      "expect_strategy": "thread_binding_with_marker"
+    },
+    {
+      "name": "same_thread_without_marker",
+      "note": "The binding is sufficient because a thread holds at most one non-terminal workflow.",
+      "reply_placement": "same_thread",
+      "marker_preserved": "no",
+      "expect_strategy": "thread_binding_only"
+    },
+    {
+      "name": "same_thread_marker_unmeasured",
+      "reply_placement": "same_thread",
+      "marker_preserved": "unknown",
+      "expect_strategy": "thread_binding_only"
+    },
+    {
+      "name": "channel_root_with_marker_requires_the_marker",
+      "note": "This is the row that would force an amendment to events.md §4.2 check 3.",
+      "reply_placement": "channel_root",
+      "marker_preserved": "yes",
+      "expect_strategy": "marker_required"
+    },
+    {
+      "name": "new_thread_with_marker_requires_the_marker",
+      "reply_placement": "new_thread",
+      "marker_preserved": "yes",
+      "expect_strategy": "marker_required"
+    },
+    {
+      "name": "channel_root_without_marker_is_uncorrelatable",
+      "reply_placement": "channel_root",
+      "marker_preserved": "no",
+      "expect_strategy": "none"
+    },
+    {
+      "name": "new_thread_without_marker_is_uncorrelatable",
+      "reply_placement": "new_thread",
+      "marker_preserved": "unknown",
+      "expect_strategy": "none"
+    },
+    {
+      "name": "no_reply_is_uncorrelatable",
+      "reply_placement": "none",
+      "marker_preserved": "yes",
+      "expect_strategy": "none"
+    },
+    {
+      "name": "unmeasured_placement_is_uncorrelatable",
+      "reply_placement": "unknown",
+      "marker_preserved": "yes",
+      "expect_strategy": "none"
+    }
+  ],
+  "decision_cases": [
+    {
+      "name": "fully_measured_and_compatible_is_go",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 3,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "GO",
+      "expect_blocking_reason_class": null
+    },
+    {
+      "name": "ignores_bot_authored_messages",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "linear",
+        "bot_alias": "trusted-bot-b",
+        "observed_on": "2026-09-01",
+        "sample_count": 3,
+        "accepts_bot_authored": "no",
+        "requires_mention": "yes",
+        "reply_placement": "none",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "no",
+        "distinguishes_outcomes": "no",
+        "completion_signal": "none",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "none",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "ignores_bot_authored"
+    },
+    {
+      "name": "replies_but_cannot_be_correlated",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "linear",
+        "bot_alias": "trusted-bot-b",
+        "observed_on": "2026-09-01",
+        "sample_count": 3,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "channel_root",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "no",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_5m",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "uncorrelatable_replies"
+    },
+    {
+      "name": "unstable_reply_identity",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 4,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "no",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "unstable_identity"
+    },
+    {
+      "name": "no_distinguishable_outcome",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 4,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "no",
+        "completion_signal": "implicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "no_outcome_signal"
+    },
+    {
+      "name": "no_completion_signal",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 4,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "none",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "no_outcome_signal"
+    },
+    {
+      "name": "duplicate_instruction_causes_a_second_action",
+      "note": "Gist cannot enforce one-event/one-action at the far end, so this is a NO_GO rather than something the supervisor compensates for.",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 4,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "second_action",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "duplicate_side_effects"
+    },
+    {
+      "name": "one_unmeasured_field_blocks",
+      "note": "Rule 6 — an unmeasured field is not a neutral gap. The whole purpose of the spike is that the protocol stops assuming.",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "kilo",
+        "bot_alias": "trusted-bot-a",
+        "observed_on": "2026-09-01",
+        "sample_count": 4,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "same_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_30s",
+        "reacts_to_edits": "unknown",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "NO_GO",
+      "expect_blocking_reason_class": "unmeasured"
+    },
+    {
+      "name": "marker_required_path_is_still_go_pending_t803_review",
+      "note": "compatibility.md §3 row 3 — correlation is possible via the marker, so it is not a NO_GO here. T803 decides whether to accept the weaker evidence and amend events.md §4.2.",
+      "measurement": {
+        "contract_version": "1.0.0",
+        "logical_target": "linear",
+        "bot_alias": "trusted-bot-b",
+        "observed_on": "2026-09-01",
+        "sample_count": 3,
+        "accepts_bot_authored": "yes",
+        "requires_mention": "yes",
+        "reply_placement": "new_thread",
+        "reply_identity_stable": "yes",
+        "marker_preserved": "yes",
+        "distinguishes_outcomes": "yes",
+        "completion_signal": "explicit",
+        "duplicate_behavior": "ignored",
+        "reply_latency_bucket": "lt_5m",
+        "reacts_to_edits": "no",
+        "unrelated_message_inert": "yes"
+      },
+      "expect_decision": "GO",
+      "expect_blocking_reason_class": null
+    }
+  ],
+  "phase_recommendation_cases": [
+    { "name": "both_go", "decisions": ["GO", "GO"], "expect": "GO" },
+    { "name": "kilo_only", "decisions": ["GO", "NO_GO"], "expect": "PARTIAL" },
+    { "name": "linear_only", "decisions": ["NO_GO", "GO"], "expect": "PARTIAL" },
+    { "name": "neither", "decisions": ["NO_GO", "NO_GO"], "expect": "NO_GO" }
+  ],
+  "blocked_path": {
+    "note": "D029 — a NO_GO blocks only the failing target, and there is no fallback of any kind.",
+    "blocked_target": "linear",
+    "passing_target": "kilo",
+    "expect_dispatch_to_blocked_target": {
+      "allowed": false,
+      "failure_class": "compatibility_blocked",
+      "workflow_state": "waiting_human"
+    },
+    "expect_dispatch_to_passing_target": { "allowed": true },
+    "forbidden_fallbacks": [
+      "direct_linear_connector",
+      "direct_github_connector",
+      "direct_kilo_cloud_connector",
+      "mcp_connector",
+      "alternative_transport",
+      "identity_substitution",
+      "inferred_success"
+    ],
+    "expect_partial_unblocks_p09_alone": false
+  },
+  "conditional_clauses": [
+    { "clause": "events.md §4.2", "depends_on": "reply_placement" },
+    { "clause": "actions.md §5.1", "depends_on": "marker_preserved" },
+    { "clause": "actions.md §5.2", "depends_on": "requires_mention" },
+    { "clause": "workflow-state.md §3.1", "depends_on": "completion_signal" },
+    { "clause": "workflow-state.md §5", "depends_on": "fresh_session_support" },
+    { "clause": "dispatch.md §5", "depends_on": "marker_preserved" },
+    { "clause": "events.md §6", "depends_on": "duplicate_behavior" }
+  ]
+}

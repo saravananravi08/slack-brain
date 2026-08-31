@@ -1,0 +1,355 @@
+{
+  "contract_set": "slack-supervisor",
+  "contract_version": "1.0.0",
+  "synthetic": true,
+  "defines": "docs/architecture/slack-supervisor/dispatch.md",
+  "checkpoint_required_fields": [
+    "action_id",
+    "workflow_id",
+    "version",
+    "source_event_key",
+    "action_class",
+    "logical_target",
+    "destination_ref",
+    "delivery_state",
+    "slack_message_key",
+    "attempt_count",
+    "last_failure_class",
+    "created_at",
+    "updated_at"
+  ],
+  "checkpoint_forbidden_fields": [
+    "instruction_text",
+    "text",
+    "message_text",
+    "bot_reply_text",
+    "prompt",
+    "model_output",
+    "raw_event",
+    "credentials"
+  ],
+  "sample_checkpoint": {
+    "action_id": "act_supv_0001",
+    "workflow_id": "wf_supv_0001",
+    "version": 1,
+    "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+    "action_class": "dispatch_bot",
+    "logical_target": "kilo",
+    "destination_ref": "dest_supv_0001",
+    "delivery_state": "delivered",
+    "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+    "attempt_count": 1,
+    "last_failure_class": null,
+    "created_at": "2026-09-01T00:01:00.000Z",
+    "updated_at": "2026-09-01T00:01:05.000Z"
+  },
+  "claim_keys": [
+    {
+      "name": "action_claim_is_per_event",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "expect_action_claim_key": "wf:wf_supv_0001|ev:T0SUPVTEST/C0SUPVTESTA/1756684860.000200"
+    },
+    {
+      "name": "dispatch_claim_is_per_attempt",
+      "workflow_id": "wf_supv_0001",
+      "action_id": "act_supv_0001",
+      "version": 1,
+      "attempt": 2,
+      "expect_dispatch_claim_key": "wf:wf_supv_0001|act:act_supv_0001|v:1|n:2"
+    }
+  ],
+  "one_event_one_action": [
+    {
+      "name": "first_visible_action_claims",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": false,
+      "action_class": "dispatch_bot",
+      "expect_allowed": true
+    },
+    {
+      "name": "second_visible_action_for_the_same_event_is_refused",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": true,
+      "action_class": "reply_user",
+      "expect_allowed": false,
+      "expect_failure_class": "claim_conflict"
+    },
+    {
+      "name": "internal_action_needs_no_claim",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684860.000200",
+      "already_claimed": true,
+      "action_class": "wait",
+      "expect_allowed": true
+    },
+    {
+      "name": "a_different_event_claims_independently",
+      "workflow_id": "wf_supv_0001",
+      "source_event_key": "T0SUPVTEST/C0SUPVTESTA/1756684920.000300",
+      "already_claimed": false,
+      "action_class": "follow_up_bot",
+      "expect_allowed": true
+    }
+  ],
+  "in_flight_conflict": [
+    { "name": "no_in_flight_allows_dispatch", "in_flight_delivery_state": null, "expect_allowed": true },
+    {
+      "name": "pending_blocks_a_second_dispatch",
+      "in_flight_delivery_state": "pending",
+      "expect_allowed": false,
+      "expect_failure_class": "in_flight_conflict"
+    },
+    {
+      "name": "in_flight_blocks_a_second_dispatch",
+      "in_flight_delivery_state": "in_flight",
+      "expect_allowed": false,
+      "expect_failure_class": "in_flight_conflict"
+    },
+    { "name": "delivered_does_not_block", "in_flight_delivery_state": "delivered", "expect_allowed": true },
+    { "name": "abandoned_does_not_block", "in_flight_delivery_state": "abandoned", "expect_allowed": true },
+    { "name": "failed_does_not_block", "in_flight_delivery_state": "failed", "expect_allowed": true }
+  ],
+  "delivery_states": ["pending", "in_flight", "delivered", "failed", "abandoned"],
+  "delivery_transitions": {
+    "pending": ["in_flight", "abandoned"],
+    "in_flight": ["delivered", "failed", "abandoned"],
+    "delivered": [],
+    "failed": ["pending", "abandoned"],
+    "abandoned": []
+  },
+  "illegal_delivery_transitions": [
+    {
+      "name": "delivered_is_terminal",
+      "from": "delivered",
+      "to": "pending",
+      "note": "A delivered action is never re-sent."
+    },
+    { "name": "delivered_cannot_fail_afterwards", "from": "delivered", "to": "failed" },
+    { "name": "abandoned_is_terminal", "from": "abandoned", "to": "in_flight" },
+    {
+      "name": "pending_cannot_jump_to_delivered",
+      "from": "pending",
+      "to": "delivered",
+      "note": "Delivery is only confirmed from an in-flight attempt that returned an outgoing message identity."
+    },
+    { "name": "failed_cannot_become_delivered", "from": "failed", "to": "delivered" }
+  ],
+  "delivery_confirmation": [
+    {
+      "name": "slack_returned_a_message_identity",
+      "slack_message_key": "T0SUPVTEST/C0SUPVTESTA/1756684865.000250",
+      "errored": false,
+      "timed_out": false,
+      "expect_delivery_state": "delivered"
+    },
+    {
+      "name": "slack_returned_an_error",
+      "slack_message_key": null,
+      "errored": true,
+      "timed_out": false,
+      "expect_delivery_state": "failed"
+    },
+    {
+      "name": "attempt_timed_out_without_an_identity",
+      "note": "An absence of error is not a confirmation. There is no state meaning 'sent, we think'.",
+      "slack_message_key": null,
+      "errored": false,
+      "timed_out": true,
+      "expect_delivery_state": "failed"
+    },
+    {
+      "name": "no_identity_no_error_no_timeout_is_still_not_delivered",
+      "slack_message_key": null,
+      "errored": false,
+      "timed_out": false,
+      "expect_delivery_state": "failed"
+    }
+  ],
+  "retry_convergence": {
+    "note": "GS-FR-043 — retries share one action_id and one version; the first success wins under compare-and-set and later attempts stop.",
+    "action_id": "act_supv_0001",
+    "version": 1,
+    "attempts": [
+      { "attempt": 1, "result": "failed", "expect_delivery_state": "failed" },
+      { "attempt": 2, "result": "delivered", "expect_delivery_state": "delivered" },
+      {
+        "attempt": 3,
+        "result": "delivered",
+        "note": "A slow original completing after the retry already succeeded.",
+        "expect_delivery_state": "delivered",
+        "expect_additional_dispatch": false
+      }
+    ],
+    "expect_distinct_actions": 1,
+    "expect_expected_bot_turns": 1
+  },
+  "failed_dispatch": [
+    {
+      "name": "transport_failure_leaves_the_workflow_ready",
+      "failure_class": "slack_transport_error",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 0,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 1,
+      "expect_expected_actor": "gist"
+    },
+    {
+      "name": "rate_limit_leaves_the_workflow_ready",
+      "failure_class": "slack_rate_limited",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 1,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 2,
+      "expect_expected_actor": "gist"
+    },
+    {
+      "name": "reaching_the_failure_limit_asks_a_human",
+      "failure_class": "slack_transport_error",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 2,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "waiting_human",
+      "expect_consecutive_failures": 3,
+      "expect_expected_actor": "human"
+    },
+    {
+      "name": "permission_denied_leaves_the_workflow_ready",
+      "failure_class": "slack_permission_denied",
+      "workflow_state_before": "ready",
+      "consecutive_failures_before": 0,
+      "max_consecutive_failures": 3,
+      "expect_workflow_state": "ready",
+      "expect_consecutive_failures": 1,
+      "expect_expected_actor": "gist"
+    }
+  ],
+  "reconciliation": [
+    {
+      "name": "pending_with_no_claim_consumed_was_never_sent",
+      "delivery_state": "pending",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": false,
+      "thread_readable": true,
+      "expect_delivery_state": "abandoned",
+      "expect_workflow_state": "ready",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_our_own_outgoing_record_was_delivered",
+      "note": "The send path persists outgoing messages directly, so the local record is authoritative and does not depend on Slack echo behavior.",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": true,
+      "marker_found_in_thread": true,
+      "thread_readable": true,
+      "expect_delivery_state": "delivered",
+      "expect_workflow_state": "dispatched",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_marker_in_thread_but_no_local_record_was_delivered",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": true,
+      "thread_readable": true,
+      "expect_delivery_state": "delivered",
+      "expect_workflow_state": "dispatched",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_a_readable_empty_thread_was_not_delivered",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": false,
+      "thread_readable": true,
+      "expect_delivery_state": "abandoned",
+      "expect_workflow_state": "ready",
+      "expect_reason_class": null
+    },
+    {
+      "name": "in_flight_with_an_unreadable_thread_asks_a_human",
+      "note": "Re-sending would risk a duplicate instruction, which for a coding bot is duplicated work. Asking is cheap.",
+      "delivery_state": "in_flight",
+      "own_outgoing_record": false,
+      "marker_found_in_thread": false,
+      "thread_readable": false,
+      "expect_delivery_state": "in_flight",
+      "expect_workflow_state": "waiting_human",
+      "expect_reason_class": "dispatch_unreconciled"
+    }
+  ],
+  "restart": {
+    "note": "GS-FR-015 — recovery replays state, not effects.",
+    "expect_resends_confirmed_delivered": false,
+    "expect_reapplies_committed_transitions": false,
+    "expect_rearms_timers_from_durable_timestamps": true,
+    "expect_reconciles_before_accepting_new_events": true
+  },
+  "ordering": {
+    "note": "dispatch.md §6 — the checkpoint write precedes the Slack call. A process that sends first and records after cannot survive its own crash.",
+    "expect_order": ["write_checkpoint", "slack_call", "record_result"],
+    "storage_unavailable_expect_sent": false
+  },
+  "failure_classes": [
+    "slack_rate_limited",
+    "slack_transport_error",
+    "slack_permission_denied",
+    "destination_unresolved",
+    "in_flight_conflict",
+    "claim_conflict",
+    "state_mismatch",
+    "version_mismatch",
+    "illegal_transition",
+    "terminal_workflow",
+    "approval_missing",
+    "approval_expired",
+    "approval_scope_changed",
+    "compatibility_blocked",
+    "schema_invalid",
+    "model_unavailable",
+    "storage_unavailable",
+    "dispatch_unreconciled",
+    "internal_error"
+  ],
+  "failure_behavior": [
+    { "failure_class": "slack_rate_limited", "expect_retryable": true, "expect_workflow_state": "ready" },
+    { "failure_class": "slack_transport_error", "expect_retryable": true, "expect_workflow_state": "ready" },
+    { "failure_class": "slack_permission_denied", "expect_retryable": true, "expect_workflow_state": "ready" },
+    { "failure_class": "state_mismatch", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "version_mismatch", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "illegal_transition", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "terminal_workflow", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "approval_missing", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "approval_expired", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "approval_scope_changed", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "claim_conflict", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "in_flight_conflict", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    {
+      "failure_class": "destination_unresolved",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human"
+    },
+    {
+      "failure_class": "compatibility_blocked",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human"
+    },
+    { "failure_class": "schema_invalid", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "model_unavailable", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    { "failure_class": "storage_unavailable", "expect_retryable": false, "expect_workflow_state": "unchanged" },
+    {
+      "failure_class": "dispatch_unreconciled",
+      "expect_retryable": false,
+      "expect_workflow_state": "waiting_human"
+    },
+    { "failure_class": "internal_error", "expect_retryable": false, "expect_workflow_state": "unchanged" }
+  ],
+  "capture_preserved_under_failure": {
+    "note": "GS-NFR-006 — supervision degrading never costs the memory layer.",
+    "expect_exact_capture_continues": true
+  }
+}
