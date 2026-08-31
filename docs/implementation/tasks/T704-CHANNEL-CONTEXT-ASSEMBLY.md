@@ -1,8 +1,8 @@
 # T704 — Assemble bounded channel context
 
-- **Status:** Planned
+- **Status:** Ready for Integration
 - **Phase:** [P07](../phases/P07-CHANNEL-CONTEXT.md)
-- **Owner:** Unassigned
+- **Owner:** T704 agent
 - **Branch:** `task/T704-assemble-bounded-channel-context`
 - **Parallel group:** PG-07B
 - **Depends on:** T701, T702, T703
@@ -47,17 +47,17 @@ git diff --check
 
 ## Acceptance criteria
 
-- [ ] Context order matches CM-PRD section 7.
-- [ ] Default context excludes semantic search results until tool invocation.
-- [ ] Limits are deterministic and tested.
-- [ ] Observation failure still returns history.
-- [ ] Cross-channel fixture data never appears.
-- [ ] API exposes no storage implementation details.
+- [x] Context order matches CM-PRD section 7.
+- [x] Default context excludes semantic search results until tool invocation.
+- [x] Limits are deterministic and tested.
+- [x] Observation failure still returns history.
+- [x] Cross-channel fixture data never appears.
+- [x] API exposes no storage implementation details.
 
 ## Completion record
 
-- Implementation commit: —
-- Handoff commit: —
+- Implementation commit: `d81dfd0`
+- Handoff commit: this handoff commit
 - Merge commit: —
 - Integration metadata commit: —
 - Completed at: —
