@@ -1169,5 +1169,308 @@
       "tests/e2e/channel-context/**",
       "docs/reports/channel-context-validation.md"
     ]
+  },
+  {
+    "id": "T801",
+    "title": "Freeze Slack supervisor contracts",
+    "phase": "P08",
+    "deps": [
+      "D023",
+      "D024",
+      "D025",
+      "D026",
+      "D027",
+      "D028",
+      "D029",
+      "5fdf8e2"
+    ],
+    "blocks": [
+      "T802"
+    ],
+    "group": "PG-08A",
+    "parallel": [],
+    "conflicts": [
+      "T803 on serialized contract paths"
+    ],
+    "scope": [
+      "GIST_SLACK_SUPERVISOR_PRD.md",
+      "docs/architecture/slack-supervisor/**",
+      "tests/contracts/slack-supervisor/**"
+    ]
+  },
+  {
+    "id": "T802",
+    "title": "Prove Kilo and Linear bot compatibility",
+    "phase": "P08",
+    "deps": [
+      "T801",
+      "Operator test access"
+    ],
+    "blocks": [
+      "T803",
+      "P09"
+    ],
+    "group": "PG-08B",
+    "parallel": [],
+    "conflicts": [
+      "Live Gist process"
+    ],
+    "scope": [
+      "scripts/probes/slack-bot-compatibility.ts",
+      "tests/spikes/slack-bot-compatibility/**",
+      "docs/spikes/slack-bot-compatibility.md",
+      "docs/reports/slack-bot-compatibility.md"
+    ]
+  },
+  {
+    "id": "T803",
+    "title": "Finalize automation protocol and threat model",
+    "phase": "P08",
+    "deps": [
+      "T802"
+    ],
+    "blocks": [
+      "P09"
+    ],
+    "group": "PG-08C",
+    "parallel": [],
+    "conflicts": [
+      "T801 on serialized contract paths"
+    ],
+    "scope": [
+      "docs/architecture/slack-supervisor/**",
+      "docs/security/slack-supervisor-threat-model.md",
+      "tests/contracts/slack-supervisor/**",
+      "tests/security/slack-supervisor/**"
+    ]
+  },
+  {
+    "id": "T901",
+    "title": "Implement durable workflow registry",
+    "phase": "P09",
+    "deps": [
+      "P08"
+    ],
+    "blocks": [
+      "T905"
+    ],
+    "group": "PG-09A",
+    "parallel": [
+      "T902",
+      "T903",
+      "T904"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/workflows/**",
+      "tests/orchestration/workflows/**"
+    ]
+  },
+  {
+    "id": "T902",
+    "title": "Implement trusted automation event router",
+    "phase": "P09",
+    "deps": [
+      "P08"
+    ],
+    "blocks": [
+      "T905"
+    ],
+    "group": "PG-09A",
+    "parallel": [
+      "T901",
+      "T903",
+      "T904"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/events/**",
+      "tests/orchestration/events/**"
+    ]
+  },
+  {
+    "id": "T903",
+    "title": "Implement structured Slack bot dispatch",
+    "phase": "P09",
+    "deps": [
+      "P08"
+    ],
+    "blocks": [
+      "T905"
+    ],
+    "group": "PG-09A",
+    "parallel": [
+      "T901",
+      "T902",
+      "T904"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/dispatch/**",
+      "tests/orchestration/dispatch/**"
+    ]
+  },
+  {
+    "id": "T904",
+    "title": "Implement supervisor decision engine",
+    "phase": "P09",
+    "deps": [
+      "P08"
+    ],
+    "blocks": [
+      "T905"
+    ],
+    "group": "PG-09A",
+    "parallel": [
+      "T901",
+      "T902",
+      "T903"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/supervisor/**",
+      "tests/orchestration/supervisor/**"
+    ]
+  },
+  {
+    "id": "T905",
+    "title": "Integrate durable supervisor runtime",
+    "phase": "P09",
+    "deps": [
+      "T901",
+      "T902",
+      "T903",
+      "T904"
+    ],
+    "blocks": [
+      "T906"
+    ],
+    "group": "PG-09B",
+    "parallel": [],
+    "conflicts": [
+      "Shared runtime composition"
+    ],
+    "scope": [
+      "src/config.ts",
+      ".env.example",
+      "src/mastra/channels/**",
+      "src/mastra/agents/**",
+      "src/mastra/index.ts",
+      "src/orchestration/index.ts",
+      "tests/config/**",
+      "tests/channels/**",
+      "tests/agents/**",
+      "tests/integration/slack-supervisor/**"
+    ]
+  },
+  {
+    "id": "T906",
+    "title": "Validate supervisor resilience and security",
+    "phase": "P09",
+    "deps": [
+      "T905"
+    ],
+    "blocks": [
+      "P10"
+    ],
+    "group": "PG-09C",
+    "parallel": [],
+    "conflicts": [],
+    "scope": [
+      "tests/orchestration/resilience/**",
+      "tests/security/slack-supervisor/**",
+      "tests/e2e/slack-supervisor/runtime-validation.test.ts",
+      "docs/reports/slack-supervisor-resilience.md"
+    ]
+  },
+  {
+    "id": "T1001",
+    "title": "Implement human assignment and approval lifecycle",
+    "phase": "P10",
+    "deps": [
+      "P09"
+    ],
+    "blocks": [
+      "T1004"
+    ],
+    "group": "PG-10A",
+    "parallel": [
+      "T1002",
+      "T1003"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/policies/human-assignment.ts",
+      "tests/orchestration/policies/human-assignment.test.ts"
+    ]
+  },
+  {
+    "id": "T1002",
+    "title": "Implement Kilo execution and review steering",
+    "phase": "P10",
+    "deps": [
+      "P09"
+    ],
+    "blocks": [
+      "T1004"
+    ],
+    "group": "PG-10A",
+    "parallel": [
+      "T1001",
+      "T1003"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/policies/kilo-steering.ts",
+      "tests/orchestration/policies/kilo-steering.test.ts"
+    ]
+  },
+  {
+    "id": "T1003",
+    "title": "Implement Linear work steering",
+    "phase": "P10",
+    "deps": [
+      "P09"
+    ],
+    "blocks": [
+      "T1004"
+    ],
+    "group": "PG-10A",
+    "parallel": [
+      "T1001",
+      "T1002"
+    ],
+    "conflicts": [],
+    "scope": [
+      "src/orchestration/policies/linear-steering.ts",
+      "tests/orchestration/policies/linear-steering.test.ts"
+    ]
+  },
+  {
+    "id": "T1004",
+    "title": "Integrate and validate complete Slack supervisor workflow",
+    "phase": "P10",
+    "deps": [
+      "T1001",
+      "T1002",
+      "T1003"
+    ],
+    "blocks": [
+      "Slack supervisor release gate"
+    ],
+    "group": "PG-10B",
+    "parallel": [],
+    "conflicts": [
+      "Shared final supervisor/runtime integration",
+      "Live Gist process"
+    ],
+    "scope": [
+      "src/orchestration/index.ts",
+      "src/orchestration/supervisor/**",
+      "src/mastra/index.ts",
+      "tests/e2e/slack-supervisor/**",
+      "docs/runbooks/slack-supervisor-validation.md",
+      "docs/reports/slack-supervisor-live-validation.md"
+    ]
   }
 ]

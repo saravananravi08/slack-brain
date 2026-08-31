@@ -11,7 +11,7 @@ flowchart LR
   P02 --> P04
   P03 --> P05
   P04 --> P05
-  P04 --> P06 --> P07
+  P04 --> P06 --> P07 --> P08 --> P09 --> P10
 ```
 
 ## Safe execution waves
@@ -104,13 +104,43 @@ flowchart LR
 
 [T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) → [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) → [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md)
 
+### W21 — supervisor contracts
+
+[T801](./tasks/T801-SUPERVISOR-CONTRACTS.md)
+
+### W22 — live bot compatibility
+
+[T802](./tasks/T802-BOT-COMPATIBILITY-SPIKE.md)
+
+### W23 — protocol and threat gate
+
+[T803](./tasks/T803-AUTOMATION-THREAT-PROTOCOL.md)
+
+### W24 — supervisor components in parallel
+
+[T901](./tasks/T901-WORKFLOW-REGISTRY.md), [T902](./tasks/T902-AUTOMATION-EVENT-ROUTER.md), [T903](./tasks/T903-SLACK-BOT-DISPATCH.md), [T904](./tasks/T904-SUPERVISOR-DECISION-ENGINE.md)
+
+### W25 — supervisor integration and resilience
+
+[T905](./tasks/T905-SUPERVISOR-RUNTIME-INTEGRATION.md) → [T906](./tasks/T906-SUPERVISOR-RESILIENCE-VALIDATION.md)
+
+### W26 — bot-steering policies in parallel
+
+[T1001](./tasks/T1001-HUMAN-ASSIGNMENT-LIFECYCLE.md), [T1002](./tasks/T1002-KILO-STEERING-LIFECYCLE.md), [T1003](./tasks/T1003-LINEAR-STEERING-LIFECYCLE.md)
+
+### W27 — complete live supervisor validation
+
+[T1004](./tasks/T1004-SUPERVISOR-LIVE-VALIDATION.md)
+
 ## Critical path
 
 Original release path: `T001 → T004 → T101 → T104/T105 → T106 → T201/T202/T203 → T204 → T206 → T301 → T302/T303/T304 → T305 → T306 → T307 → T501–T504 → T505 → T506 → T508`
 
 Channel-memory extension: `T406 → T601 → T602/T603/T604/T605 → T606 → T607 → T701/T702/T703 → T704 → T705 → T706`
 
-P04 runs alongside P03 after P02. P05 waits for P03/P04 under the original release plan. P06/P07 extend the completed live-ingestion foundation and do not depend on historical archive import.
+Slack supervisor extension: `baseline 5fdf8e2 → T801 → T802 → T803 → T901/T902/T903/T904 → T905 → T906 → T1001/T1002/T1003 → T1004`
+
+P04 runs alongside P03 after P02. P05 waits for P03/P04 under the original release plan. P06/P07 extend the completed live-ingestion foundation and do not depend on historical archive import. P08–P10 build on merged P06/P07 code; final supervisor GO still requires live gate disposition.
 
 ## Task dependency edges
 
@@ -208,6 +238,25 @@ flowchart TD
   T703 --> T704
   T704 --> T705
   T705 --> T706
+  D_Supervisor_baseline["Supervisor baseline 5fdf8e2 + D023-D029"] --> T801
+  T801 --> T802
+  D_Operator_bot_access["Operator bot test access"] --> T802
+  T802 --> T803
+  D_P08["P08"] --> T901
+  D_P08 --> T902
+  D_P08 --> T903
+  D_P08 --> T904
+  T901 --> T905
+  T902 --> T905
+  T903 --> T905
+  T904 --> T905
+  T905 --> T906
+  D_P09["P09"] --> T1001
+  D_P09 --> T1002
+  D_P09 --> T1003
+  T1001 --> T1004
+  T1002 --> T1004
+  T1003 --> T1004
 ```
 
 ## Conflict prevention
@@ -218,6 +267,9 @@ flowchart TD
 - Phase/status/global-log edits are serialized through phase integrator.
 - Operational tasks T306, T307, T505, and T506 are serialized approvals, not parallel coding work.
 - T602–T605 and T701–T703 have disjoint primary scopes; T606 and T705 exclusively own shared composition in their phases.
-- P06/P07 task branches must start from the integration commit that contains this approved plan, not from the planning branch directly.
+- P06/P07 task branches must start from the integration commit that contains their approved plan.
+- T901–T904 and T1001–T1003 have disjoint primary scopes and may use the full four/three worker waves respectively.
+- T905 and T1004 exclusively own shared composition in their phases.
+- P08–P10 task branches start from the latest `feature/gist-slack-bot-supervisor` commit after their dependencies merge.
 
 See [`FILE_OWNERSHIP.md`](./FILE_OWNERSHIP.md) for path locks.

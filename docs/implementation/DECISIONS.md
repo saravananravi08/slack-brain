@@ -11,7 +11,7 @@ Product decisions originate in PRD Section 15. Coordinator owns this file. Do no
 - **Accepted:** the named owner approved it. Only then may downstream tasks implement it.
 - **Deferred (accepted):** a sub-item whose final value cannot be fixed yet. The stated **safe default is in force** and downstream tasks implement against it; the named owner supplies the final value by the stated deadline. A deferral does not block the tasks its parent decision unblocks.
 
-D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment. D007 was later superseded by D012. D013–D017 were accepted directly by product owner saravanan on 2026-08-31 for the P06/P07 channel-memory extension; where they conflict with original v1 behavior, they govern P06/P07 and later work.
+D001–D010 below were drafted as proposals by the T001 planner on 2026-08-30 and **accepted the same day** by **Coordinator (Augment), acting under decision authority delegated by product owner saravanan on 2026-08-30**. They were drafted to safe, deny-by-default settings and were accepted without amendment. D007 was later superseded by D012. D013–D017 were accepted directly by product owner saravanan on 2026-08-31 for the P06/P07 channel-memory extension; where they conflict with original v1 behavior, they govern P06/P07 and later work. D023–D029 were accepted directly by product owner saravanan on 2026-08-31 for the Slack supervisor extension.
 
 Five sub-items are carried as **accepted deferrals** (D001 production channel IDs, D003 archive date floor, D004 legal/HR retention holds, D006 production authorization posture, D010 residency assumption). Each names an owner, a deadline, and a safe default that is in force now. They do not hold up the decisions that contain them.
 
@@ -33,6 +33,13 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 | D015 | Edit and delete behavior for channel-memory extension | Accepted | Product owner (saravanan) | T601, T605, T606 | Edits replace text/vector; live deletes are ignored and retained content remains recallable |
 | D016 | Channel history and Observation Memory | Accepted | Product owner (saravanan) | T701, T702, T704 | Always provide recent history, rolling summary, and channel-scoped observations |
 | D017 | Semantic recall as scoped agent tool | Accepted | Product owner (saravanan) | T703, T705 | Gist may call `search_channel_memory`; channel scope comes only from authorized runtime context |
+| D023 | Slack-only bot orchestration bus | Accepted | Product owner (saravanan) | T801–T803 | Gist steers Kilo/Linear through Slack; no direct connectors in this scope |
+| D024 | Supervisor event eligibility | Accepted | Product owner (saravanan) | T801, T902, T905 | Evaluate authorized humans and exact trusted bots; self never; unknown automation capture-only |
+| D025 | Human authority and approvals | Accepted | Product owner (saravanan) | T801, T904, T1001 | Clear reversible assignments may run; destructive/merge/release actions require owner approval |
+| D026 | Durable workflow authority | Accepted | Product owner (saravanan) | T801, T901, T905 | Structured workflow state is authoritative and restart-safe; message memory is evidence |
+| D027 | Structured actions and runtime destinations | Accepted | Product owner (saravanan) | T801, T903, T904 | Model emits logical target/action only; runtime controls exact Slack IDs |
+| D028 | Workflow serialization and limits | Accepted | Product owner (saravanan) | T901, T905, T906 | Per-workflow serialization; no proactive cooldown drops; bounded turns/timeouts/retries |
+| D029 | Compatibility failure policy | Accepted | Product owner (saravanan) | T802, T803 | Failed bot-to-bot proof blocks that path; no silent connector fallback |
 
 ---
 
@@ -405,3 +412,68 @@ Five sub-items are carried as **accepted deferrals** (D001 production channel ID
 - Decision: Proactive mode is enabled by DEFAULT for every enrolled+authorized channel. GIST_PROACTIVE_CHANNELS, when set to a non-empty list, RESTRICTS proactive mode to those channels; when unset/empty, ALL enrolled channels are proactive. All D021 guards unchanged (human senders only; Gist/bot/app never evaluated; cooldown; fail-closed).
 - Consequences: src/config.ts semantics change (empty list = all enrolled, not off); src/mastra/channels/proactive.ts/slack.ts gate check updates to consult enrollment when list is empty; regression tests updated (unset → proactive in enrolled channel; set list → restricted).
 - Affected tasks/files: src/config.ts, src/mastra/channels/**, src/mastra/index.ts, tests/channels/**, tests/integration/live-ingestion/**.
+
+---
+
+## D023 — Slack-only bot orchestration bus
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Kilo and Linear already expose their capabilities as Slack bots. Product owner wants Gist to supervise those bots rather than add direct API/MCP/CLI connectors.
+- Decision: Slack is the only orchestration bus in this scope. Gist sends instructions to Kilo/Linear in Slack, receives their Slack replies, and advances durable workflow state. No direct Linear, GitHub, Kilo Cloud, or MCP connector is added.
+- Consequences: Bot-to-bot compatibility is a hard gate. Slack thread/event limitations are accepted only when measured and documented. Gist cannot silently switch transports.
+- Affected tasks/files: T801–T803, GIST_SLACK_SUPERVISOR_PRD.md.
+
+## D024 — Supervisor event eligibility
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Current capture stores every sender, while T609 intentionally evaluates human messages only to prevent loops. Supervision must react to Kilo/Linear replies without evaluating Gist echoes or every app.
+- Decision: Evaluate every authorized human event and every exact-ID trusted Kilo/Linear event. Persist but never evaluate Gist/self. Persist unknown bots/apps without supervisor activation unless a later accepted allowlist decision adds them. Evaluation may return `no_action`.
+- Consequences: Trusted bot events need a dedicated post-persistence automation route; removing only the T609 human guard is insufficient and unsafe.
+- Affected tasks/files: T801, T902, T905, Slack event routing.
+
+## D025 — Human authority and approval boundaries
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Gist should run with clear assignments rather than ask for redundant approval, but bots/channel content cannot authorize irreversible work.
+- Decision: A clear assignment from an authorized human owner authorizes reversible, non-destructive Kilo/Linear work. Gist asks only for materially missing details. Merge, release, deletion, destructive/irreversible action, ownership transfer, and material scope expansion require explicit current owner/approver action.
+- Consequences: Approval binds to one workflow action version and is invalidated by scope/action change. Bot replies can never approve or transfer ownership.
+- Affected tasks/files: T801, T904, T1001, T1004.
+
+## D026 — Durable structured workflow state is authoritative
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Slack messages, summaries, and observations explain work but cannot safely represent action checkpoints, ownership, expected actor, approval, retries, or terminal state.
+- Decision: Store workflow/action state in a versioned durable FactoryStorage domain. Exact channel messages remain evidence; structured state alone authorizes transitions and dispatch.
+- Consequences: Restart and duplicate delivery must converge without repeated bot instructions. Workflow records reference message identities rather than duplicating conversation text.
+- Affected tasks/files: T801, T901, T905, T906.
+
+## D027 — Structured supervisor actions and runtime-controlled destinations
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Free-form model output containing Slack IDs or arbitrary destinations would let prompt-injected content redirect work.
+- Decision: Supervisor emits one schema-valid bounded action and logical target (`kilo` or `linear`). Runtime maps the logical target to configured exact IDs after authorization/state checks. Model input/output cannot supply or override destination IDs.
+- Consequences: Slack dispatch is an explicit executor with checkpointed results, not ordinary response text interpreted as a command.
+- Affected tasks/files: T801, T903, T904, T905.
+
+## D028 — Per-workflow serialization, limits, and cooldown separation
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: T609's channel proactive cooldown is suitable for unsolicited commentary but would drop legitimate workflow replies. Bot loops and concurrent replies still require bounds.
+- Decision: Active workflow events use per-workflow serialization and are never suppressed by proactive cooldown. Enforce maximum turns, failures, inactivity, lifetime, and one in-flight action. Limits survive restart and terminate/wait for human explicitly.
+- Consequences: Channel proactive evaluation remains separate from workflow continuation. No valid workflow event may be silently dropped.
+- Affected tasks/files: T901, T905, T906.
+
+## D029 — Bot compatibility failure blocks Slack-only path
+- Status: Accepted
+- Date: 2026-08-31
+- Owner: Product owner (saravanan)
+- Context: Some Slack bots ignore bot-authored messages or do not provide stable thread/completion semantics.
+- Decision: T802 must prove Kilo and Linear independently. A failed proof blocks only that bot path and routes the finding to product owner. Do not fake identity, infer success, or add a direct connector without a new decision.
+- Consequences: P09 entry requires GO for both desired bots; partial compatibility may support only the passing path after explicit scope amendment.
+- Affected tasks/files: T802, T803, compatibility report.

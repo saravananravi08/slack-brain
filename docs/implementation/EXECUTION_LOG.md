@@ -409,3 +409,11 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - T609c: live ambient gate wiring (worker pi-coder-27, `b938523` + handoff `425215e`) — proactive gate now fires in the real Socket Mode path with stage-trace diagnostics; content-leak assertions proven live.
 - T609d: ALL_MESSAGES_PROACTIVE_CLASSIFIER test mode (`3bee8c5`) — operator-approved temporary rollout mode that acts on all eligible proactive messages (all guards intact: human-only, cooldown, dedup, fail-closed).
 - Merge `5b8d0e2`; full 1063 passed / 5 skipped; typecheck OK; build OK.
+
+### 2026-08-31 — P08–P10 Slack supervisor feature initiated
+
+- Feature integration branch created from synced baseline `5fdf8e2`: `feature/gist-slack-bot-supervisor`.
+- Product owner accepted D023–D029: Slack-only Kilo/Linear steering, authorized-human and exact trusted-bot evaluation, durable workflow authority, runtime-controlled destinations, bounded per-workflow execution, and hard compatibility gates.
+- Added `GIST_SLACK_SUPERVISOR_PRD.md`, P08–P10 phases, T801–T803, T901–T906, and T1001–T1004 task/log specs, dependency waves, ownership, and dashboard records.
+- Baseline reverified before feature work: typecheck pass; 1063 tests pass / 5 skipped; build pass; working tree clean before documentation changes.
+- First implementation gate: T801 contracts, followed by T802 live Kilo/Linear bot-to-bot compatibility. No supervisor runtime code may start before P08 GO.

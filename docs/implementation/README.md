@@ -1,6 +1,6 @@
 # Gist on Mastra — Implementation Control Center
 
-This folder is the canonical execution system for [`GIST_MASTRA_PRD.md`](../../GIST_MASTRA_PRD.md), [`GIST_CHANNEL_MEMORY_PRD.md`](../../GIST_CHANNEL_MEMORY_PRD.md), and [`MASTRA_MIGRATION_PLAN.md`](../../MASTRA_MIGRATION_PLAN.md).
+This folder is the canonical execution system for [`GIST_MASTRA_PRD.md`](../../GIST_MASTRA_PRD.md), [`GIST_CHANNEL_MEMORY_PRD.md`](../../GIST_CHANNEL_MEMORY_PRD.md), [`GIST_SLACK_SUPERVISOR_PRD.md`](../../GIST_SLACK_SUPERVISOR_PRD.md), and [`MASTRA_MIGRATION_PLAN.md`](../../MASTRA_MIGRATION_PLAN.md).
 
 ## Canonical files
 
@@ -58,17 +58,21 @@ A person may hold multiple roles, but the rules still apply.
 ## Branch and worktree convention
 
 ```text
-integration/mastra-rewrite       # shared integration branch
-planning/channel-memory-v2       # P06/P07 planning branch
-task/T101-project-scaffold       # one branch per task
-../worktrees/T101                # recommended isolated worktree
+integration/mastra-rewrite            # upstream integration branch
+feature/gist-slack-bot-supervisor      # P08–P10 feature integration branch
+task/T801-freeze-slack-supervisor-contracts
+../worktrees/T801                     # recommended isolated worktree
 ```
 
 Create a task branch only after the coordinator marks it `In Progress`:
 
 ```bash
-git worktree add ../worktrees/T101 -b task/T101-project-scaffold integration/mastra-rewrite
+git worktree add ../worktrees/T801 \
+  -b task/T801-freeze-slack-supervisor-contracts \
+  feature/gist-slack-bot-supervisor
 ```
+
+P08–P10 tasks use `feature/gist-slack-bot-supervisor` as their integration base. Earlier phases continue to use `integration/mastra-rewrite`.
 
 Never run parallel tasks in the same working directory.
 

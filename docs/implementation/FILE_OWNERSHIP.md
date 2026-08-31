@@ -30,6 +30,12 @@
 | `src/ingestion/mutations/**` | T605 during P06 |
 | `src/config.ts`, `src/security/**`, `src/mastra/channels/**`, `src/mastra/index.ts` | T606 during P06; T705 for P07 agent/context integration |
 | `src/mastra/memory/gist-memory.ts` | T702 during P07 |
+| `GIST_SLACK_SUPERVISOR_PRD.md`, `docs/architecture/slack-supervisor/**`, `tests/contracts/slack-supervisor/**` | T801; T803 may amend contracts after T802 |
+| `src/orchestration/workflows/**` | T901 during P09 |
+| `src/orchestration/events/**` | T902 during P09 |
+| `src/orchestration/dispatch/**` | T903 during P09 |
+| `src/orchestration/supervisor/**` | T904 during PG-09A; T905/T1004 during serialized integration |
+| `src/config.ts`, `.env.example`, `src/mastra/channels/**`, `src/mastra/agents/**`, `src/mastra/index.ts`, `src/orchestration/index.ts` | T905 during P09; T1004 for final P10 integration |
 
 ## Source ownership by area
 
@@ -69,11 +75,28 @@
 | Channel context assembly | `src/channel-memory/context/**` | T704 |
 | Gist context integration | shared agent/channel/runtime paths | T705 |
 | Channel intelligence validation | `tests/e2e/channel-context/**`, context report | T706 |
+| Supervisor contracts | PRD, `docs/architecture/slack-supervisor/**`, `tests/contracts/slack-supervisor/**` | T801, then T803 |
+| Bot compatibility spike | probe script, spike fixtures/docs/report | T802 |
+| Supervisor threat model | supervisor architecture/security/contracts | T803 |
+| Durable workflow state | `src/orchestration/workflows/**` | T901 |
+| Trusted automation routing | `src/orchestration/events/**` | T902 |
+| Slack bot dispatch | `src/orchestration/dispatch/**` | T903 |
+| Supervisor decision engine | `src/orchestration/supervisor/**` | T904 |
+| Supervisor runtime integration | shared config/agent/channel/runtime paths | T905 |
+| Supervisor resilience validation | resilience/security/e2e tests and report | T906 |
+| Human assignment policy | one policy module/test | T1001 |
+| Kilo steering policy | one policy module/test | T1002 |
+| Linear steering policy | one policy module/test | T1003 |
+| Supervisor final integration/live gate | shared supervisor/runtime, e2e/runbook/report | T1004 |
 
 ## Conflict check before handoff
 
 ```bash
-git diff --name-only integration/mastra-rewrite...HEAD
+# P08–P10
+ git diff --name-only feature/gist-slack-bot-supervisor...HEAD
+
+# Earlier phases
+ git diff --name-only integration/mastra-rewrite...HEAD
 ```
 
-Every listed path must appear in the task write scope. If not, revert or split it into the correct dependent task before handoff.
+Use the applicable base. Every listed path must appear in the task write scope. If not, revert or split it into the correct dependent task before handoff.

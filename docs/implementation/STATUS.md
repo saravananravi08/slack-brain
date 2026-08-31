@@ -5,10 +5,10 @@
 ## Program status
 
 - **Overall:** In Progress
-- **Integration branch:** `integration/mastra-rewrite`
-- **Coordinator:** Augment Agent (orchestrator)
-- **Current phase gate:** Original release work remains in progress on P03/P05. T406 live validation is merged GO. **P06/P07 channel-memory extension is planned on `planning/channel-memory-v2`**: capture every message in every joined internal channel, apply edits, ignore deletes temporarily, enable channel-scoped Observation Memory, inject history/summary/observations, and expose one scoped semantic memory tool. P06 execution began: planning merged to integration at b01315c with green baseline; T601 contracts In Progress under claude-opus5, Wave 1. CI runs typecheck + test + build on push and PR.
-- **Last updated:** 2026-08-31 — P06 started: plan merged b01315c; baseline re-verified green (typecheck, 582 passing, 5 skipped, build); T601 assigned to claude-opus5.
+- **Integration branch:** `feature/gist-slack-bot-supervisor` for P08–P10; upstream `integration/mastra-rewrite`
+- **Coordinator:** pi coding agent (P08–P10 feature coordinator)
+- **Current phase gate:** P06/P07 code and offline validation are merged; their operator live checklists remain pending. Proactive human-message handling through T609d is merged at baseline `5fdf8e2`. **P08 Slack supervisor contracts/compatibility is starting:** Slack-only steering of trusted Kilo/Linear bots, durable workflows, and bot-reply continuation. T801 is the first task; runtime implementation must wait for T802 live bot compatibility and T803 threat/protocol GO.
+- **Last updated:** 2026-08-31 — feature branch created from `5fdf8e2`; P08–P10 PRD/governance drafted. Baseline verified: typecheck/build green, 1063 passing, 5 skipped.
 
 ### Security review status
 
@@ -44,8 +44,11 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [P03](./phases/P03-HISTORY.md) — Historical Slack Migration | In Progress | P02 | Augment | — |
 | [P04](./phases/P04-LIVE-INGESTION.md) — Live Silent Channel Ingestion | Completed | P02 | Augment | f9e20de |
 | [P05](./phases/P05-RELEASE.md) — Validation, Release, and Cleanup | In Progress (deliverables merged; operator beta/cutover/rollback gates pending) | P03, P04 | Unassigned | — |
-| [P06](./phases/P06-CHANNEL-CAPTURE.md) — Complete Multi-Channel Capture | Planned | T406, D013–D015 | Unassigned | — |
-| [P07](./phases/P07-CHANNEL-CONTEXT.md) — Channel Context and Observational Memory | Planned | P06, D016–D017 | Unassigned | — |
+| [P06](./phases/P06-CHANNEL-CAPTURE.md) — Complete Multi-Channel Capture | Merged (offline GO; live checklist pending operator) | T406, D013–D015 | Kilo coordinator | 1a63d5e |
+| [P07](./phases/P07-CHANNEL-CONTEXT.md) — Channel Context and Observational Memory | Merged (offline GO; live checklist pending operator) | P06, D016–D017 | Kilo coordinator | 58f1cc1 |
+| [P08](./phases/P08-SLACK-AUTOMATION-CONTRACTS.md) — Slack Automation Contracts and Compatibility | Planned | baseline `5fdf8e2`, D023–D029 | pi coding agent | — |
+| [P09](./phases/P09-DURABLE-SUPERVISOR.md) — Durable Slack Supervisor Runtime | Planned | P08 | Unassigned | — |
+| [P10](./phases/P10-BOT-STEERED-WORKFLOWS.md) — Bot-Steered Workflows and Live Validation | Planned | P09 | Unassigned | — |
 
 ## Task dashboard
 
@@ -102,6 +105,19 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T704](./tasks/T704-CHANNEL-CONTEXT-ASSEMBLY.md) — Assemble bounded channel context | P07 | Completed | T701, T702, T703 | PG-07B | pi-coder-23 | task/T704-assemble-bounded-channel-context | 2026-08-31 | fb7e35c |
 | [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | Completed | T704, T703 | PG-07C | pi-coder-24 | task/T705-integrate-context-with-gist-agent | 2026-08-31 | 0ab9164 |
 | [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md) — Validate channel intelligence end to end | P07 | Merged (offline GO; live gate pending operator) | T705 | PG-07D | pi-coder-25 | task/T706-validate-channel-intelligence-end-to-end | 2026-08-31 | 58f1cc1 |
+| [T801](./tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | P08 | Planned | D023–D029, baseline `5fdf8e2` | PG-08A | Unassigned | task/T801-freeze-slack-supervisor-contracts | — | — |
+| [T802](./tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | P08 | Planned | T801, operator test access | PG-08B | Unassigned | task/T802-prove-kilo-linear-bot-compatibility | — | — |
+| [T803](./tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | P08 | Planned | T802 | PG-08C | Unassigned | task/T803-finalize-automation-threat-protocol | — | — |
+| [T901](./tasks/T901-WORKFLOW-REGISTRY.md) — Implement durable workflow registry | P09 | Planned | P08 | PG-09A | Unassigned | task/T901-implement-durable-workflow-registry | — | — |
+| [T902](./tasks/T902-AUTOMATION-EVENT-ROUTER.md) — Implement trusted automation event router | P09 | Planned | P08 | PG-09A | Unassigned | task/T902-implement-trusted-automation-event-router | — | — |
+| [T903](./tasks/T903-SLACK-BOT-DISPATCH.md) — Implement structured Slack bot dispatch | P09 | Planned | P08 | PG-09A | Unassigned | task/T903-implement-structured-slack-bot-dispatch | — | — |
+| [T904](./tasks/T904-SUPERVISOR-DECISION-ENGINE.md) — Implement supervisor decision engine | P09 | Planned | P08 | PG-09A | Unassigned | task/T904-implement-supervisor-decision-engine | — | — |
+| [T905](./tasks/T905-SUPERVISOR-RUNTIME-INTEGRATION.md) — Integrate durable supervisor runtime | P09 | Planned | T901, T902, T903, T904 | PG-09B | Unassigned | task/T905-integrate-durable-supervisor-runtime | — | — |
+| [T906](./tasks/T906-SUPERVISOR-RESILIENCE-VALIDATION.md) — Validate supervisor resilience and security | P09 | Planned | T905 | PG-09C | Unassigned | task/T906-validate-supervisor-resilience-security | — | — |
+| [T1001](./tasks/T1001-HUMAN-ASSIGNMENT-LIFECYCLE.md) — Implement human assignment and approval lifecycle | P10 | Planned | P09 | PG-10A | Unassigned | task/T1001-implement-human-assignment-lifecycle | — | — |
+| [T1002](./tasks/T1002-KILO-STEERING-LIFECYCLE.md) — Implement Kilo execution and review steering | P10 | Planned | P09 | PG-10A | Unassigned | task/T1002-implement-kilo-steering-lifecycle | — | — |
+| [T1003](./tasks/T1003-LINEAR-STEERING-LIFECYCLE.md) — Implement Linear work steering | P10 | Planned | P09 | PG-10A | Unassigned | task/T1003-implement-linear-steering-lifecycle | — | — |
+| [T1004](./tasks/T1004-SUPERVISOR-LIVE-VALIDATION.md) — Integrate and validate complete Slack supervisor workflow | P10 | Planned | T1001, T1002, T1003 | PG-10B | Unassigned | task/T1004-integrate-validate-slack-supervisor | — | — |
 
 ## Active write locks
 
