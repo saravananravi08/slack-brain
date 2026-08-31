@@ -18,4 +18,19 @@ export type {
   RetentionResult,
 } from './mutations/types.js';
 
-export * from './persistence/index.js';
+export {
+  ChannelMessagePersistenceService,
+  AmbientPersistenceService,
+  type CanonicalSender,
+  type CaptureSource,
+  type ChannelMessagePersistenceOptions,
+  type ChannelMessagePersistenceResult,
+  type ChannelMessageRecord,
+  type AmbientNormalizedEvent,
+  type AmbientPersistenceInput,
+  type AmbientPersistenceOptions,
+  type AmbientPersistenceResult,
+  type WriteAuthorizationDecision,
+  type WriteAuthorizationRequest,
+  type WriteAuthorizer,
+} from './persistence/index.js';
