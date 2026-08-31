@@ -279,3 +279,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Implementation `991fc4a`; handoff `38fcec0`; merge `d8206d1`; integration metadata: this commit.
 - Verification: typecheck OK; contract suite 354 passed / 9 files; git diff --check clean; scope within declared paths; PRD mapping append-only; post-merge full regression 936 passed / 5 skipped.
 - Result: merged GO. Blockers: none. Follow-up: T602/T603/T604/T605 Wave 2 dispatch.
+
+### 2026-08-31 — T602 completed (P06 Wave 2)
+
+- Task: T602 joined-channel registry; worker: pi-coder-16; branch: task/T602-implement-joined-channel-registry.
+- Implementation `8d473a9`; handoff `2f616f9`; merge `35da11a`.
+- Verification: scope clean; diff-check clean; 13 registry tests passed; typecheck OK; post-merge regression 949 passed / 5 skipped.
+- Result: merged GO. Blockers: none.

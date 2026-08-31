@@ -1,6 +1,6 @@
 # T602 — Implement joined-channel registry
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** pi coding agent
 - **Branch:** `task/T602-implement-joined-channel-registry`
@@ -57,6 +57,6 @@ git diff --check
 
 - Implementation commit: `8d473a9`
 - Handoff commit: —
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Merge commit: `35da11a`
+- Integration metadata commit: docs(P06) complete T602 metadata commit
+- Completed at: 2026-08-31
