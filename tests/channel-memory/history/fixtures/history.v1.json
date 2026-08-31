@@ -1,0 +1,46 @@
+{
+  "workspace_id": "T0HISTORY01",
+  "channel_a": "C0HISTORYA",
+  "channel_b": "C0HISTORYB",
+  "sender_id": "U0HISTORY1",
+  "messages": [
+    {
+      "channel_id": "C0HISTORYA",
+      "message_ts": "1700000000.000100",
+      "thread_root_ts": "1700000000.000100",
+      "text": "alpha"
+    },
+    {
+      "channel_id": "C0HISTORYA",
+      "message_ts": "1700000001.000100",
+      "thread_root_ts": "1700000000.000100",
+      "text": "reply"
+    },
+    {
+      "channel_id": "C0HISTORYA",
+      "message_ts": "1700000002.0002",
+      "thread_root_ts": "1700000002.0002",
+      "text": "tie-a"
+    },
+    {
+      "channel_id": "C0HISTORYA",
+      "message_ts": "1700000002.000200",
+      "thread_root_ts": "1700000002.000200",
+      "text": "tie-b"
+    },
+    {
+      "channel_id": "C0HISTORYA",
+      "message_ts": "1700000003.000100",
+      "thread_root_ts": "1700000003.000100",
+      "text": "edited-current",
+      "metadata_text": "stale-original",
+      "edited_at": "2023-11-14T22:13:24.000Z"
+    },
+    {
+      "channel_id": "C0HISTORYB",
+      "message_ts": "1700000004.000100",
+      "thread_root_ts": "1700000004.000100",
+      "text": "other-channel"
+    }
+  ]
+}
