@@ -20,6 +20,11 @@ export interface ProactiveClassifier {
   classify(input: ProactiveClassifierInput): Promise<ProactiveDecision>;
 }
 
+/** Temporary rollout mode: prove response delivery before tuning relevance. */
+export const ALL_MESSAGES_PROACTIVE_CLASSIFIER: ProactiveClassifier = {
+  classify: async () => ({ act: true, reason: 'all_messages_mode' }),
+};
+
 export interface ProactiveActionEvaluator {
   isEnabled(workspaceId: string | undefined, channelId: string): Promise<boolean>;
   evaluate(request: ChannelRequest): Promise<boolean>;

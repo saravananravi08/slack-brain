@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChannelContext } from '../../src/channel-memory/context/index.js';
 import { parseConfig } from '../../src/config.js';
 import {
+  ALL_MESSAGES_PROACTIVE_CLASSIFIER,
   OpenAIProactiveClassifier,
   ProactiveActionGate,
 } from '../../src/mastra/channels/proactive.js';
@@ -67,6 +68,15 @@ describe('D021/D022 proactive configuration', () => {
   ])('rejects malformed %s', (variable, value) => {
     expect(() => parseConfig({ ...validEnvironment(), [variable]: value }))
       .toThrow(`Invalid configuration: ${variable}`);
+  });
+});
+
+describe('temporary all-messages proactive mode', () => {
+  it('acts deterministically without model relevance judgment', async () => {
+    await expect(ALL_MESSAGES_PROACTIVE_CLASSIFIER.classify({
+      context: CONTEXT,
+      messageTs: REQUEST.messageTs,
+    })).resolves.toEqual({ act: true, reason: 'all_messages_mode' });
   });
 });
 

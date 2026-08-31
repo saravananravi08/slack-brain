@@ -1,5 +1,6 @@
 import type { SlackAdapter } from '@chat-adapter/slack';
 import type { AgentMemoryOption, MastraDBMessage } from '@mastra/core/agent';
+import { ConsoleLogger } from 'chat';
 import { MastraStateAdapter } from '@mastra/core/channels';
 import { Mastra } from '@mastra/core/mastra';
 import {
@@ -45,7 +46,7 @@ import { channelContextSystemMessage } from './agents/channel-context.js';
 import { createGistAgent, createGistModel } from './agents/gist.js';
 import { ChannelError, DurableChannelDedupLedger } from './channels/index.js';
 import {
-  OpenAIProactiveClassifier,
+  ALL_MESSAGES_PROACTIVE_CLASSIFIER,
   ProactiveActionGate,
 } from './channels/proactive.js';
 import {
@@ -279,6 +280,7 @@ export async function createFoundationRuntime(
   // Configuration first: an invalid environment must stop the process before
   // anything touches the filesystem (F-05).
   const config = parseConfig();
+  const channelLogger = new ConsoleLogger('info', 'gist');
 
   // T602 requires FactoryStorage so app-owned enrollment rows and Mastra state
   // share one durable LibSQL connection.
@@ -398,10 +400,7 @@ export async function createFoundationRuntime(
   const proactive = new ProactiveActionGate({
     channelIds: config.proactiveChannelIds ?? [],
     cooldownMs: config.proactiveCooldownMs ?? 60_000,
-    classifier: new OpenAIProactiveClassifier({
-      apiKey: config.openaiApiKey,
-      model: config.gistModel,
-    }),
+    classifier: ALL_MESSAGES_PROACTIVE_CLASSIFIER,
     isEnrolled: enrollmentProbe.isEnrolled,
     contextFor: async (request) => {
       const context = authorizedContexts.get(request);
@@ -435,6 +434,7 @@ export async function createFoundationRuntime(
     },
     state,
     policy,
+    logger: channelLogger,
     resolveSender,
     enrollment,
     channelPersistence,
@@ -535,7 +535,12 @@ export async function createFoundationRuntime(
     memory,
     gistAgent,
     start: () => {
-      startPromise ??= channel.start();
+      startPromise ??= channel.start().then(() => {
+        channelLogger.info('channel.proactive.active', {
+          scope: config.proactiveChannelIds?.length ? 'restricted' : 'all_enrolled',
+          restrictedChannelCount: config.proactiveChannelIds?.length ?? 0,
+        });
+      });
       return startPromise;
     },
     stop: () => {
