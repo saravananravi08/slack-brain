@@ -29,7 +29,7 @@ The phase is intentionally serial. Runtime work must not start from assumed Slac
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
 | [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | Completed | D023–D029, baseline `5fdf8e2` | PG-08A | claude-contracts-1 | `73821b5` |
-| [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | Planned | T801, operator test access | PG-08B | Unassigned | — |
+| [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | In Progress | T801, operator test access | PG-08B | pi-t802-compatibility | — |
 | [T803](../tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | Planned | T802 | PG-08C | Unassigned | — |
 
 ## Integration procedure

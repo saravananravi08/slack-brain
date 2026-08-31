@@ -1,8 +1,8 @@
 # T802 — Prove Kilo and Linear bot compatibility
 
-- **Status:** Planned
+- **Status:** In Progress
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
-- **Owner:** Unassigned
+- **Owner:** pi-t802-compatibility
 - **Branch:** `task/T802-prove-kilo-linear-bot-compatibility`
 - **Parallel group:** PG-08B
 - **Depends on:** T801; operator-approved test channel and bot access
