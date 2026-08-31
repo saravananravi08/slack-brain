@@ -1,6 +1,6 @@
 # T601 — Freeze channel-memory contracts
 
-- **Status:** Ready for Integration
+- **Status:** Completed
 - **Phase:** [P06](../phases/P06-CHANNEL-CAPTURE.md)
 - **Owner:** claude-opus5
 - **Branch:** `task/T601-freeze-channel-memory-contracts`
@@ -62,7 +62,7 @@ git diff --check
 ## Completion record
 
 - Implementation commit: `991fc4aaf03ca10700c85cf3a72243fb213c9ff0`
-- Handoff commit: —
-- Merge commit: —
-- Integration metadata commit: —
-- Completed at: —
+- Handoff commit: `38fcec0`
+- Merge commit: `d8206d1`
+- Integration metadata commit: docs(P06) complete T601 metadata commit
+- Completed at: 2026-08-31

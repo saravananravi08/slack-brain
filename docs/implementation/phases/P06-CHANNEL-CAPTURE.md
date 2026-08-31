@@ -23,7 +23,7 @@ T601 freezes contracts. T602, T603, T604, and T605 then run in parallel with dis
 
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
-| T601 — Freeze channel-memory contracts | Planned | T406 | PG-06A | Unassigned | — |
+| T601 — Freeze channel-memory contracts | Completed | T406 | PG-06A | claude-opus5 | d8206d1 |
 | T602 — Implement joined-channel registry | Planned | T601 | PG-06B | Unassigned | — |
 | T603 — Normalize all message senders | Planned | T601 | PG-06B | Unassigned | — |
 | T604 — Persist all live channel messages | Planned | T601 | PG-06B | Unassigned | — |

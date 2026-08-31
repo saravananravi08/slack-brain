@@ -272,3 +272,10 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Product owner accepted D013–D017: dynamic joined-channel enrollment, no backfill, all-sender capture, edit fidelity with temporary delete-ignore, channel-scoped Observation Memory, default history/summary/observations, and one scoped semantic memory tool.
 - Added `GIST_CHANNEL_MEMORY_PRD.md`, P06/P07 phase gates, T601–T607 and T701–T706 task/log specifications, dependency waves, ownership, dashboard entries, and machine-readable task index records.
 - Planning branch: `planning/channel-memory-v2`. No runtime implementation was changed or assigned.
+
+### 2026-08-31 — T601 completed (P06 Wave 1)
+
+- Task: T601 freeze channel-memory contracts; worker: claude-opus5; branch: task/T601-freeze-channel-memory-contracts (worktree worktrees/T601).
+- Implementation `991fc4a`; handoff `38fcec0`; merge `d8206d1`; integration metadata: this commit.
+- Verification: typecheck OK; contract suite 354 passed / 9 files; git diff --check clean; scope within declared paths; PRD mapping append-only; post-merge full regression 936 passed / 5 skipped.
+- Result: merged GO. Blockers: none. Follow-up: T602/T603/T604/T605 Wave 2 dispatch.
