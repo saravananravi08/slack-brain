@@ -216,7 +216,7 @@ function mentionEdit(options: {
   });
 }
 
-describe('D019 edit-to-mention response trigger', () => {
+describe('D019/D020 edit-to-mention response trigger', () => {
   function p06Harness(authorizeCaptured?: ChannelAuthorizationDecision) {
     return makeHarness(makeMemoryState(), {
       p06: true,
@@ -235,29 +235,37 @@ describe('D019 edit-to-mention response trigger', () => {
     expect(harness.posts).toHaveLength(1);
   });
 
-  it('does not respond to a bot edit that adds a Gist mention', async () => {
-    const harness = p06Harness();
-
-    await harness.deliver(envelope(mentionEdit({ bot: true })));
-
-    expect(harness.handleMutation).toHaveBeenCalledOnce();
-    expect(harness.generation).not.toHaveBeenCalled();
-    expect(harness.posts).toEqual([]);
-  });
-
-  it('does not respond to a reply edit that adds a Gist mention', async () => {
+  it('responds exactly once in-thread when a human reply edit newly adds a Gist mention', async () => {
     const harness = p06Harness();
 
     await harness.deliver(envelope(mentionEdit({ reply: true })));
 
     expect(harness.handleMutation).toHaveBeenCalledOnce();
+    expect(harness.generation).toHaveBeenCalledOnce();
+    expect(harness.generation.mock.calls[0]?.[0]).toMatchObject({
+      messageTs: SYNTHETIC.replyTs,
+      threadId: `slack:${SYNTHETIC.channel}:${SYNTHETIC.rootTs}`,
+    });
+    expect(harness.posts).toEqual([
+      expect.objectContaining({
+        threadId: `slack:${SYNTHETIC.channel}:${SYNTHETIC.rootTs}`,
+      }),
+    ]);
+  });
+
+  it('does not respond to a bot reply edit that adds a Gist mention', async () => {
+    const harness = p06Harness();
+
+    await harness.deliver(envelope(mentionEdit({ bot: true, reply: true })));
+
+    expect(harness.handleMutation).toHaveBeenCalledOnce();
     expect(harness.generation).not.toHaveBeenCalled();
     expect(harness.posts).toEqual([]);
   });
 
-  it('does not respond twice when a qualifying edit is replayed', async () => {
+  it('does not respond twice when a qualifying reply edit is replayed', async () => {
     const harness = p06Harness();
-    const replayed = envelope(mentionEdit());
+    const replayed = envelope(mentionEdit({ reply: true }));
 
     await harness.deliver(replayed);
     await harness.deliver(replayed);
@@ -267,20 +275,20 @@ describe('D019 edit-to-mention response trigger', () => {
     expect(harness.posts).toHaveLength(1);
   });
 
-  it('does not respond when the previous text already mentioned Gist', async () => {
+  it('does not respond when the previous reply text already mentioned Gist', async () => {
     const harness = p06Harness();
 
-    await harness.deliver(envelope(mentionEdit({ previousMention: true })));
+    await harness.deliver(envelope(mentionEdit({ previousMention: true, reply: true })));
 
     expect(harness.handleMutation).toHaveBeenCalledOnce();
     expect(harness.generation).not.toHaveBeenCalled();
     expect(harness.posts).toEqual([]);
   });
 
-  it('does not respond when edit response authorization fails', async () => {
+  it('does not respond when reply-edit response authorization fails', async () => {
     const harness = p06Harness({ allowed: false, reason: 'guest_user' });
 
-    await harness.deliver(envelope(mentionEdit()));
+    await harness.deliver(envelope(mentionEdit({ reply: true })));
 
     expect(harness.handleMutation).toHaveBeenCalledOnce();
     expect(harness.generation).not.toHaveBeenCalled();
