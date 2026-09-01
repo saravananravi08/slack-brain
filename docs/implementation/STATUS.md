@@ -7,7 +7,7 @@
 - **Overall:** In Progress
 - **Integration branch:** `feature/gist-slack-bot-supervisor` for P08–P10; upstream `integration/mastra-rewrite`
 - **Coordinator:** herdr orchestrator (P08–P10)
-- **Current phase gate:** P06/P07 code and offline validation are merged; their operator live checklists remain pending. Proactive human-message handling through T609d is merged at baseline `5fdf8e2`. **Product-owner priority:** T804 durable Channel Supervisor is now first—answer dedup, deterministic status, and persistent channel context. T802 is paused with WIP preserved until T804 merges and transport policy is revised.
+- **Current phase gate:** P06/P07 code and offline validation are merged; their operator live checklists remain pending. Proactive human-message handling through T609d is merged at baseline `5fdf8e2`. **Product-owner priority:** T804 durable Channel Supervisor is now first—guarded same-requester user-token Kilo dispatch, durable child status/reply binding, answer dedup, and suppression of proactive replies to Kilo-addressed messages. T802 is paused with WIP preserved.
 - **Last updated:** 2026-09-01 05:37 UTC — T804 assigned to pi; T802 blocked by explicit reprioritization. Existing Gist runtime remains available for normal Slack-memory questions.
 
 ### Security review status
@@ -129,7 +129,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | T305-dep | pi-coder-9 | package.json (add migration CLI script entry only; transferred from T101) | 2026-08-30 | reverts to T508 after T305 merge |
 | T801 | claude-contracts-1 | `GIST_SLACK_SUPERVISOR_PRD.md`, `docs/architecture/slack-supervisor/**`, `tests/contracts/slack-supervisor/**`, own task/log | 2026-09-01 | RELEASED 2026-08-31 23:31 UTC (`73821b5`) |
 | T802 | pi-t802-compatibility | `scripts/probes/slack-bot-compatibility.ts`, `tests/spikes/slack-bot-compatibility/**`, `docs/spikes/slack-bot-compatibility.md`, `docs/reports/slack-bot-compatibility.md`, own task/log | 2026-08-31 | PAUSED; WIP preserved |
-| T804 | pi-t804-channel-supervisor | `src/mastra/channels/**`, smallest required storage/migration paths, focused channel-supervisor tests, own task/log | 2026-09-01 | ACTIVE |
+| T804 | pi-t804-channel-supervisor | `src/config.ts`, `.env.example`, `src/mastra/index.ts`, `src/mastra/channels/**`, smallest required storage/migration paths, focused tests, own task/log | 2026-09-01 | ACTIVE |
 
 ## Blockers
 
