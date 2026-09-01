@@ -8,7 +8,7 @@
 - **Integration branch:** `feature/gist-slack-bot-supervisor` for P08–P10; upstream `integration/mastra-rewrite`
 - **Coordinator:** herdr orchestrator (P08–P10)
 - **Current phase gate:** P06/P07 code and offline validation are merged; their operator live checklists remain pending. **Product-owner priority:** T804 structured Channel Supervisor is first—strict intent planning, durable ordered Kilo work/notify/review steps, runtime-owned identity/destination/artifacts, owner-scoped status, and workflow checkpoints in proactive context. Verbatim-tail dispatch is superseded. T802 remains paused.
-- **Last updated:** 2026-09-01 07:25 UTC — structured implementation `6729880` and handoff `a697294` are on the T804 branch; full suite 2560 passed / 5 skipped, typecheck/build green. Blocker-only review and structured live gate pending. User-token dispatch is disabled during review; normal Gist questions remain live.
+- **Last updated:** 2026-09-01 07:40 UTC — structured implementation `6729880`, P1 correction `4cf0504`, and handoff `f657a96` are on the T804 branch. Independent blocker review ACCEPT; full suite 2562 passed / 5 skipped; typecheck/build green. Guarded user-token dispatch and approved repository binding are restored in the gitignored live environment; corrected singleton is running. One genuine operator retry remains for the structured live gate.
 
 ### Security review status
 
@@ -106,7 +106,7 @@ merged GO at `f9e20de`; T502's report/metadata still needs a release-gate refres
 | [T705](./tasks/T705-GIST-CONTEXT-INTEGRATION.md) — Integrate context with Gist agent | P07 | Completed | T704, T703 | PG-07C | pi-coder-24 | task/T705-integrate-context-with-gist-agent | 2026-08-31 | 0ab9164 |
 | [T706](./tasks/T706-CHANNEL-INTELLIGENCE-VALIDATION.md) — Validate channel intelligence end to end | P07 | Merged (offline GO; live gate pending operator) | T705 | PG-07D | pi-coder-25 | task/T706-validate-channel-intelligence-end-to-end | 2026-08-31 | 58f1cc1 |
 | [T801](./tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | P08 | Completed | D023–D029, baseline `5fdf8e2` | PG-08A | claude-contracts-1 | task/T801-freeze-slack-supervisor-contracts | 2026-09-01 | `73821b5` |
-| [T804](./tasks/T804-CHANNEL-SUPERVISOR-SESSION.md) — Implement durable Channel Supervisor session | P08 | In Progress — structured implementation `6729880`, review/live gate pending | T609d, T801 invariants | PG-08S | pi-t804-channel-supervisor | task/T804-channel-supervisor-session | 2026-09-01 | — |
+| [T804](./tasks/T804-CHANNEL-SUPERVISOR-SESSION.md) — Implement durable Channel Supervisor session | P08 | In Progress — correction `4cf0504` accepted; live retry pending | T609d, T801 invariants | PG-08S | pi-t804-channel-supervisor | task/T804-channel-supervisor-session | 2026-09-01 | — |
 | [T802](./tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | P08 | Blocked | T804 priority, transport decision | PG-08B | pi-t802-compatibility | task/T802-prove-kilo-linear-bot-compatibility | 2026-08-31 | — |
 | [T803](./tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | P08 | Planned | T802 | PG-08C | Unassigned | task/T803-finalize-automation-threat-protocol | — | — |
 | [T901](./tasks/T901-WORKFLOW-REGISTRY.md) — Implement durable workflow registry | P09 | Planned | P08 | PG-09A | Unassigned | task/T901-implement-durable-workflow-registry | — | — |

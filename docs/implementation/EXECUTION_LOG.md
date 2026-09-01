@@ -436,3 +436,12 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Superseded verbatim-tail forwarding and callback phrase decomposition. Normal generation is prohibited from promising uncommitted future monitoring/delegation.
 - Verification: 11 structured supervisor tests; focused 50 passed; full suite 2560 passed / 5 skipped; typecheck, build, and diff check passed.
 - Current gate: blocker-only independent review, then one safe structured live validation. Task remains In Progress and unmerged.
+
+### 2026-09-01 07:40 UTC — T804 blocker correction accepted and runtime restored
+
+- Independent review rejected two P1s: uncertain Kilo replies could terminate a workflow, and delegation wording/generated promises could bypass durable supervision.
+- Correction `4cf0504`; handoff `f657a96`. Unknown/progress/missing-artifact replies now remain awaiting; only explicit terminal failure fails. Broader explicit-delegation forms enter the supervisor, and generated future-action promises are buffered and deterministically suppressed.
+- Verification: supervisor 12 passed; focused 77 passed; full suite 2562 passed / 5 skipped; typecheck, build, and diff check passed.
+- Independent re-review: ACCEPT; both P1s closed.
+- Restored guarded user-token dispatch and approved repository binding in the gitignored environment; rebuilt and restarted the sole T804 runtime successfully.
+- Current gate: retry one genuine operator structured request. The prior event remains safely consumed and is not replayed or impersonated.
