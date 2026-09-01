@@ -426,3 +426,13 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Result: Slack supervisor contract v1 merged; T802 unblocked. Reopen remains unsupported pending product-owner choice and blocks only the later T901/T904 reopen capability.
 - Verification: typecheck/build pass; supervisor 1483 passed; channel-memory/access 536 passed; full suite 2546 passed / 5 skipped; diff, scope, and credential scans clean.
 - Follow-up: assign T802 and obtain genuine operator Slack compatibility actions; no runtime work before T803 GO.
+
+### 2026-09-01 07:25 UTC — T804 structured Channel Supervisor gate
+
+- Product-owner live testing rejected verbatim-tail/regex delegation: Gist must separate Kilo work from Gist-owned notification, status, and dependent review steps.
+- T802 remains paused; T804 is the first priority. User-token dispatch was disabled during redesign while normal Gist Slack-memory responses remained available.
+- Structured implementation `6729880`; handoff `a697294` on `task/T804-channel-supervisor-session`.
+- Added strict JSON intent planning, closed runtime validation, durable ordered step queue, same-requester user-token gate, exact Kilo reply binding, validated PR artifact handoff, owner notifications, status checkpoints, and workflow context for proactive responses.
+- Superseded verbatim-tail forwarding and callback phrase decomposition. Normal generation is prohibited from promising uncommitted future monitoring/delegation.
+- Verification: 11 structured supervisor tests; focused 50 passed; full suite 2560 passed / 5 skipped; typecheck, build, and diff check passed.
+- Current gate: blocker-only independent review, then one safe structured live validation. Task remains In Progress and unmerged.
