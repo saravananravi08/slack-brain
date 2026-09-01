@@ -454,3 +454,11 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Actual OpenAI API probe passed with four ordered steps: `kilo_work → notify_owner → kilo_work → notify_owner`.
 - Verification: supervisor 12 passed; full suite 2562 passed / 5 skipped; typecheck, build, and diff check passed.
 - Rebuilt and restarted the sole T804 runtime. Current gate: one new genuine Slack event; consumed prior events are not replayed.
+
+### 2026-09-01 08:00 UTC — T804 adaptive supervisor product correction
+
+- Product owner superseded the fixed up-front plan model: Channel Supervisor must act dynamically as state and trusted events change, not always follow a precomputed workflow.
+- New execution contract: persist owner goal, commitments, checkpoint, events, effects, and limits; after each trusted owner/Kilo/runtime event choose one strict runtime-validated next action. Allowed effects remain bounded and runtime-owned.
+- Dynamic decisions may delegate Kilo, notify/report, wait, ask owner, finish, or fail. Kilo content cannot change authority, identity, destination, artifacts, or limits.
+- Existing plan rows remain migration-readable; new workflows will use event-driven mode. Fixed-plan live retry is paused.
+- Assigned `pi-t804-dynamic-supervisor` on the existing isolated T804 branch. Independent blocker review and a new dynamic live gate remain required.
