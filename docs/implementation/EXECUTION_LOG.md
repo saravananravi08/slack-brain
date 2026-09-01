@@ -445,3 +445,12 @@ Five small commits that make the repository buildable, runnable, and continuousl
 - Independent re-review: ACCEPT; both P1s closed.
 - Restored guarded user-token dispatch and approved repository binding in the gitignored environment; rebuilt and restarted the sole T804 runtime successfully.
 - Current gate: retry one genuine operator structured request. The prior event remains safely consumed and is not replayed or impersonated.
+
+### 2026-09-01 07:54 UTC — T804 OpenAI planner live blocker corrected
+
+- A genuine operator retry still returned unavailable. Content-safe diagnosis isolated an OpenAI HTTP 400 before workflow creation: strict-schema enum/const fields lacked required string types; after that correction, OpenAI rejected unsupported `uniqueItems`.
+- Corrections: schema typing `5698f0e`; strict-subset and notification-plan prompt `21e3ad3`; handoff `1670fc7`.
+- Added content-free supervisor failure-stage logging. No request text, model output, identities, repository data, or credentials are logged.
+- Actual OpenAI API probe passed with four ordered steps: `kilo_work → notify_owner → kilo_work → notify_owner`.
+- Verification: supervisor 12 passed; full suite 2562 passed / 5 skipped; typecheck, build, and diff check passed.
+- Rebuilt and restarted the sole T804 runtime. Current gate: one new genuine Slack event; consumed prior events are not replayed.
