@@ -1,6 +1,6 @@
 # T802 — Prove Kilo and Linear bot compatibility
 
-- **Status:** In Progress
+- **Status:** Blocked
 - **Phase:** [P08](../phases/P08-SLACK-AUTOMATION-CONTRACTS.md)
 - **Owner:** pi-t802-compatibility
 - **Branch:** `task/T802-prove-kilo-linear-bot-compatibility`

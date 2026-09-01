@@ -77,6 +77,7 @@
 | Channel intelligence validation | `tests/e2e/channel-context/**`, context report | T706 |
 | Supervisor contracts | PRD, `docs/architecture/slack-supervisor/**`, `tests/contracts/slack-supervisor/**` | T801, then T803 |
 | Bot compatibility spike | probe script, spike fixtures/docs/report | T802 |
+| Channel Supervisor answer/status runtime | `src/mastra/channels/**`, smallest required storage/migration paths, focused tests | T804 |
 | Supervisor threat model | supervisor architecture/security/contracts | T803 |
 | Durable workflow state | `src/orchestration/workflows/**` | T901 |
 | Trusted automation routing | `src/orchestration/events/**` | T902 |

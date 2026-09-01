@@ -19,8 +19,9 @@ Gist has an accepted, testable supervisor protocol and live proof that exact con
 ## Parallel execution plan
 
 1. **PG-08A:** T801 freezes supervisor requirements, action/state contracts, and synthetic fixtures.
-2. **PG-08B:** T802 runs the real Kilo/Linear bot-to-bot compatibility spike against those contracts.
-3. **PG-08C:** T803 incorporates measured behavior into the protocol and threat model.
+2. **PG-08S (product-owner priority):** T804 adds the durable Channel Supervisor answer/status foundation before compatibility work resumes.
+3. **PG-08B:** T802 resumes the real Kilo/Linear compatibility decision against the supported transport options.
+4. **PG-08C:** T803 incorporates measured behavior into the protocol and threat model.
 
 The phase is intentionally serial. Runtime work must not start from assumed Slack bot behavior.
 
@@ -29,7 +30,8 @@ The phase is intentionally serial. Runtime work must not start from assumed Slac
 | Task | Status | Depends on | Parallel group | Owner | Completion commit |
 |---|---|---|---|---|---|
 | [T801](../tasks/T801-SUPERVISOR-CONTRACTS.md) — Freeze Slack supervisor contracts | Completed | D023–D029, baseline `5fdf8e2` | PG-08A | claude-contracts-1 | `73821b5` |
-| [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | In Progress | T801, operator test access | PG-08B | pi-t802-compatibility | — |
+| [T804](../tasks/T804-CHANNEL-SUPERVISOR-SESSION.md) — Implement durable Channel Supervisor session | In Progress | T609d, T801 invariants | PG-08S | pi-t804-channel-supervisor | — |
+| [T802](../tasks/T802-BOT-COMPATIBILITY-SPIKE.md) — Prove Kilo and Linear bot compatibility | Blocked | T804 priority, transport decision | PG-08B | pi-t802-compatibility | — |
 | [T803](../tasks/T803-AUTOMATION-THREAT-PROTOCOL.md) — Finalize automation protocol and threat model | Planned | T802 | PG-08C | Unassigned | — |
 
 ## Integration procedure

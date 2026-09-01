@@ -138,7 +138,9 @@ Original release path: `T001 → T004 → T101 → T104/T105 → T106 → T201/T
 
 Channel-memory extension: `T406 → T601 → T602/T603/T604/T605 → T606 → T607 → T701/T702/T703 → T704 → T705 → T706`
 
-Slack supervisor extension: `baseline 5fdf8e2 → T801 → T802 → T803 → T901/T902/T903/T904 → T905 → T906 → T1001/T1002/T1003 → T1004`
+Priority Channel Supervisor slice: `baseline 5fdf8e2 + T801 invariants → T804 → resume transport decision`
+
+Slack supervisor extension: `T804 → T802 → T803 → T901/T902/T903/T904 → T905 → T906 → T1001/T1002/T1003 → T1004`
 
 P04 runs alongside P03 after P02. P05 waits for P03/P04 under the original release plan. P06/P07 extend the completed live-ingestion foundation and do not depend on historical archive import. P08–P10 build on merged P06/P07 code; final supervisor GO still requires live gate disposition.
 
